@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SeasonQuarter {
+  WINTER
+  SPRING
+  SUMMER
+  AUTUMN
+}
+
+enum SourceType {
+  ORIGINAL
+  MANGA
+  LIGHT_NOVEL
+  NOVEL
+  GAME
+}
+
+enum SlotType {
+  OFFICIAL
+  COMMON_NAME
+  INFERRED
+  TEMPORARY
+  ENDED
+}
+
+enum DurationCategory {
+  SHORT_5
+  SHORT_10
+  HALF_15
+  STANDARD_30
+  LONG_60
+}
+
+enum AnimeWeekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum ChannelGroup {
+  KEY
+  INDEPENDENT
+  REGIONAL
+  BS
+  CS
+}
+
+enum RegionGroup {
+  KANTO
+  KANSAI
+  CHUKYO
+  BS
+  CS
+}
+
+enum CompanyRole {
+  ANIMATION
+  PRODUCTION
+  COMMITTEE
+}
+
+enum StaffRole {
+  DIRECTOR
+  SERIES_COMPOSITION
+  CHARACTER_DESIGN
+  MUSIC
+  SCRIPT
+}
+
+enum SequelRelationType {
+  DIRECT_SEQUEL
+  SPLIT_COUR
+  SPIN_OFF
+}
+
+model Region {
+  id       String    @id
+  slug     String    @unique
+  name     String
+  group    RegionGroup
+  channels Channel[]
+  airings  Airing[]
+}
+
+model Channel {
+  id       String       @id
+  slug     String       @unique
+  name     String
+  shortName String
+  group    ChannelGroup
+  regionId String
+  region   Region       @relation(fields: [regionId], references: [id])
+  slots    Slot[]
+  airings  Airing[]
+}
+
+model Slot {
+  id                     String       @id
+  slug                   String       @unique
+  name                   String
+  aliasNames             String[]
+  slotType               SlotType
+  channelId              String
+  representativeDay      AnimeWeekday
+  representativeTimeText String
+  startDate              DateTime
+  endDate                DateTime?
+  confidence             Int
+  description            String
+  channel                Channel      @relation(fields: [channelId], references: [id])
+  airings                Airing[]
+}
+
+model Title {
+  id               String             @id
+  slug             String             @unique
+  name             String
+  shortName        String?
+  kana             String?
+  seasonYear       Int
+  seasonQuarter    SeasonQuarter
+  sourceType       SourceType?
+  category         String?
+  sequelType       SequelRelationType?
+  isSequel         Boolean            @default(false)
+  isSplitCour      Boolean            @default(false)
+  durationCategory DurationCategory
+  genres           String[]
+  summary          String
+  sourceName       String
+  lastUpdatedAt    DateTime
+  notes            String?
+  airings          Airing[]
+  companies        TitleCompany[]
+  staff            TitleStaff[]
+  outgoingRelations SequelRelation[]  @relation("SequelFrom")
+  incomingRelations SequelRelation[]  @relation("SequelTo")
+  sourceRecords    SourceRecord[]
+
+  @@index([seasonYear, seasonQuarter])
+}
+
+model Company {
+  id      String         @id
+  slug    String         @unique
+  name    String
+  titles  TitleCompany[]
+}
+
+model TitleCompany {
+  id        String      @id
+  titleId   String
+  companyId String
+  role      CompanyRole
+  isPrimary Boolean     @default(false)
+  title     Title       @relation(fields: [titleId], references: [id])
+  company   Company     @relation(fields: [companyId], references: [id])
+
+  @@index([titleId])
+  @@index([companyId])
+}
+
+model Person {
+  id    String      @id
+  slug  String      @unique
+  name  String
+  titles TitleStaff[]
+}
+
+model TitleStaff {
+  id       String    @id
+  titleId  String
+  personId String
+  role     StaffRole
+  title    Title     @relation(fields: [titleId], references: [id])
+  person   Person    @relation(fields: [personId], references: [id])
+
+  @@index([titleId])
+  @@index([personId])
+}
+
+model SequelRelation {
+  id           String              @id
+  fromTitleId  String
+  toTitleId    String
+  relationType SequelRelationType
+  note         String?
+  fromTitle    Title               @relation("SequelFrom", fields: [fromTitleId], references: [id])
+  toTitle      Title               @relation("SequelTo", fields: [toTitleId], references: [id])
+
+  @@index([fromTitleId])
+  @@index([toTitleId])
+}
+
+model Airing {
+  id                     String           @id
+  titleId                String
+  channelId              String
+  regionId               String
+  slotId                 String?
+  broadcastStartAt       DateTime
+  broadcastEndAt         DateTime
+  animeBroadcastDay      AnimeWeekday
+  animeBroadcastTimeText String
+  animeBroadcastHour24   Int
+  animeBroadcastMinute   Int
+  durationCategory       DurationCategory
+  episodeLengthMinutes   Int
+  isFirstRun             Boolean          @default(true)
+  isRebroadcast          Boolean          @default(false)
+  hasNote                Boolean          @default(false)
+  note                   String?
+  title                  Title            @relation(fields: [titleId], references: [id])
+  channel                Channel          @relation(fields: [channelId], references: [id])
+  region                 Region           @relation(fields: [regionId], references: [id])
+  slot                   Slot?            @relation(fields: [slotId], references: [id])
+
+  @@index([titleId])
+  @@index([channelId])
+  @@index([slotId])
+  @@index([animeBroadcastDay, animeBroadcastHour24])
+}
+
+model SourceRecord {
+  id         String   @id @default(cuid())
+  titleId     String
+  sourceName String
+  recordType String
+  pointer    String?
+  fetchedAt  DateTime
+  title      Title    @relation(fields: [titleId], references: [id])
+
+  @@index([titleId])
+}
