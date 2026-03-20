@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navigation = [
   { href: "/", label: "トップ" },
@@ -16,13 +17,16 @@ export function SiteHeader() {
           </Link>
           <p className="site-subtitle">放送枠・放送時間・局・地域差を観測する MVP 土台</p>
         </div>
-        <nav className="site-nav" aria-label="主要ナビゲーション">
-          {navigation.map((item) => (
-            <Link key={item.href} href={item.href} className="nav-link">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="site-header-right">
+          <nav className="site-nav" aria-label="主要ナビゲーション">
+            {navigation.map((item) => (
+              <Link key={item.href} href={item.href} className="nav-link">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <ThemeToggle />
+        </div>
       </div>
     </header>
   );

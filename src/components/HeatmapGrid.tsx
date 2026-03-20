@@ -12,11 +12,11 @@ interface HeatmapGridProps {
 
 function getCellColor(value: number, max: number): string {
   if (value === 0) {
-    return "rgba(24, 57, 68, 0.14)";
+    return "rgba(9, 9, 11, 0.06)";
   }
 
-  const ratio = Math.max(value / Math.max(max, 1), 0.18);
-  return `rgba(214, 100, 54, ${Math.min(0.9, ratio)})`;
+  const ratio = Math.max(value / Math.max(max, 1), 0.2);
+  return `rgba(79, 70, 229, ${Math.min(0.9, ratio)})`;
 }
 
 export function HeatmapGrid({ columns, rows }: HeatmapGridProps) {
