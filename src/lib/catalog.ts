@@ -10,15 +10,18 @@ import {
   titleStaff,
   titles
 } from "@/data/catalog";
-import { animeWeekdays } from "@/lib/types";
+import { formatAnimeSchedule, formatSeason } from "@/lib/formatters";
+import { animeWeekdays, durationCategories } from "@/lib/types";
 import type {
   Airing,
   AnimeWeekday,
   Channel,
   Company,
+  DurationCategory,
   Person,
   Region,
   SequelRelation,
+  SeasonQuarter,
   Slot,
   StaffRole,
   Title,
@@ -80,24 +83,137 @@ export interface SearchOptions {
   companies: Company[];
 }
 
+export interface SlotDistributionItem {
+  label: string;
+  count: number;
+  share: number;
+}
+
+export interface SlotChannelDistributionItem {
+  channel: Channel;
+  count: number;
+  share: number;
+}
+
+export interface SlotWeekdayDistributionItem {
+  weekday: AnimeWeekday;
+  count: number;
+  share: number;
+}
+
+export interface SlotTimeChangeItem {
+  seasonLabel: string;
+  titleSlug: string;
+  titleName: string;
+  animeScheduleText: string;
+  broadcastStartAt: string;
+  channelName: string;
+}
+
+export interface SlotOverlapItem {
+  slot: Slot;
+  count: number;
+  share: number;
+}
+
+export interface DashboardFilters {
+  year?: string;
+  quarter?: string;
+  channel?: string;
+  slot?: string;
+}
+
 export interface SlotDetail {
   slot: Slot;
   channel: Channel;
   region: Region;
   airings: AiringView[];
   titles: TitleEntry[];
-  yearCounts: Array<{ year: number; count: number }>;
+  firstRunCount: number;
+  firstObservedAt: string | null;
+  lastObservedAt: string | null;
+  sequelCount: number;
+  schedulePatternCount: number;
+  yearCounts: Array<{ year: number; count: number; share: number }>;
   topGenres: Array<{ label: string; count: number }>;
+  genreDistribution: SlotDistributionItem[];
   topCompanies: Array<{ label: string; count: number }>;
+  companyDistribution: SlotDistributionItem[];
+  channelDistribution: SlotChannelDistributionItem[];
+  weekdayDistribution: SlotWeekdayDistributionItem[];
+  timeDistribution: SlotDistributionItem[];
   topStaff: Array<{ label: string; count: number }>;
   sequelRate: number;
-  timeChanges: Array<{ seasonLabel: string; titleName: string; timeText: string }>;
-  overlaps: Array<{ slot: Slot; count: number }>;
+  timeChanges: SlotTimeChangeItem[];
+  overlaps: SlotOverlapItem[];
 }
 
 export interface DashboardHeatmapRow {
-  hour: number;
+  timeBand: string;
   counts: Record<AnimeWeekday, number>;
+}
+
+export interface DashboardChannelHeatmap {
+  columns: Array<{ slug: string; label: string }>;
+  rows: Array<{
+    timeBand: string;
+    counts: Record<string, number>;
+  }>;
+}
+
+export interface DashboardTrendPoint {
+  seasonKey: string;
+  label: string;
+  titleCount: number;
+  airingCount: number;
+  share: number;
+}
+
+export interface DashboardOverlapRow {
+  leftSlotSlug: string;
+  leftSlotName: string;
+  rightSlotSlug: string;
+  rightSlotName: string;
+  count: number;
+  share: number;
+  seasonCount: number;
+  topWeekday: AnimeWeekday | null;
+  topTimeWindow: string;
+}
+
+export interface DashboardDurationRow {
+  duration: DurationCategory;
+  titleCount: number;
+  share: number;
+}
+
+export interface DashboardRegionRow {
+  regionSlug: string;
+  regionName: string;
+  titleCount: number;
+  airingCount: number;
+  averageHour: string;
+  topChannel: string;
+  peakWeekday: AnimeWeekday | null;
+  peakTimeBand: string;
+  airingShare: number;
+}
+
+export interface DashboardSummary {
+  titleCount: number;
+  airingCount: number;
+  slotCount: number;
+  overlapPairCount: number;
+}
+
+export interface DashboardData {
+  summary: DashboardSummary;
+  weekdayHeatmap: DashboardHeatmapRow[];
+  quarterTrend: DashboardTrendPoint[];
+  channelTimeHeatmap: DashboardChannelHeatmap;
+  overlapTable: DashboardOverlapRow[];
+  durationTable: DashboardDurationRow[];
+  regionTable: DashboardRegionRow[];
 }
 
 const regionMap = new Map(regions.map((region) => [region.id, region]));
@@ -273,6 +389,324 @@ function topCounts(values: string[], limit: number): Array<{ label: string; coun
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ja"))
     .slice(0, limit)
     .map(([label, count]) => ({ label, count }));
+}
+
+function getShare(count: number, total: number): number {
+  if (total === 0) {
+    return 0;
+  }
+
+  return (count / total) * 100;
+}
+
+function buildDistribution(values: string[]): SlotDistributionItem[] {
+  const counts = new Map<string, number>();
+
+  for (const value of values) {
+    counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ja"))
+    .map(([label, count]) => ({
+      label,
+      count,
+      share: getShare(count, values.length)
+    }));
+}
+
+function buildChannelDistribution(values: Channel[]): SlotChannelDistributionItem[] {
+  const counts = new Map<string, { channel: Channel; count: number }>();
+
+  for (const channel of values) {
+    const current = counts.get(channel.id);
+
+    if (current) {
+      current.count += 1;
+    } else {
+      counts.set(channel.id, { channel, count: 1 });
+    }
+  }
+
+  return [...counts.values()]
+    .sort((left, right) => right.count - left.count || left.channel.name.localeCompare(right.channel.name, "ja"))
+    .map((entry) => ({
+      ...entry,
+      share: getShare(entry.count, values.length)
+    }));
+}
+
+function buildWeekdayDistribution(values: AnimeWeekday[]): SlotWeekdayDistributionItem[] {
+  const counts = new Map<AnimeWeekday, number>();
+
+  for (const weekday of values) {
+    counts.set(weekday, (counts.get(weekday) ?? 0) + 1);
+  }
+
+  return [...counts.entries()]
+    .sort(
+      (left, right) =>
+        right[1] - left[1] || animeWeekdays.indexOf(left[0]) - animeWeekdays.indexOf(right[0])
+    )
+    .map(([weekday, count]) => ({
+      weekday,
+      count,
+      share: getShare(count, values.length)
+    }));
+}
+
+function buildYearCounts(values: number[]): Array<{ year: number; count: number; share: number }> {
+  if (values.length === 0) {
+    return [];
+  }
+
+  const minYear = Math.min(...values);
+  const maxYear = Math.max(...values);
+
+  return Array.from({ length: maxYear - minYear + 1 }, (_, index) => minYear + index).map((year) => {
+    const count = values.filter((value) => value === year).length;
+
+    return {
+      year,
+      count,
+      share: getShare(count, values.length)
+    };
+  });
+}
+
+function matchesDashboardFilters(airing: AiringView, filters: DashboardFilters): boolean {
+  const title = titleMap.get(airing.titleId);
+
+  if (!title) {
+    return false;
+  }
+
+  if (filters.year && String(title.seasonYear) !== filters.year) {
+    return false;
+  }
+
+  if (filters.quarter && title.seasonQuarter !== filters.quarter) {
+    return false;
+  }
+
+  if (filters.channel && airing.channel.slug !== filters.channel) {
+    return false;
+  }
+
+  if (filters.slot && airing.slot?.slug !== filters.slot) {
+    return false;
+  }
+
+  return true;
+}
+
+function buildSeasonTrend(airings: AiringView[], relatedTitles: TitleEntry[]): DashboardTrendPoint[] {
+  const counts = new Map<
+    string,
+    {
+      year: number;
+      quarter: SeasonQuarter;
+      titleIds: Set<string>;
+      airingCount: number;
+    }
+  >();
+
+  for (const airing of airings) {
+    const title = titleMap.get(airing.titleId);
+
+    if (!title) {
+      continue;
+    }
+
+    const seasonKey = getSeasonKey(title);
+    const current = counts.get(seasonKey);
+
+    if (current) {
+      current.titleIds.add(title.id);
+      current.airingCount += 1;
+    } else {
+      counts.set(seasonKey, {
+        year: title.seasonYear,
+        quarter: title.seasonQuarter,
+        titleIds: new Set([title.id]),
+        airingCount: 1
+      });
+    }
+  }
+
+  return [...counts.entries()]
+    .sort((left, right) => {
+      if (left[1].year !== right[1].year) {
+        return left[1].year - right[1].year;
+      }
+
+      return quarterOrder[left[1].quarter] - quarterOrder[right[1].quarter];
+    })
+    .map(([seasonKey, entry]) => ({
+      seasonKey,
+      label: formatSeason(entry.year, entry.quarter),
+      titleCount: entry.titleIds.size,
+      airingCount: entry.airingCount,
+      share: getShare(entry.titleIds.size, relatedTitles.length)
+    }));
+}
+
+function buildChannelTimeHeatmap(airings: AiringView[]): DashboardChannelHeatmap {
+  const channelColumns = uniqueById(airings.map((airing) => airing.channel)).sort((left, right) =>
+    left.name.localeCompare(right.name, "ja")
+  );
+  const timeBands = ["23", "24", "25", "26"];
+
+  return {
+    columns: channelColumns.map((channel) => ({
+      slug: channel.slug,
+      label: channel.name
+    })),
+    rows: timeBands.map((timeBand) => ({
+      timeBand,
+      counts: channelColumns.reduce<Record<string, number>>((accumulator, channel) => {
+        accumulator[channel.slug] = airings.filter(
+          (airing) => airing.channel.id === channel.id && getTimeBand(airing) === timeBand
+        ).length;
+        return accumulator;
+      }, {})
+    }))
+  };
+}
+
+function buildOverlapTable(airings: AiringView[]): DashboardOverlapRow[] {
+  const counts = new Map<
+    string,
+    {
+      leftSlot: Slot;
+      rightSlot: Slot;
+      count: number;
+      seasons: Set<string>;
+      weekdays: AnimeWeekday[];
+      timeWindows: string[];
+    }
+  >();
+
+  for (let index = 0; index < airings.length; index += 1) {
+    const left = airings[index];
+    const leftTitle = titleMap.get(left.titleId);
+
+    if (!leftTitle || !left.slot) {
+      continue;
+    }
+
+    for (let innerIndex = index + 1; innerIndex < airings.length; innerIndex += 1) {
+      const right = airings[innerIndex];
+      const rightTitle = titleMap.get(right.titleId);
+
+      if (!rightTitle || !right.slot) {
+        continue;
+      }
+
+      if (left.titleId === right.titleId || left.slot.id === right.slot.id) {
+        continue;
+      }
+
+      if (getSeasonKey(leftTitle) !== getSeasonKey(rightTitle)) {
+        continue;
+      }
+
+      if (left.animeBroadcastDay !== right.animeBroadcastDay) {
+        continue;
+      }
+
+      if (Math.abs(getAnimeMinutes(left) - getAnimeMinutes(right)) > 30) {
+        continue;
+      }
+
+      const [firstSlot, secondSlot] = [left.slot, right.slot].sort((slotLeft, slotRight) =>
+        slotLeft.name.localeCompare(slotRight.name, "ja")
+      );
+      const isLeftFirst = firstSlot.id === left.slot.id;
+      const timeWindow = isLeftFirst
+        ? `${left.animeBroadcastTimeText} / ${right.animeBroadcastTimeText}`
+        : `${right.animeBroadcastTimeText} / ${left.animeBroadcastTimeText}`;
+      const key = `${firstSlot.id}__${secondSlot.id}`;
+      const current = counts.get(key);
+
+      if (current) {
+        current.count += 1;
+        current.seasons.add(getSeasonKey(leftTitle));
+        current.weekdays.push(left.animeBroadcastDay);
+        current.timeWindows.push(timeWindow);
+      } else {
+        counts.set(key, {
+          leftSlot: firstSlot,
+          rightSlot: secondSlot,
+          count: 1,
+          seasons: new Set([getSeasonKey(leftTitle)]),
+          weekdays: [left.animeBroadcastDay],
+          timeWindows: [timeWindow]
+        });
+      }
+    }
+  }
+
+  const total = [...counts.values()].reduce((sum, entry) => sum + entry.count, 0);
+
+  return [...counts.values()]
+    .sort(
+      (left, right) =>
+        right.count - left.count || left.leftSlot.name.localeCompare(right.leftSlot.name, "ja")
+    )
+    .map((entry) => ({
+      leftSlotSlug: entry.leftSlot.slug,
+      leftSlotName: entry.leftSlot.name,
+      rightSlotSlug: entry.rightSlot.slug,
+      rightSlotName: entry.rightSlot.name,
+      count: entry.count,
+      share: getShare(entry.count, total),
+      seasonCount: entry.seasons.size,
+      topWeekday: topCounts(entry.weekdays, 1)[0]?.label as AnimeWeekday | undefined ?? null,
+      topTimeWindow: topCounts(entry.timeWindows, 1)[0]?.label ?? "未観測"
+    }));
+}
+
+function buildDurationTable(entries: TitleEntry[]): DashboardDurationRow[] {
+  return durationCategories.map((duration) => {
+    const titleCount = entries.filter((entry) => entry.title.durationCategory === duration).length;
+
+    return {
+      duration,
+      titleCount,
+      share: getShare(titleCount, entries.length)
+    };
+  });
+}
+
+function formatAverageHour(airings: AiringView[]): string {
+  if (airings.length === 0) {
+    return "未観測";
+  }
+
+  const averageMinutes = airings.reduce((sum, airing) => sum + getAnimeMinutes(airing), 0) / airings.length;
+  return `${Math.floor(averageMinutes / 60)}:${String(Math.round(averageMinutes % 60)).padStart(2, "0")}`;
+}
+
+function buildRegionTable(airings: AiringView[]): DashboardRegionRow[] {
+  return regions.map((region) => {
+    const regionAirings = airings.filter((airing) => airing.region.id === region.id);
+    const titleCount = new Set(regionAirings.map((airing) => airing.titleId)).size;
+
+    return {
+      regionSlug: region.slug,
+      regionName: region.name,
+      titleCount,
+      airingCount: regionAirings.length,
+      averageHour: formatAverageHour(regionAirings),
+      topChannel: topCounts(regionAirings.map((airing) => airing.channel.name), 1)[0]?.label ?? "未観測",
+      peakWeekday: (topCounts(regionAirings.map((airing) => airing.animeBroadcastDay), 1)[0]?.label as
+        | AnimeWeekday
+        | undefined) ?? null,
+      peakTimeBand: topCounts(regionAirings.map((airing) => getTimeBand(airing)), 1)[0]?.label ?? "未観測",
+      airingShare: getShare(regionAirings.length, airings.length)
+    };
+  });
 }
 
 function getSeasonKey(title: Title): string {
@@ -489,11 +923,9 @@ export function getSlotBySlug(slug: string): SlotDetail | null {
     .map(enrichAiring)
     .filter((airing) => airing.slot?.id === slot.id)
     .sort(compareByBroadcastStart);
-  const slotTitleEntries = uniqueTitleEntriesById(
-    slotAirings
-      .map((airing) => titleEntries.find((entry) => entry.title.id === airing.titleId))
-      .filter((entry): entry is TitleEntry => entry !== undefined)
-  );
+  const firstRunAirings = slotAirings.filter((airing) => !airing.isRebroadcast);
+  const slotTitleIds = new Set(slotAirings.map((airing) => airing.titleId));
+  const slotTitleEntries = titleEntries.filter((entry) => slotTitleIds.has(entry.title.id));
   const channel = channelMap.get(slot.channelId);
   const region = channel ? regionMap.get(channel.regionId) : undefined;
 
@@ -501,40 +933,62 @@ export function getSlotBySlug(slug: string): SlotDetail | null {
     throw new Error(`Slot ${slot.id} references missing channel or region.`);
   }
 
+  const genreDistribution = buildDistribution(slotTitleEntries.flatMap((entry) => entry.title.genres));
+  const companyDistribution = buildDistribution(
+    slotTitleEntries.flatMap((entry) =>
+      (entry.primaryCompanies.length > 0 ? entry.primaryCompanies : entry.companies).map((company) => company.name)
+    )
+  );
+  const channelDistribution = buildChannelDistribution(firstRunAirings.map((airing) => airing.channel));
+  const weekdayDistribution = buildWeekdayDistribution(firstRunAirings.map((airing) => airing.animeBroadcastDay));
+  const timeDistribution = buildDistribution(firstRunAirings.map((airing) => airing.animeBroadcastTimeText));
+  const sequelCount = slotTitleEntries.filter((entry) => entry.title.isSequel).length;
+  const timePatternCount = new Set(
+    firstRunAirings.map((airing) => `${airing.animeBroadcastDay}-${airing.animeBroadcastTimeText}`)
+  ).size;
+
   return {
     slot,
     channel,
     region,
     airings: slotAirings,
     titles: slotTitleEntries,
-    yearCounts: [...new Set(slotTitleEntries.map((entry) => entry.title.seasonYear))]
-      .sort((left, right) => left - right)
-      .map((year) => ({
-        year,
-        count: slotTitleEntries.filter((entry) => entry.title.seasonYear === year).length
-      })),
-    topGenres: topCounts(slotTitleEntries.flatMap((entry) => entry.title.genres), 4),
-    topCompanies: topCounts(slotTitleEntries.flatMap((entry) => entry.primaryCompanies.map((company) => company.name)), 4),
+    firstRunCount: firstRunAirings.length,
+    firstObservedAt: firstRunAirings[0]?.broadcastStartAt ?? slotAirings[0]?.broadcastStartAt ?? null,
+    lastObservedAt:
+      firstRunAirings[firstRunAirings.length - 1]?.broadcastStartAt ?? slotAirings[slotAirings.length - 1]?.broadcastStartAt ?? null,
+    sequelCount,
+    schedulePatternCount: timePatternCount,
+    yearCounts: buildYearCounts(slotTitleEntries.map((entry) => entry.title.seasonYear)),
+    topGenres: genreDistribution.slice(0, 4).map(({ label, count }) => ({ label, count })),
+    genreDistribution,
+    topCompanies: companyDistribution.slice(0, 4).map(({ label, count }) => ({ label, count })),
+    companyDistribution,
+    channelDistribution,
+    weekdayDistribution,
+    timeDistribution,
     topStaff: topCounts(
       slotTitleEntries.flatMap((entry) => entry.staffCredits.map((credit) => credit.person.name)),
       4
     ),
-    sequelRate:
-      slotTitleEntries.length === 0
-        ? 0
-        : (slotTitleEntries.filter((entry) => entry.title.isSequel).length / slotTitleEntries.length) * 100,
-    timeChanges: slotAirings
-      .filter((airing) => !airing.isRebroadcast)
+    sequelRate: slotTitleEntries.length === 0 ? 0 : getShare(sequelCount, slotTitleEntries.length),
+    timeChanges: firstRunAirings
       .map((airing) => {
         const title = titleMap.get(airing.titleId);
 
         return {
-          seasonLabel: title ? `${title.seasonYear} ${title.seasonQuarter}` : "不明",
+          seasonLabel: title ? formatSeason(title.seasonYear, title.seasonQuarter) : "不明シーズン",
+          titleSlug: title?.slug ?? "",
           titleName: title?.name ?? "不明作品",
-          timeText: airing.animeBroadcastTimeText
+          animeScheduleText: formatAnimeSchedule(airing.animeBroadcastDay, airing.animeBroadcastTimeText),
+          broadcastStartAt: airing.broadcastStartAt,
+          channelName: airing.channel.name
         };
       }),
-    overlaps: getOverlappingSlots(slot.id, slotAirings)
+    overlaps: getOverlappingSlots(slot.id, slotAirings).map((entry) => ({
+      ...entry,
+      share: getShare(entry.count, Math.max(firstRunAirings.length, 1))
+    }))
   };
 }
 
@@ -568,74 +1022,47 @@ export function getFeaturedSlots(limit: number): SlotDetail[] {
     .slice(0, limit);
 }
 
-export function getDashboardData(): {
-  heatmap: DashboardHeatmapRow[];
-  slotTable: Array<{
-    slotSlug: string;
-    slotName: string;
-    channelName: string;
-    titleCount: number;
-    firstRunCount: number;
-    topGenre: string;
-    sequelRate: number;
-  }>;
-  regionTable: Array<{
-    regionName: string;
-    titleCount: number;
-    averageHour: string;
-  }>;
-} {
-  const firstRunAirings = airings.map(enrichAiring).filter((airing) => !airing.isRebroadcast);
-  const hours = [23, 24, 25, 26];
+export function getDashboardData(filters: DashboardFilters = {}): DashboardData {
+  const firstRunAirings = airings
+    .map(enrichAiring)
+    .filter((airing) => !airing.isRebroadcast)
+    .filter((airing) => matchesDashboardFilters(airing, filters));
+  const relatedTitles = uniqueTitleEntriesById(
+    firstRunAirings
+      .map((airing) => titleEntries.find((entry) => entry.title.id === airing.titleId))
+      .filter((entry): entry is TitleEntry => entry !== undefined)
+  );
+  const relatedSlots = uniqueById(
+    firstRunAirings
+      .map((airing) => airing.slot)
+      .filter((slot): slot is Slot => slot !== null)
+  );
+  const timeBands = ["23", "24", "25", "26"];
 
-  const heatmap = hours.map((hour) => ({
-    hour,
+  const weekdayHeatmap = timeBands.map((timeBand) => ({
+    timeBand,
     counts: animeWeekdays.reduce<Record<AnimeWeekday, number>>((accumulator, weekday) => {
       accumulator[weekday] = firstRunAirings.filter(
-        (airing) => airing.animeBroadcastDay === weekday && airing.animeBroadcastHour24 === hour
+        (airing) => airing.animeBroadcastDay === weekday && getTimeBand(airing) === timeBand
       ).length;
       return accumulator;
     }, {} as Record<AnimeWeekday, number>)
   }));
 
-  const slotTable = slots
-    .map((slot) => {
-      const detail = getSlotBySlug(slot.slug);
-
-      if (!detail) {
-        return null;
-      }
-
-      return {
-        slotSlug: detail.slot.slug,
-        slotName: detail.slot.name,
-        channelName: detail.channel.name,
-        titleCount: detail.titles.length,
-        firstRunCount: detail.airings.filter((airing) => !airing.isRebroadcast).length,
-        topGenre: detail.topGenres[0]?.label ?? "未集計",
-        sequelRate: detail.sequelRate
-      };
-    })
-    .filter((value): value is NonNullable<typeof value> => value !== null)
-    .sort((left, right) => right.titleCount - left.titleCount || left.slotName.localeCompare(right.slotName, "ja"));
-
-  const regionTable = regions.map((region) => {
-    const regionAirings = firstRunAirings.filter((airing) => airing.region.id === region.id);
-    const titleCount = new Set(regionAirings.map((airing) => airing.titleId)).size;
-    const averageMinutes =
-      regionAirings.reduce((sum, airing) => sum + getAnimeMinutes(airing), 0) / Math.max(regionAirings.length, 1);
-    const averageHour = `${Math.floor(averageMinutes / 60)}:${String(Math.round(averageMinutes % 60)).padStart(2, "0")}`;
-
-    return {
-      regionName: region.name,
-      titleCount,
-      averageHour
-    };
-  });
+  const overlapTable = buildOverlapTable(firstRunAirings);
 
   return {
-    heatmap,
-    slotTable,
-    regionTable
+    summary: {
+      titleCount: relatedTitles.length,
+      airingCount: firstRunAirings.length,
+      slotCount: relatedSlots.length,
+      overlapPairCount: overlapTable.length
+    },
+    weekdayHeatmap,
+    quarterTrend: buildSeasonTrend(firstRunAirings, relatedTitles),
+    channelTimeHeatmap: buildChannelTimeHeatmap(firstRunAirings),
+    overlapTable,
+    durationTable: buildDurationTable(relatedTitles),
+    regionTable: buildRegionTable(firstRunAirings)
   };
 }

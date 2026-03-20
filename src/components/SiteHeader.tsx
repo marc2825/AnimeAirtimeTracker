@@ -4,7 +4,8 @@ import { ThemeToggle } from "./ThemeToggle";
 const navigation = [
   { href: "/", label: "トップ" },
   { href: "/search", label: "検索一覧" },
-  { href: "/stats", label: "統計ダッシュボード" }
+  { href: "/stats", label: "統計ダッシュボード" },
+  { href: "/admin", label: "管理画面" }
 ];
 
 export function SiteHeader() {

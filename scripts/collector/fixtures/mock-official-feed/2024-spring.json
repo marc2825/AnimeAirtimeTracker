@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2026-03-20T12:00:00+09:00",
+  "channels": [
+    {
+      "channelId": "channel-tokyo-mx",
+      "slug": "tokyo-mx",
+      "name": "TOKYO MX",
+      "shortName": "MX",
+      "channelGroup": "INDEPENDENT",
+      "regionGroup": "KANTO"
+    },
+    {
+      "channelId": "channel-bs11",
+      "slug": "bs11",
+      "name": "BS11",
+      "shortName": "BS11",
+      "channelGroup": "BS",
+      "regionGroup": "BS"
+    }
+  ],
+  "titles": [
+    {
+      "titleId": "title-moonlight-signal",
+      "slug": "moonlight-signal",
+      "name": "月光シグナル",
+      "shortName": "月シグ",
+      "seasonYear": 2024,
+      "seasonQuarter": "SPRING",
+      "category": "TVシリーズ",
+      "sourceType": "MANGA",
+      "summary": "私立天測学園を舞台にした学園SF。"
+    },
+    {
+      "titleId": "title-kyomachi-resonance-s2",
+      "slug": "kyomachi-resonance-s2",
+      "name": "京街リゾナンス 第二幕",
+      "shortName": "京リゾ2",
+      "seasonYear": 2024,
+      "seasonQuarter": "SPRING",
+      "category": "TVシリーズ",
+      "sourceType": "LIGHT_NOVEL",
+      "summary": "音楽都市を舞台にした青春群像劇の続編。"
+    }
+  ],
+  "programs": [
+    {
+      "programId": "program-moonlight-mx-01",
+      "titleId": "title-moonlight-signal",
+      "channelId": "channel-tokyo-mx",
+      "startAt": "2024-04-09T01:30:00+09:00",
+      "endAt": "2024-04-09T02:00:00+09:00",
+      "animeBroadcastDay": "MON",
+      "animeBroadcastTimeText": "25:30",
+      "animeBroadcastHour24": 25,
+      "animeBroadcastMinute": 30,
+      "episodeLengthMinutes": 30,
+      "flags": ["NEW"],
+      "note": null,
+      "slotHint": {
+        "key": "tokyo-mx-mon-25-30",
+        "label": "TOKYO MX 月曜25:30帯"
+      }
+    },
+    {
+      "programId": "program-moonlight-bs11-01",
+      "titleId": "title-moonlight-signal",
+      "channelId": "channel-bs11",
+      "startAt": "2024-04-10T00:00:00+09:00",
+      "endAt": "2024-04-10T00:30:00+09:00",
+      "animeBroadcastDay": "TUE",
+      "animeBroadcastTimeText": "24:00",
+      "animeBroadcastHour24": 24,
+      "animeBroadcastMinute": 0,
+      "episodeLengthMinutes": 30,
+      "flags": ["NEW"],
+      "note": null,
+      "slotHint": {
+        "key": "bs11-tue-24-00",
+        "label": "BS11 火曜24:00帯"
+      }
+    },
+    {
+      "programId": "program-kyomachi-mx-01",
+      "titleId": "title-kyomachi-resonance-s2",
+      "channelId": "channel-tokyo-mx",
+      "startAt": "2024-04-11T02:00:00+09:00",
+      "endAt": "2024-04-11T02:35:00+09:00",
+      "animeBroadcastDay": "WED",
+      "animeBroadcastTimeText": "26:00",
+      "animeBroadcastHour24": 26,
+      "animeBroadcastMinute": 0,
+      "episodeLengthMinutes": 35,
+      "flags": ["NEW", "NOTE"],
+      "note": "初回のみ5分拡大",
+      "slotHint": {
+        "key": "tokyo-mx-wed-26-00",
+        "label": "TOKYO MX 水曜26:00帯"
+      }
+    }
+  ]
+}

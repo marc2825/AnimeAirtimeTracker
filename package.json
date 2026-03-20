@@ -13,6 +13,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "collector": "tsx scripts/collector/index.ts",
+    "collector:mock": "tsx scripts/collector/index.ts --source mock-official-feed",
     "prisma:generate": "prisma generate",
     "prisma:seed": "prisma db seed",
     "postinstall": "prisma generate"

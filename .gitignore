@@ -4,3 +4,7 @@ node_modules
 npm-debug.log*
 .env
 .env.local
+data/collector/raw/**/*.json
+data/collector/normalized/**/*.json
+data/collector/state/**/*.json
+data/collector/logs/**/*.json
