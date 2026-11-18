@@ -27,28 +27,28 @@
   /* Ink */
   --color-ink: #141a2e;
   --color-ink-2: #474e65;
-  --color-ink-3: #686e84;
+  --color-ink-3: #5e6479;
   --color-ink-inverse: #f4f6fb;
 
   /* Brand accent: broadcast-signal cyan */
-  --color-accent: #0a7a8a;
+  --color-accent: #08717f;
   --color-accent-strong: #075f6c;
   --color-accent-soft: rgba(10, 122, 138, 0.1);
   --color-accent-line: rgba(10, 122, 138, 0.35);
   --color-on-accent: #ffffff;
 
   /* Broadcast status (always paired with a text label) */
-  --color-new: #c8402f;
+  --color-new: #b83a2a;
   --color-new-soft: rgba(200, 64, 47, 0.1);
   --color-final: #5b45c4;
   --color-final-soft: rgba(91, 69, 196, 0.1);
-  --color-rerun: #6b7084;
+  --color-rerun: #5f6478;
   --color-rerun-soft: rgba(107, 112, 132, 0.1);
   --color-note: #8a5a00;
   --color-note-soft: rgba(176, 116, 0, 0.12);
 
   /* Slot evidence kinds */
-  --color-kind-official: #0a7a8a;
+  --color-kind-official: #08717f;
   --color-kind-source: #2f5fb3;
   --color-kind-inferred: #7a6a3a;
 

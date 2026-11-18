@@ -142,6 +142,7 @@ async function OnAirPanel() {
 }
 
 async function FeaturedSlots() {
+  await io(); // request-time: the build must not need a database
   let slots;
   try {
     slots = await listSlots();
