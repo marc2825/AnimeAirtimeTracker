@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint (via eslint-config-next) supports TypeScript < 6.1; revisit once it supports 7.x.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # Node type definitions must match the runtime major pinned in .nvmrc (24).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       next-react:
         patterns: ["next", "eslint-config-next", "react", "react-dom", "@types/react", "@types/react-dom"]
