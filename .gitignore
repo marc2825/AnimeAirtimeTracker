@@ -1,10 +1,46 @@
-.next
-coverage
-node_modules
-npm-debug.log*
+# Dependencies
+node_modules/
+
+# Next.js / build output
+.next/
+out/
+build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Generated code (re-created by `prisma generate` on install)
+src/generated/
+
+# Environment & secrets — only the template is committed
 .env
-.env.local
-data/collector/raw/**/*.json
-data/collector/normalized/**/*.json
-data/collector/state/**/*.json
-data/collector/logs/**/*.json
+.env.*
+!.env.example
+
+# Local data (embedded PostgreSQL cluster, raw dumps, backups)
+.data/
+*.dump
+*.sql.gz
+
+# Tests & verification artifacts
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.artifacts/
+
+# Logs & OS / editor files
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Deployment
+.vercel/
+
+# Coding agents: personal/local settings only (shared harness files are committed)
+.codex/
+CLAUDE.local.md
+.claude/settings.local.json
