@@ -32,13 +32,19 @@ Any PostgreSQL ≥ 16 works instead of the embedded one (Docker, Homebrew, manag
 
 ## Deployment (recommendation)
 
-| Option | Web | DB | Ingest | Cost (small traffic) | Ops load |
-| --- | --- | --- | --- | --- | --- |
-| **A. Vercel + Neon (recommended)** | Vercel (native Next 16 support incl. Cache Components) | Neon Postgres (serverless, branching, PITR on paid tiers) | GitHub Actions `ingest.yml` | free tiers possible for a non-commercial hobby site; paid tiers once traffic/storage grow | lowest |
-| B. Cloudflare / Netlify + managed Postgres | adapter-based Next support | Neon / Supabase | GitHub Actions | similar | medium (adapter differences) |
-| C. Single VPS (Docker: `next start` + Postgres + cron) | self-hosted | self-hosted | cron | fixed monthly | highest (patching, backups, TLS) |
+Facts that drive the choice (checked 2026-11-19): the app relies on Next.js 16 Cache Components; the whole dataset for 11 seasons is **62 MB** (≈5 MB per season); traffic is read-only; ingestion runs ~5 short jobs per day.
 
-Check each provider's current pricing and terms (commercial-use limits on free plans) before choosing. Steps for A:
+| Option | Web | DB | Ingest | Cost | Notes |
+| --- | --- | --- | --- | --- | --- |
+| **A. Vercel Hobby + Neon Free (recommended start)** | Vercel (first-party Next 16 support) | Neon Free: 1 GB storage/project, 100 CU-hours/month, scales to zero after 5 min | GitHub Actions `ingest.yml` | $0 | Hobby is **non-commercial only**; ads/affiliate → Vercel Pro ($20/month incl. $20 usage). Neon cold start after idle; CU-hours can run out if the DB is busy around the clock → Neon paid plan |
+| B. Railway (Hobby) | long-running `next start` (in-memory cache stays warm) | Railway Postgres in the same project | Railway cron or GitHub Actions | ~$5/month incl. $5 usage | Commercial use fine; one dashboard; no free tier |
+| C. Vercel + Supabase Free | Vercel | Supabase Free: 500 MB, project pauses after 7 days without activity | GitHub Actions | $0 | Pause risk if ingestion stops; Pro $25/month removes it |
+| D. VPS + Docker | self-hosted | self-hosted | cron | fixed monthly | Most control, highest ops load (patching, TLS, backups) |
+| Not now: Cloudflare Workers (OpenNext) | | | | | Open issues report hangs/500s with `cacheComponents` on Next 16.3/16.4 — revisit when fixed |
+
+Choose DB and function regions close to each other (and to Japan where available).
+
+Prices and limits change; confirm on the providers' pricing pages before signing up. Steps for A:
 
 1. Create the Neon project (region close to users, e.g. Tokyo/Singapore); create a role for the app.
 2. Vercel project from the repository; set `DATABASE_URL` (pooled connection string), `SITE_URL`, `APP_ENV=production`. Build command `npm run build` (no DB needed).
