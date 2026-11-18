@@ -1,143 +1,57 @@
-# 深夜アニメ放送枠観測所
+# アニメ放送枠観測所 — Anime Airtime Tracker
 
-深夜アニメの「作品」ではなく、「いつ・どこで・どの放送枠に置かれたか」を中心に観測するための Web アプリです。
-MVP ではまずダミーデータで UI と集計の土台を完成させ、後から PostgreSQL / Prisma の実データ接続へ広げられる構成にしています。
+日本のアニメ放送編成を、**今週の番組表**から**放送枠の年表**、**編成統計**まで横断して調べられるWebサイトです。番組データは[しょぼいカレンダー](https://cal.syoboi.jp/)の公式の非HTMLインターフェースから取得し、放送枠と統計は本サイトが算出します。
+
+> **状態 (2026-11-18)**: 公開準備中（未デプロイ）。実データの取得・保存・表示、主要画面、テストとCIは実装済みです。公開前の残作業は [docs/roadmap.md](docs/roadmap.md) を参照してください。
+
+## できること
+
+- **週間番組表** — 局×時刻の番組表（アニメ時刻 25:30 表記、24時の日付変更線、現在時刻線）と週間リスト。関東・関西・BS・CS、再放送の有無、実時刻表示をURLで共有可能
+- **放送枠の年表** — 「ノイタミナ」などの枠で、クールごとにどの作品が放送され、時刻がいつ動いたか。出典記載枠と推定枠を区別し、判定根拠を表示
+- **編成統計** — 曜日×時間帯ヒートマップ、同時放送数、局別本数、クール別推移、関東と関西の放送時差。集計単位と対象範囲を必ず明示
+- **検索・作品ページ** — 作品・放送・枠の検索、局別の放送履歴と観測した変更
 
 ## 技術スタック
 
-- Next.js App Router
-- TypeScript strict
-- Prisma
-- PostgreSQL 向けスキーマ
-- Vitest
+Next.js 16 (App Router, Cache Components) · React 19 · TypeScript 6 · PostgreSQL 18 · Prisma 7 · Vitest 5 · Playwright · Node.js 24
 
-## 現在の実装範囲
-
-- 検索一覧ページ
-  - URL クエリで条件保持
-  - 年、クール、曜日、時刻帯、地域、局、放送枠、ジャンル、制作会社で絞り込み
-- 作品詳細ページ
-  - 基本情報
-  - 放送履歴
-  - 続編関係
-  - 類似枠作品
-- 放送枠詳細ページ
-  - 枠情報
-  - 所属作品一覧
-  - 年次推移表
-  - 時間変動履歴
-  - 他枠との被り傾向
-- 統計ダッシュボード
-  - 曜日 × 時刻ヒートマップ
-  - クール別本数推移
-  - 局 × 時刻帯ヒートマップ
-  - 被り分析
-  - 尺区分分布
-  - 地域差比較
-- 管理画面 初版
-  - 取得ジョブ一覧
-  - エラー一覧
-  - 放送枠マスタ編集のUI土台
-  - 地域マスタ編集のUI土台
-  - 手動補正一覧
-- Prisma 初版スキーマ
-  - `Title`, `Airing`, `Channel`, `Region`, `Slot`, `Company`, `Person`, `TitleStaff`, `TitleCompany`, `SequelRelation`, `SourceRecord`
-- ダミーデータ
-  - リポジトリ内 TypeScript データで UI を即時起動可能
-  - `prisma/seed.ts` で PostgreSQL へ投入できる形も用意
-- 取得レイヤー土台
-  - `scripts/collector` に raw 保存、正規化、差分判定、ログ保存の流れを実装
-  - 公式の非HTML出力を前提にした provider インターフェースを用意
-  - mock fixture を使った冪等性テストを追加
-
-## ディレクトリ構成
-
-```text
-app/                  画面ルート
-src/
-  components/         再利用 UI
-  data/               ダミーデータ
-  lib/                集計・整形ロジック
-prisma/
-  schema.prisma       PostgreSQL 向け初版スキーマ
-  seed.ts             ダミーデータ投入スクリプト
-scripts/
-  collector/          取得レイヤーの入口・provider・正規化・差分処理
-data/
-  collector/          raw / normalized / state / logs の保存先
-docs/
-  requirements.md     要件定義
-  screens.md          画面一覧
-  data-model.md       データモデル案
-```
-
-## 起動方法
-
-1. 依存関係をインストール
+## セットアップ
 
 ```bash
-npm install
+nvm use                 # Node 24
+npm ci
+cp .env.example .env
+npm run db:local        # 別ターミナル: 組み込みPostgreSQL (Docker不要, :54320)
+npm run db:deploy       # マイグレーション
+npm run db:fixtures     # オフラインのサンプル（記録済みの実データ1日分）を投入
+npm run dev             # http://localhost:3000
 ```
 
-2. 開発サーバーを起動
+実データを取得する場合は `.env` の `SYOBOI_USER_AGENT` を設定してから `npm run ingest -- season`（今期、約20リクエスト）。詳細は [docs/data-pipeline.md](docs/data-pipeline.md)。
+
+## 検証
 
 ```bash
-npm run dev
+npm run lint && npm run typecheck && npm test && npm run build
+npm run test:db         # DB統合テスト（TEST_DATABASE_URL）
+npm run build && npm run test:e2e
+npm run screenshots     # 画面確認（PC/タブレット/スマホ × ライト/ダーク）
 ```
 
-3. ブラウザで以下を確認
+## ドキュメント
 
-- `/`
-- `/search`
-- `/stats`
-- `/admin`
-- `/titles/moonlight-signal`
-- `/slots/urban-monday`
+[docs/README.md](docs/README.md) — プロダクト、アーキテクチャ、データモデル、データ取得、デザインシステム、運用、ロードマップ。コーディングエージェント向けの規則は [AGENTS.md](AGENTS.md)。
 
-## Prisma / DB メモ
+## データとクレジット
 
-- `prisma/schema.prisma` は PostgreSQL 前提です
-- `.env` にはローカル PostgreSQL 向けのサンプル `DATABASE_URL` を置いています
-- 現在の UI はダミーデータ直読みなので、PostgreSQL が未起動でも `npm run dev` と `npm run build` は可能です
-- DB に投入したい場合は PostgreSQL を起動したうえで以下を実行します
+- 番組データ: しょぼいカレンダー（有志による手入力の番組表）。同サイトの[利用について](https://docs.cal.syoboi.jp/about/)と[botについて](https://docs.cal.syoboi.jp/rule/bot/)に従って取得しています。HTMLのスクレイピングは行いません。
+- 放送枠の判定・再放送の推定・統計は本サイトの算出であり、出典や放送局の見解ではありません。
+- 作品画像は使用していません。
 
-```bash
-npm run prisma:seed
-```
+## 訂正・問い合わせ
 
-## 取得レイヤー
+本サイトの判定や表示の誤りは [GitHub Issues](https://github.com/marc2825/AnimeAirtimeTracker/issues) へ。放送データ自体の誤りはしょぼいカレンダーで修正されると次回取得で反映されます。
 
-- HTML スクレイピングは行わず、公式の非HTML出力を前提にした設計です
-- 現段階では `mock-official-feed` provider でダミーレスポンスを読み込みます
-- raw / normalized / state / logs を分離し、差分更新は `state/` のハッシュ比較で判定します
-- 同じ入力を再実行した場合は同じ raw/normalized パスを再利用し、ログだけを追加保存します
+## ライセンス
 
-実行例:
-
-```bash
-npm run collector:mock -- --year 2024 --quarter SPRING
-```
-
-主な保存先:
-
-- `data/collector/raw/`: 生レスポンス
-- `data/collector/normalized/`: 正規化済み JSON
-- `data/collector/state/`: 差分更新用の最新ハッシュ状態
-- `data/collector/logs/`: 実行ごとの監査ログ
-
-## 検証コマンド
-
-```bash
-npm install
-npm run lint
-npm run typecheck
-npm test
-npm run build
-```
-
-## 次の拡張候補
-
-- 実 DB 読み込みへの切り替え
-- 検索対象の拡張
-- 放送局 / 地域詳細ページ
-- 取得バッチ
+未設定です（リポジトリ所有者が決定予定）。ソースコードのライセンスは番組データには及びません。

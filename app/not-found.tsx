@@ -1,20 +1,22 @@
 import Link from "next/link";
 
-export default function NotFoundPage() {
+import { ButtonLink } from "@/components/ui/controls";
+import { EmptyState } from "@/components/ui/primitives";
+
+export default function NotFound() {
   return (
-    <div className="page-stack">
-      <section className="hero">
-        <h1>ページが見つかりません</h1>
-        <p>指定された作品または放送枠は、現在のダミーデータには登録されていません。</p>
-        <div className="hero-links">
-          <Link href="/search" className="hero-link hero-link-primary">
-            検索一覧へ戻る
-          </Link>
-          <Link href="/" className="hero-link hero-link-secondary">
-            トップへ戻る
-          </Link>
-        </div>
-      </section>
+    <div className="container-narrow">
+      <EmptyState
+        title="ページが見つかりません"
+        icon="search"
+        action={
+          <ButtonLink href="/schedule" variant="primary">
+            番組表へ
+          </ButtonLink>
+        }
+      >
+        URLが変わったか、対象範囲外の作品・枠の可能性があります。<Link href="/search" className="inline-link">検索</Link>から探してください。
+      </EmptyState>
     </div>
   );
 }

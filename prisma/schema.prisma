@@ -1,245 +1,337 @@
+// Data model for the broadcast-slot observatory.
+// Concepts and invariants: docs/data-model.md. Never edit an applied migration; add a new one.
+
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-enum SeasonQuarter {
-  WINTER
-  SPRING
-  SUMMER
-  AUTUMN
-}
-
-enum SourceType {
-  ORIGINAL
-  MANGA
-  LIGHT_NOVEL
-  NOVEL
-  GAME
-}
-
-enum SlotType {
-  OFFICIAL
-  COMMON_NAME
-  INFERRED
-  TEMPORARY
-  ENDED
-}
-
-enum DurationCategory {
-  SHORT_5
-  SHORT_10
-  HALF_15
-  STANDARD_30
-  LONG_60
-}
-
-enum AnimeWeekday {
-  MON
-  TUE
-  WED
-  THU
-  FRI
-  SAT
-  SUN
-}
-
-enum ChannelGroup {
-  KEY
-  INDEPENDENT
-  REGIONAL
+enum Medium {
+  TERRESTRIAL
   BS
   CS
+  INTERNET
+  RADIO
+  OTHER
 }
 
-enum RegionGroup {
+enum Area {
+  NATIONWIDE
   KANTO
   KANSAI
-  CHUKYO
-  BS
-  CS
+  OTHER
 }
 
-enum CompanyRole {
-  ANIMATION
-  PRODUCTION
-  COMMITTEE
+enum RerunBasis {
+  FLAG
+  AGE
+  MANUAL
+  NONE
 }
 
-enum StaffRole {
-  DIRECTOR
-  SERIES_COMPOSITION
-  CHARACTER_DESIGN
-  MUSIC
-  SCRIPT
+enum RevisionType {
+  CREATED
+  RESCHEDULED
+  FLAGS_CHANGED
+  DELETED
+  RESTORED
+  UPDATED
 }
 
-enum SequelRelationType {
-  DIRECT_SEQUEL
-  SPLIT_COUR
-  SPIN_OFF
+enum SlotKind {
+  OFFICIAL
+  SOURCE_LABEL
+  INFERRED
 }
 
-model Region {
-  id       String    @id
-  slug     String    @unique
-  name     String
-  group    RegionGroup
-  channels Channel[]
-  airings  Airing[]
+enum MembershipMethod {
+  SOURCE_COMMENT
+  TIME_POSITION
+  MANUAL
 }
 
+enum Confidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ImportStatus {
+  RUNNING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+}
+
+/// A broadcast channel as identified by a source. `medium` and `area` are separate axes.
 model Channel {
-  id       String       @id
-  slug     String       @unique
-  name     String
-  shortName String
-  group    ChannelGroup
-  regionId String
-  region   Region       @relation(fields: [regionId], references: [id])
-  slots    Slot[]
-  airings  Airing[]
+  id              Int       @id @default(autoincrement())
+  source          String
+  externalId      String
+  slug            String    @unique
+  name            String
+  shortName       String?
+  medium          Medium?
+  area            Area?
+  network         String?
+  sourceGroupId   String?
+  sourceGroupName String?
+  url             String?
+  isTracked       Boolean   @default(false)
+  sortOrder       Int       @default(1000)
+  sourceUpdatedAt DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @db.Timestamptz(3)
+
+  broadcasts  Broadcast[]
+  memberships SlotMembership[]
+  slotSeasons SlotSeason[]
+  homeOfSlots Slot[]
+
+  @@unique([source, externalId])
 }
 
-model Slot {
-  id                     String       @id
-  slug                   String       @unique
-  name                   String
-  aliasNames             String[]
-  slotType               SlotType
-  channelId              String
-  representativeDay      AnimeWeekday
-  representativeTimeText String
-  startDate              DateTime
-  endDate                DateTime?
-  confidence             Int
-  description            String
-  channel                Channel      @relation(fields: [channelId], references: [id])
-  airings                Airing[]
-}
-
+/// A source title entry (Syoboi TID) — normally one season/installment of a work.
+/// Series grouping is derived (`seriesKey`), not a separate source entity.
 model Title {
-  id               String             @id
-  slug             String             @unique
+  id               Int       @id @default(autoincrement())
+  source           String
+  externalId       String
+  slug             String    @unique
   name             String
   shortName        String?
-  kana             String?
-  seasonYear       Int
-  seasonQuarter    SeasonQuarter
-  sourceType       SourceType?
-  category         String?
-  sequelType       SequelRelationType?
-  isSequel         Boolean            @default(false)
-  isSplitCour      Boolean            @default(false)
-  durationCategory DurationCategory
-  genres           String[]
-  summary          String
-  sourceName       String
-  lastUpdatedAt    DateTime
-  notes            String?
-  airings          Airing[]
-  companies        TitleCompany[]
-  staff            TitleStaff[]
-  outgoingRelations SequelRelation[]  @relation("SequelFrom")
-  incomingRelations SequelRelation[]  @relation("SequelTo")
-  sourceRecords    SourceRecord[]
+  yomi             String?
+  nameEn           String?
+  sourceCategory   Int?
+  firstYear        Int?
+  firstMonth       Int?
+  firstEndYear     Int?
+  firstEndMonth    Int?
+  firstChannelText String?
+  officialUrl      String?
+  /// Slot labels quoted in the source comment, e.g. 「ノイタミナ」枠で放送. Evidence for SOURCE_LABEL slots.
+  slotLabels       String[]  @default([])
+  /// [{ label, evidence }] — the comment line each label was taken from.
+  slotEvidence     Json?
+  seriesKey        String?
+  sourceUpdatedAt  DateTime? @db.Timestamptz(3)
+  /// null = only the TID is known (details not fetched yet).
+  detailsFetchedAt DateTime? @db.Timestamptz(3)
+  contentHash      String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
-  @@index([seasonYear, seasonQuarter])
+  broadcasts  Broadcast[]
+  memberships SlotMembership[]
+
+  @@unique([source, externalId])
+  @@index([seriesKey])
+  @@index([name])
 }
 
-model Company {
-  id      String         @id
-  slug    String         @unique
-  name    String
-  titles  TitleCompany[]
+/// One airing on one channel (Syoboi PID). Effective values; the source history lives in BroadcastRevision.
+model Broadcast {
+  id                 Int        @id @default(autoincrement())
+  source             String
+  externalId         String
+  titleId            Int
+  channelId          Int
+  startAt            DateTime   @db.Timestamptz(3)
+  endAt              DateTime   @db.Timestamptz(3)
+  startOffsetSeconds Int?
+  animeDate          DateTime   @db.Date
+  /// 0 = Monday … 6 = Sunday, in anime time (05:00 rollover).
+  animeWeekday       Int
+  /// Minutes since 00:00 of animeDate, 300..1739 (25:30 = 1530).
+  animeStartMinute   Int
+  durationMinutes    Int
+  episodeNumber      Int?
+  episodeLabel       String?
+  subtitle           String?
+  comment            String?
+  flagNote           Boolean    @default(false)
+  flagNew            Boolean    @default(false)
+  flagFinal          Boolean    @default(false)
+  flagRerun          Boolean    @default(false)
+  isRerun            Boolean    @default(false)
+  rerunBasis         RerunBasis @default(NONE)
+  warn               Int?
+  deleted            Boolean    @default(false)
+  sourceRevision     Int?
+  sourceUpdatedAt    DateTime?  @db.Timestamptz(3)
+  /// Set when a complete re-fetch of a covering window no longer returned this airing.
+  missingSince       DateTime?  @db.Timestamptz(3)
+  contentHash        String
+  firstSeenAt        DateTime   @default(now()) @db.Timestamptz(3)
+  lastSeenAt         DateTime   @default(now()) @db.Timestamptz(3)
+  createdAt          DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt          DateTime   @updatedAt @db.Timestamptz(3)
+
+  title     Title               @relation(fields: [titleId], references: [id])
+  channel   Channel             @relation(fields: [channelId], references: [id])
+  revisions BroadcastRevision[]
+
+  @@unique([source, externalId])
+  @@index([startAt])
+  @@index([channelId, startAt])
+  @@index([titleId, startAt])
+  @@index([animeDate])
 }
 
-model TitleCompany {
-  id        String      @id
-  titleId   String
-  companyId String
-  role      CompanyRole
-  isPrimary Boolean     @default(false)
-  title     Title       @relation(fields: [titleId], references: [id])
-  company   Company     @relation(fields: [companyId], references: [id])
+model BroadcastRevision {
+  id          Int          @id @default(autoincrement())
+  broadcastId Int
+  importRunId Int?
+  observedAt  DateTime     @default(now()) @db.Timestamptz(3)
+  changeType  RevisionType
+  before      Json?
+  after       Json
 
+  broadcast Broadcast  @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  importRun ImportRun? @relation(fields: [importRunId], references: [id], onDelete: SetNull)
+
+  @@index([broadcastId, observedAt])
+  @@index([observedAt])
+}
+
+/// A recurring programming slot. All slot rows are derived by `npm run ingest -- derive`
+/// from source evidence, curated registry entries (data/slots.json) and the inference rule.
+model Slot {
+  id            Int       @id @default(autoincrement())
+  slug          String    @unique
+  name          String
+  kind          SlotKind
+  description   String?
+  evidenceUrl   String?
+  ruleVersion   String
+  homeChannelId Int?
+  firstAnimeDate DateTime? @db.Date
+  lastAnimeDate  DateTime? @db.Date
+  titleCount    Int       @default(0)
+  seasonCount   Int       @default(0)
+  computedAt    DateTime  @db.Timestamptz(3)
+
+  homeChannel Channel?         @relation(fields: [homeChannelId], references: [id])
+  memberships SlotMembership[]
+  seasons     SlotSeason[]
+
+  @@index([kind])
+}
+
+model SlotMembership {
+  id               Int              @id @default(autoincrement())
+  slotId           Int
+  titleId          Int
+  channelId        Int?
+  method           MembershipMethod
+  confidence       Confidence
+  evidence         String?
+  /// Season ordinal (year*10+quarter) of the first regular airing in the slot.
+  seasonOrdinal    Int?
+  animeWeekday     Int?
+  animeStartMinute Int?
+  firstStartAt     DateTime?        @db.Timestamptz(3)
+  lastStartAt      DateTime?        @db.Timestamptz(3)
+  broadcastCount   Int              @default(0)
+
+  slot    Slot     @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  title   Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  channel Channel? @relation(fields: [channelId], references: [id])
+
+  @@unique([slotId, titleId])
   @@index([titleId])
-  @@index([companyId])
 }
 
-model Person {
-  id    String      @id
-  slug  String      @unique
-  name  String
-  titles TitleStaff[]
+/// Derived per-season position of a slot on its home channel (drives the slot timeline).
+model SlotSeason {
+  id               Int @id @default(autoincrement())
+  slotId           Int
+  seasonOrdinal    Int
+  channelId        Int
+  animeWeekday     Int
+  animeStartMinute Int
+  durationMinutes  Int
+  titleCount       Int
+
+  slot    Slot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id])
+
+  @@unique([slotId, seasonOrdinal])
 }
 
-model TitleStaff {
-  id       String    @id
-  titleId  String
-  personId String
-  role     StaffRole
-  title    Title     @relation(fields: [titleId], references: [id])
-  person   Person    @relation(fields: [personId], references: [id])
+model ImportRun {
+  id           Int          @id @default(autoincrement())
+  command      String
+  status       ImportStatus @default(RUNNING)
+  startedAt    DateTime     @default(now()) @db.Timestamptz(3)
+  finishedAt   DateTime?    @db.Timestamptz(3)
+  rangeStart   DateTime?    @db.Timestamptz(3)
+  rangeEnd     DateTime?    @db.Timestamptz(3)
+  params       Json?
+  stats        Json?
+  error        String?
+  requestCount Int          @default(0)
 
-  @@index([titleId])
-  @@index([personId])
+  fetches   FetchLog[]
+  revisions BroadcastRevision[]
+  coverage  CoverageWindow[]
+
+  @@index([startedAt])
 }
 
-model SequelRelation {
-  id           String              @id
-  fromTitleId  String
-  toTitleId    String
-  relationType SequelRelationType
-  note         String?
-  fromTitle    Title               @relation("SequelFrom", fields: [fromTitleId], references: [id])
-  toTitle      Title               @relation("SequelTo", fields: [toTitleId], references: [id])
+model FetchLog {
+  id          Int      @id @default(autoincrement())
+  importRunId Int?
+  requestKey  String
+  url         String
+  attempt     Int      @default(1)
+  httpStatus  Int?
+  resultCode  Int?
+  rowCount    Int?
+  durationMs  Int
+  bytes       Int?
+  payloadHash String?
+  fromCache   Boolean  @default(false)
+  error       String?
+  startedAt   DateTime @default(now()) @db.Timestamptz(3)
 
-  @@index([fromTitleId])
-  @@index([toTitleId])
+  importRun ImportRun? @relation(fields: [importRunId], references: [id], onDelete: SetNull)
+
+  @@index([requestKey, startedAt])
+  @@index([startedAt])
 }
 
-model Airing {
-  id                     String           @id
-  titleId                String
-  channelId              String
-  regionId               String
-  slotId                 String?
-  broadcastStartAt       DateTime
-  broadcastEndAt         DateTime
-  animeBroadcastDay      AnimeWeekday
-  animeBroadcastTimeText String
-  animeBroadcastHour24   Int
-  animeBroadcastMinute   Int
-  durationCategory       DurationCategory
-  episodeLengthMinutes   Int
-  isFirstRun             Boolean          @default(true)
-  isRebroadcast          Boolean          @default(false)
-  hasNote                Boolean          @default(false)
-  note                   String?
-  title                  Title            @relation(fields: [titleId], references: [id])
-  channel                Channel          @relation(fields: [channelId], references: [id])
-  region                 Region           @relation(fields: [regionId], references: [id])
-  slot                   Slot?            @relation(fields: [slotId], references: [id])
-
-  @@index([titleId])
-  @@index([channelId])
-  @@index([slotId])
-  @@index([animeBroadcastDay, animeBroadcastHour24])
+/// Immutable raw response bodies (gzip), deduplicated by SHA-256 of the uncompressed body.
+model RawPayload {
+  hash        String   @id
+  contentType String
+  bytes       Int
+  body        Bytes
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
 }
 
-model SourceRecord {
-  id         String   @id @default(cuid())
-  titleId     String
-  sourceName String
-  recordType String
-  pointer    String?
-  fetchedAt  DateTime
-  title      Title    @relation(fields: [titleId], references: [id])
+/// A time range that was fetched completely for a set of channels. Drives "対象期間" disclosures.
+model CoverageWindow {
+  id          Int      @id @default(autoincrement())
+  source      String
+  rangeStart  DateTime @db.Timestamptz(3)
+  rangeEnd    DateTime @db.Timestamptz(3)
+  channelIds  String[]
+  rowCount    Int
+  completedAt DateTime @default(now()) @db.Timestamptz(3)
+  importRunId Int?
 
-  @@index([titleId])
+  importRun ImportRun? @relation(fields: [importRunId], references: [id], onDelete: SetNull)
+
+  @@index([rangeStart, rangeEnd])
+}
+
+model SyncCursor {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
 }

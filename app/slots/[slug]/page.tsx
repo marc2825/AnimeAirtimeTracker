@@ -1,482 +1,224 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { Badge } from "@/components/Badge";
-import { SectionCard } from "@/components/SectionCard";
-import { getSearchOptions, getSlotBySlug, type SlotDistributionItem } from "@/lib/catalog";
-import {
-  formatAnimeSchedule,
-  formatDateTimeJst,
-  formatDuration,
-  formatPercent,
-  formatSeason,
-  formatSlotType
-} from "@/lib/formatters";
-import { weekdayLabels } from "@/lib/labels";
+import { SlotTimeline } from "@/components/slots/SlotTimeline";
+import { Badge, EmptyState, ExternalLink, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, SLOT_KIND_LABELS, StatGrid, StatTile } from "@/components/ui/primitives";
+import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, MIN_REGULAR_AIRINGS } from "@/domain/slots";
+import { WEEKDAY_LABELS, formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
+import { formatDateTime, formatSeasonOrdinal } from "@/lib/format";
+import { getSlotDetail, type SlotDetail } from "@/server/queries/slots";
 
-type SlotPageProps = {
-  params: Promise<{ slug: string }>;
-};
+import styles from "./slot.module.css";
 
-type ChartRow = {
-  key: string;
-  label: string;
-  value: string;
-  width: number;
-  meta?: string;
-  tone?: "accent" | "warm" | "neutral";
-};
-
-function getBarWidth(width: number): string {
-  return `${Math.max(width, 8)}%`;
-}
-
-function InlineBarList({ items, emptyMessage }: { items: ChartRow[]; emptyMessage: string }) {
-  if (items.length === 0) {
-    return <div className="empty-state">{emptyMessage}</div>;
-  }
-
-  return (
-    <div className="inline-bars">
-      {items.map((item) => (
-        <article key={item.key} className="inline-bar-card">
-          <div className="inline-bar-head">
-            <strong>{item.label}</strong>
-            <span>{item.value}</span>
-          </div>
-          {item.meta ? <p className="muted">{item.meta}</p> : null}
-          <div className="inline-bar-track">
-            <div
-              className={`inline-bar-fill inline-bar-fill-${item.tone ?? "accent"}`}
-              style={{ width: getBarWidth(item.width) }}
-            />
-          </div>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-function DistributionTable({
-  rows,
-  labelHeader
-}: {
-  rows: SlotDistributionItem[];
-  labelHeader: string;
-}) {
-  if (rows.length === 0) {
-    return <div className="empty-state">まだ集計できるデータがありません。</div>;
-  }
-
-  return (
-    <div className="table-wrapper">
-      <table>
-        <thead>
-          <tr>
-            <th>{labelHeader}</th>
-            <th>本数</th>
-            <th>構成比</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((item) => (
-            <tr key={item.label}>
-              <td>{item.label}</td>
-              <td>{item.count}</td>
-              <td>{formatPercent(item.share)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export async function generateStaticParams() {
-  return getSearchOptions().slots.map((slot) => ({
-    slug: slot.slug
-  }));
-}
-
-export async function generateMetadata({ params }: SlotPageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<"/slots/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const detail = getSlotBySlug(slug);
-
+  const slot = await getSlotDetail(decodeURIComponent(slug)).catch(() => null);
+  if (!slot) return { title: "放送枠が見つかりません" };
+  const kind = SLOT_KIND_LABELS[slot.kind]?.label ?? "";
   return {
-    title: detail ? `${detail.slot.name} | 放送枠詳細` : "放送枠詳細"
+    title: `${slot.name}（${kind}）の年表`,
+    description: `${slot.channel?.name ?? ""}の放送枠「${slot.name}」でクールごとに放送された作品と、放送時刻の変遷。${slot.titleCount}作品・${slot.seasonCount}クール分。`,
+    alternates: { canonical: `/slots/${encodeURIComponent(slot.slug)}` }
   };
 }
 
-export default async function SlotDetailPage({ params }: SlotPageProps) {
-  const { slug } = await params;
-  const detail = getSlotBySlug(slug);
+export default function SlotPage({ params }: PageProps<"/slots/[slug]">) {
+  return (
+    <div className="container">
+      <Suspense fallback={<SkeletonBlock rows={8} label="放送枠を読み込み中" />}>
+        <SlotContent params={params} />
+      </Suspense>
+    </div>
+  );
+}
 
-  if (!detail) {
-    notFound();
+function positionChanges(slot: SlotDetail) {
+  const changes: { ordinal: number; from: string; to: string }[] = [];
+  let previous: { weekday: number; minute: number } | null = null;
+  for (const entry of slot.timeline) {
+    if (!entry.position) continue;
+    if (previous && (previous.weekday !== entry.position.weekday || previous.minute !== entry.position.minute)) {
+      changes.push({
+        ordinal: entry.ordinal,
+        from: formatAnimeSlot(previous.weekday as Weekday, previous.minute),
+        to: formatAnimeSlot(entry.position.weekday as Weekday, entry.position.minute)
+      });
+    }
+    previous = entry.position;
   }
+  return changes;
+}
 
-  const topChannel = detail.channelDistribution[0] ?? null;
-  const topWeekday = detail.weekdayDistribution[0] ?? null;
-  const topTime = detail.timeDistribution[0] ?? null;
-  const activeStartYear = detail.yearCounts[0]?.year ?? null;
-  const activeEndYear = detail.yearCounts[detail.yearCounts.length - 1]?.year ?? null;
-  const yearPeak = Math.max(...detail.yearCounts.map((item) => item.count), 1);
+async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const slot = await getSlotDetail(decodeURIComponent(slug));
+  if (!slot) notFound();
 
-  const observedSummary = [topChannel?.channel.name, topWeekday ? `${weekdayLabels[topWeekday.weekday]}曜` : null, topTime?.label]
-    .filter((value): value is string => Boolean(value))
-    .join(" / ");
-
-  const yearRows: ChartRow[] = detail.yearCounts.map((item) => ({
-    key: String(item.year),
-    label: `${item.year}年`,
-    value: `${item.count}本`,
-    width: (item.count / yearPeak) * 100,
-    meta: `${formatPercent(item.share)}`
-  }));
-
-  const channelRows: ChartRow[] = detail.channelDistribution.slice(0, 4).map((item) => ({
-    key: item.channel.id,
-    label: item.channel.name,
-    value: `${item.count}件`,
-    width: item.share,
-    meta: `${formatPercent(item.share)} / ${item.channel.shortName}`,
-    tone: "neutral"
-  }));
-
-  const weekdayRows: ChartRow[] = detail.weekdayDistribution.slice(0, 4).map((item) => ({
-    key: item.weekday,
-    label: `${weekdayLabels[item.weekday]}曜`,
-    value: `${item.count}件`,
-    width: item.share,
-    meta: formatPercent(item.share),
-    tone: "warm"
-  }));
-
-  const timeRows: ChartRow[] = detail.timeDistribution.slice(0, 4).map((item) => ({
-    key: item.label,
-    label: item.label,
-    value: `${item.count}件`,
-    width: item.share,
-    meta: formatPercent(item.share)
-  }));
-
-  const genreRows: ChartRow[] = detail.genreDistribution.slice(0, 6).map((item) => ({
-    key: item.label,
-    label: item.label,
-    value: `${item.count}本`,
-    width: item.share,
-    meta: formatPercent(item.share)
-  }));
-
-  const companyRows: ChartRow[] = detail.companyDistribution.slice(0, 6).map((item) => ({
-    key: item.label,
-    label: item.label,
-    value: `${item.count}本`,
-    width: item.share,
-    meta: formatPercent(item.share),
-    tone: "warm"
-  }));
+  const changes = positionChanges(slot);
+  const maxYear = Math.max(1, ...slot.byYear.map((row) => row.titles));
+  const first = slot.seasonOrdinals[0];
+  const last = slot.seasonOrdinals.at(-1);
 
   return (
-    <div className="page-stack">
-      <section className="hero">
-        <div className="badge-row">
-          <Badge tone="warm">{formatSlotType(detail.slot.slotType)}</Badge>
-          <Badge>{detail.channel.name}</Badge>
-          <Badge tone="accent">{detail.region.name}</Badge>
-          {activeStartYear && activeEndYear ? <Badge>{`${activeStartYear} - ${activeEndYear}`}</Badge> : null}
-        </div>
-        <h1>{detail.slot.name}</h1>
-        <p>{detail.slot.description}</p>
-        <div className="hero-links">
-          <Link href={`/search?view=title&slot=${detail.slot.slug}`} className="hero-link hero-link-primary">
-            この枠の作品を検索
-          </Link>
-          <Link href={`/search?view=airing&slot=${detail.slot.slug}`} className="hero-link hero-link-secondary">
-            放送単位で見る
-          </Link>
-        </div>
-        <div className="hero-summary-strip">
-          <article className="hero-summary-item">
-            <span className="muted">観測上の中心</span>
-            <strong>{observedSummary || "未観測"}</strong>
-          </article>
-          <article className="hero-summary-item">
-            <span className="muted">観測期間</span>
-            <strong>
-              {detail.firstObservedAt && detail.lastObservedAt
-                ? `${detail.firstObservedAt.slice(0, 10)} 〜 ${detail.lastObservedAt.slice(0, 10)}`
-                : "未観測"}
-            </strong>
-          </article>
-          <article className="hero-summary-item">
-            <span className="muted">代表ジャンル</span>
-            <strong>{detail.topGenres[0]?.label ?? "未集計"}</strong>
-          </article>
-        </div>
-      </section>
+    <article>
+      <nav className={styles.breadcrumb} aria-label="パンくず">
+        <Link href="/slots">放送枠</Link>
+        <span aria-hidden="true">/</span>
+        <span>{slot.name}</span>
+      </nav>
+      <PageHeader
+        kicker="Slot chronicle"
+        title={slot.name}
+        meta={
+          <>
+            <SlotKindBadge kind={slot.kind} />
+            {slot.channel ? <Badge>{slot.channel.name}</Badge> : null}
+            {slot.latest ? (
+              <span className={styles.latest}>
+                <span className={slot.latest.weekday === 5 ? "sat" : slot.latest.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[slot.latest.weekday]}曜</span>{" "}
+                <span className="mono">{formatAnimeMinute(slot.latest.minute)}</span>
+                <span className="muted">（{formatSeasonOrdinal(slot.latest.seasonOrdinal)}時点・{slot.latest.durationMinutes}分）</span>
+              </span>
+            ) : null}
+          </>
+        }
+      />
 
-      <div className="summary-cards slot-summary-cards">
-        <article className="metric-card">
-          <span className="muted">所属作品数</span>
-          <strong>{detail.titles.length}</strong>
-          <p className="muted">枠に属すると判定された作品本数</p>
-        </article>
-        <article className="metric-card">
-          <span className="muted">初回放送件数</span>
-          <strong>{detail.firstRunCount}</strong>
-          <p className="muted">再放送を除く観測件数</p>
-        </article>
-        <article className="metric-card">
-          <span className="muted">続編傾向</span>
-          <strong>{formatPercent(detail.sequelRate)}</strong>
-          <p className="muted">{`${detail.sequelCount}本が続編扱い`}</p>
-        </article>
-        <article className="metric-card">
-          <span className="muted">時刻パターン</span>
-          <strong>{detail.schedulePatternCount}</strong>
-          <p className="muted">曜日×時刻の観測パターン数</p>
-        </article>
-      </div>
+      <StatGrid>
+        <StatTile label="作品" value={slot.titleCount} unit="作品" hint="この枠に属すると判定した作品数" />
+        <StatTile label="観測クール" value={slot.seasonCount} unit="クール" hint={first && last ? `${formatSeasonOrdinal(first)}〜${formatSeasonOrdinal(last)}` : "対象局での定時放送なし"} />
+        <StatTile label="開始時刻の変化" value={changes.length} unit="回" hint="枠の開始（所属作品の最も早い開始）の曜日・時刻がクール間で変わった回数" />
+        <StatTile label="関連枠" value={slot.related.length} unit="枠" hint="作品が重なる他の枠" />
+      </StatGrid>
 
-      <div className="grid-two">
-        <SectionCard title="枠の基本情報" description="定義値と観測値の両方から、枠の基本像を確認します。">
-          <dl className="detail-grid">
-            <div className="detail-item">
-              <dt>主局</dt>
-              <dd>{detail.channel.name}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>対象地域</dt>
-              <dd>{detail.region.name}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>定義上の代表放送</dt>
-              <dd>{formatAnimeSchedule(detail.slot.representativeDay, detail.slot.representativeTimeText)}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>観測上最多時刻</dt>
-              <dd>{topTime?.label ?? "未観測"}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>定義開始日</dt>
-              <dd>{detail.slot.startDate.slice(0, 10)}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>観測上の初出</dt>
-              <dd>{detail.firstObservedAt ? formatDateTimeJst(detail.firstObservedAt) : "未観測"}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>観測上の最終出現</dt>
-              <dd>{detail.lastObservedAt ? formatDateTimeJst(detail.lastObservedAt) : "未観測"}</dd>
-            </div>
-            <div className="detail-item">
-              <dt>信頼度 / 別名</dt>
-              <dd>
-                {formatPercent(detail.slot.confidence)}
-                <span className="subline">{detail.slot.aliasNames.join(" / ") || "別名なし"}</span>
-              </dd>
-            </div>
-          </dl>
-        </SectionCard>
-
-        <SectionCard
-          title="関連する局・曜日・代表時刻"
-          description={
-            observedSummary
-              ? `観測上は ${observedSummary} が中心です。`
-              : "観測データが揃うと、この枠に集まりやすい局・曜日・時刻が見えてきます。"
-          }
-        >
-          <div className="grid-three slot-profile-grid">
-            <article className="panel slot-profile-panel">
-              <p className="muted">関連局</p>
-              <h3>{topChannel?.channel.name ?? "未観測"}</h3>
-              <p className="muted">{topChannel ? `${topChannel.count}件 / ${formatPercent(topChannel.share)}` : "未観測"}</p>
-              <InlineBarList items={channelRows} emptyMessage="局データはまだありません。" />
-            </article>
-            <article className="panel slot-profile-panel">
-              <p className="muted">中心曜日</p>
-              <h3>{topWeekday ? `${weekdayLabels[topWeekday.weekday]}曜` : "未観測"}</h3>
-              <p className="muted">{topWeekday ? `${topWeekday.count}件 / ${formatPercent(topWeekday.share)}` : "未観測"}</p>
-              <InlineBarList items={weekdayRows} emptyMessage="曜日データはまだありません。" />
-            </article>
-            <article className="panel slot-profile-panel">
-              <p className="muted">代表時刻</p>
-              <h3>{topTime?.label ?? "未観測"}</h3>
-              <p className="muted">{topTime ? `${topTime.count}件 / ${formatPercent(topTime.share)}` : "未観測"}</p>
-              <InlineBarList items={timeRows} emptyMessage="時刻データはまだありません。" />
-            </article>
-          </div>
-        </SectionCard>
-      </div>
-
-      <div className="grid-two">
-        <SectionCard title="年次推移" description="作品本数の増減を簡易グラフと表で確認します。">
-          <div className="chart-table-layout">
-            <InlineBarList items={yearRows} emptyMessage="まだ年次推移を描けるデータがありません。" />
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>年</th>
-                    <th>作品本数</th>
-                    <th>構成比</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.yearCounts.map((item) => (
-                    <tr key={item.year}>
-                      <td>{item.year}</td>
-                      <td>{item.count}</td>
-                      <td>{formatPercent(item.share)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="時間変動履歴" description="アニメ文脈時刻と実日時刻の両方で、枠の揺れ方を見ます。">
-          {detail.timeChanges.length === 0 ? (
-            <div className="empty-state">時間変動を追える放送データはまだありません。</div>
-          ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>シーズン</th>
-                    <th>作品</th>
-                    <th>アニメ時刻</th>
-                    <th>実日時刻</th>
-                    <th>局</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.timeChanges.map((item) => (
-                    <tr key={`${item.titleName}-${item.broadcastStartAt}`}>
-                      <td>{item.seasonLabel}</td>
-                      <td>
-                        {item.titleSlug ? (
-                          <Link href={`/titles/${item.titleSlug}`} className="inline-link">
-                            {item.titleName}
-                          </Link>
-                        ) : (
-                          item.titleName
-                        )}
-                      </td>
-                      <td>{item.animeScheduleText}</td>
-                      <td>{formatDateTimeJst(item.broadcastStartAt)}</td>
-                      <td>{item.channelName}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <div className="grid-two">
-        <SectionCard title="ジャンル分布" description="この枠で目立つジャンルを比率つきで確認できます。">
-          <div className="chart-table-layout">
-            <InlineBarList items={genreRows} emptyMessage="ジャンル情報はまだありません。" />
-            <DistributionTable rows={detail.genreDistribution} labelHeader="ジャンル" />
-          </div>
-        </SectionCard>
-
-        <SectionCard title="制作会社分布" description="主制作を中心に、どの制作会社が多いかを集計しています。">
-          <div className="chart-table-layout">
-            <InlineBarList items={companyRows} emptyMessage="制作会社情報はまだありません。" />
-            <DistributionTable rows={detail.companyDistribution} labelHeader="制作会社" />
-          </div>
-        </SectionCard>
-      </div>
-
-      <SectionCard title="所属作品一覧" description="所属作品と、その枠内での初回放送を一覧できます。">
-        {detail.titles.length === 0 ? (
-          <div className="empty-state">この枠に紐づく作品はまだありません。</div>
+      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。各クールの位置は、所属作品の定時放送のうち最も早い開始時刻（同じ曜日内）です。灰色の上線は前クールから継続している作品。出典記載枠では、所属の記載がない作品は含まれないため、開始時刻の変化が記載状況による場合があります。">
+        {slot.timeline.length === 0 ? (
+          <EmptyState title="対象局での定時放送が確認できません">
+            出典にこの枠名の記載はありますが、本サイトの対象局・取得期間では{MIN_REGULAR_AIRINGS}回以上の定時放送を確認できませんでした。
+          </EmptyState>
         ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>作品</th>
-                  <th>開始クール</th>
-                  <th>ジャンル</th>
-                  <th>主制作</th>
-                  <th>続編</th>
-                  <th>枠内初回放送</th>
-                </tr>
-              </thead>
+          <SlotTimeline seasons={slot.timeline} />
+        )}
+      </Section>
+
+      <div className={styles.columns}>
+        <Section id="changes" title="開始時刻の変化" level={3}>
+          {changes.length === 0 ? (
+            <p className={styles.muted}>取得期間内に時刻・曜日の変更はありません。</p>
+          ) : (
+            <ol role="list" className={styles.changes}>
+              {changes.map((change) => (
+                <li key={change.ordinal}>
+                  <span className={styles.changeSeason}>{formatSeasonOrdinal(change.ordinal)}</span>
+                  <span className="mono">{change.from}</span>
+                  <span aria-label="から">→</span>
+                  <span className="mono">{change.to}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Section>
+
+        <Section id="years" title="年別の作品数" level={3}>
+          {slot.byYear.length === 0 ? (
+            <p className={styles.muted}>データがありません。</p>
+          ) : (
+            <table className={styles.yearTable}>
+              <caption className="visually-hidden">年別の作品数（その年に定時放送された作品）</caption>
               <tbody>
-                {detail.titles.map((entry) => (
-                  <tr key={entry.title.id}>
+                {slot.byYear.map((row) => (
+                  <tr key={row.year}>
+                    <th scope="row" className="mono">
+                      {row.year}
+                    </th>
                     <td>
-                      <Link href={`/titles/${entry.title.slug}`} className="inline-link">
-                        {entry.title.name}
-                      </Link>
-                      <span className="subline">
-                        {entry.title.category ?? "分類未設定"} / {formatDuration(entry.title.durationCategory)}
-                      </span>
+                      <span className={styles.bar} style={{ width: `${(row.titles / maxYear) * 100}%` }} aria-hidden="true" />
                     </td>
-                    <td>{formatSeason(entry.title.seasonYear, entry.title.seasonQuarter)}</td>
-                    <td>{entry.title.genres.length > 0 ? entry.title.genres.join(" / ") : "未設定"}</td>
-                    <td>{entry.primaryCompanies[0]?.name ?? entry.companies[0]?.name ?? "未設定"}</td>
-                    <td>
-                      <Badge tone={entry.title.isSequel ? "warm" : "neutral"}>
-                        {entry.title.isSequel ? "続編" : "新規"}
-                      </Badge>
-                    </td>
-                    <td>
-                      {entry.firstAiring ? (
-                        <>
-                          {formatAnimeSchedule(
-                            entry.firstAiring.animeBroadcastDay,
-                            entry.firstAiring.animeBroadcastTimeText
-                          )}
-                          <span className="subline">{formatDateTimeJst(entry.firstAiring.broadcastStartAt)}</span>
-                        </>
-                      ) : (
-                        "未設定"
-                      )}
-                    </td>
+                    <td className="mono">{row.titles}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-      </SectionCard>
+          )}
+        </Section>
+      </div>
 
-      <SectionCard title="被り傾向の簡易表示" description="同一クール・同曜日・30分以内で近接した他枠を簡易集計しています。">
-        {detail.overlaps.length === 0 ? (
-          <div className="empty-state">近接時間帯の他枠はまだ検出されていません。</div>
-        ) : (
-          <div className="grid-two">
-            {detail.overlaps.slice(0, 6).map((item) => (
-              <article key={item.slot.id} className="panel slot-overlap-panel">
-                <div className="badge-row">
-                  <Badge tone="accent">{formatSlotType(item.slot.slotType)}</Badge>
-                  <Badge>{formatAnimeSchedule(item.slot.representativeDay, item.slot.representativeTimeText)}</Badge>
-                </div>
-                <h3>
-                  <Link href={`/slots/${item.slot.slug}`} className="inline-link">
-                    {item.slot.name}
-                  </Link>
-                </h3>
-                <p className="muted">{item.slot.description}</p>
-                <div className="slot-overlap-meta">
-                  <span>{`近接出現 ${item.count}回`}</span>
-                  <span>{`母数比 ${formatPercent(item.share)}`}</span>
-                </div>
-              </article>
+      <Section id="basis" title="判定根拠">
+        <div className={styles.basis}>
+          {slot.kind === "INFERRED" ? (
+            <p>
+              {slot.channel?.name}の{slot.latest ? formatAnimeSlot(slot.latest.weekday as Weekday, slot.latest.minute) : "同一位置"}に、{INFERRED_MIN_SEASONS}クール以上にわたって
+              {INFERRED_MIN_TITLES}作品以上の新作が定時放送（同じ曜日・時刻で{MIN_REGULAR_AIRINGS}回以上）されたため、本サイトが「推定枠」として扱っています。局が公式に定めた枠であるとは限りません。
+            </p>
+          ) : (
+            <p>
+              しょぼいカレンダーの作品備考に「{slot.name}」枠で放送と記載された作品をまとめています。年表は各作品の{slot.channel?.name ?? "基準局"}
+              での定時放送から算出しています。
+            </p>
+          )}
+          {slot.evidenceUrl ? (
+            <p>
+              公式情報: <ExternalLink href={slot.evidenceUrl}>{slot.evidenceUrl}</ExternalLink>
+            </p>
+          ) : null}
+          <p className={styles.muted}>
+            判定ルール {slot.ruleVersion}・算出 {formatDateTime(slot.computedAt)}。誤りを見つけた場合は<Link href="/about#corrections" className="inline-link">訂正の方法</Link>をご覧ください。
+          </p>
+        </div>
+      </Section>
+
+      <Section id="members" title="所属作品" description="新しい順。根拠が出典記載の場合は、しょぼいカレンダーの作品備考の該当行を引用しています。">
+        <div className={styles.tableWrap}>
+          <table className={styles.memberTable}>
+            <thead>
+              <tr>
+                <th scope="col">作品</th>
+                <th scope="col">初クール</th>
+                <th scope="col">判定</th>
+                <th scope="col">根拠</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slot.members.map((member) => (
+                <tr key={member.slug}>
+                  <td>
+                    <Link href={`/titles/${member.slug}`} className={styles.memberName}>
+                      {member.name}
+                    </Link>
+                  </td>
+                  <td className="mono">{member.seasonOrdinal ? formatSeasonOrdinal(member.seasonOrdinal) : "—"}</td>
+                  <td>
+                    {member.method === "SOURCE_COMMENT" ? (member.confidence === "HIGH" ? "出典記載" : "出典記載（再放送時）") : member.method === "MANUAL" ? "手動補正" : "時刻位置"}
+                  </td>
+                  <td className={styles.evidenceCell}>{member.evidence ?? "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Section>
+
+      {slot.related.length > 0 ? (
+        <Section id="related" title="関連する枠" description="所属作品が重なる枠（例: 出典記載枠と同じ位置の推定枠）。">
+          <ul role="list" className={styles.related}>
+            {slot.related.map((related) => (
+              <li key={related.slug}>
+                <SlotKindBadge kind={related.kind} />
+                <Link href={`/slots/${encodeURIComponent(related.slug)}`}>{related.name}</Link>
+                <span className="muted">共通 {related.shared}作品</span>
+              </li>
             ))}
-          </div>
-        )}
-      </SectionCard>
-    </div>
+          </ul>
+        </Section>
+      ) : null}
+
+      {slot.kind === "INFERRED" ? (
+        <Notice tone="info" title="推定枠について">
+          推定枠は機械的な判定です。特番・時刻変更・地域差によって実際の編成と異なる場合があります。
+        </Notice>
+      ) : null}
+    </article>
   );
 }

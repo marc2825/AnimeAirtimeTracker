@@ -1,240 +1,253 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
+import { Suspense } from "react";
 
-import { Badge } from "@/components/Badge";
-import { SectionCard } from "@/components/SectionCard";
-import {
-  getAllTitleEntries,
-  getRelatedTitlesBySeason,
-  getTitleBySlug,
-  getTitleSequelLinks,
-  getTitlesSharingSlot
-} from "@/lib/catalog";
-import {
-  formatAnimeSchedule,
-  formatDateTimeJst,
-  formatDuration,
-  formatSeason,
-  formatSourceType,
-  formatStaffRole
-} from "@/lib/formatters";
+import { Disclosure } from "@/components/ui/controls";
+import { Badge, EmptyState, ExternalLink, FlagBadges, KeyValue, PageHeader, Section, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
+import { MEDIUM_LABELS, type Medium } from "@/domain/coverage";
+import { formatSeason } from "@/domain/season";
+import { WEEKDAY_LABELS, formatAnimeSlot } from "@/domain/time";
+import { episodeText, formatDateShort, formatDateTime, formatStartTime, formatYearMonth } from "@/lib/format";
+import { getTitleDetail, type TitleChannelGroup } from "@/server/queries/titles";
 
-type TitlePageProps = {
-  params: Promise<{ slug: string }>;
-};
+import styles from "./title.module.css";
 
-export async function generateStaticParams() {
-  return getAllTitleEntries().map((entry) => ({
-    slug: entry.title.slug
-  }));
-}
-
-export async function generateMetadata({ params }: TitlePageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<"/titles/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const entry = getTitleBySlug(slug);
-
+  const title = await getTitleDetail(decodeURIComponent(slug)).catch(() => null);
+  if (!title) return { title: "作品が見つかりません" };
+  const firstGroup = title.groups[0];
+  const where = firstGroup?.regular ? `${firstGroup.channel.shortName} ${formatAnimeSlot(firstGroup.regular.weekday as 0, firstGroup.regular.minute)}` : "";
   return {
-    title: entry ? `${entry.title.name} | 作品詳細` : "作品詳細"
+    title: title.name,
+    description: `${title.name}の放送局別の放送日時・話数・放送枠の履歴。${where ? `${where}ほか。` : ""}データ出典: しょぼいカレンダー。`,
+    alternates: { canonical: `/titles/${title.slug}` }
   };
 }
 
-export default async function TitleDetailPage({ params }: TitlePageProps) {
+export default function TitlePage({ params }: PageProps<"/titles/[slug]">) {
+  return (
+    <div className="container">
+      <Suspense fallback={<SkeletonBlock rows={8} label="作品情報を読み込み中" />}>
+        <TitleContent params={params} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const entry = getTitleBySlug(slug);
+  const title = await getTitleDetail(decodeURIComponent(slug));
+  if (!title) notFound();
 
-  if (!entry) {
-    notFound();
-  }
-
-  const sequelLinks = getTitleSequelLinks(entry.title.id);
-  const relatedSlotTitles = getTitlesSharingSlot(entry.title.id);
-  const sameSeasonTitles = getRelatedTitlesBySeason(entry.title);
+  const firstRun = title.groups.filter((g) => g.firstRunCount > 0);
+  const headline = firstRun[0] ?? title.groups[0];
 
   return (
-    <div className="page-stack">
-      <section className="hero">
-        <div className="badge-row">
-          <Badge tone="warm">{formatSeason(entry.title.seasonYear, entry.title.seasonQuarter)}</Badge>
-          <Badge>{formatSourceType(entry.title.sourceType)}</Badge>
-          <Badge tone="accent">{formatDuration(entry.title.durationCategory)}</Badge>
-          {entry.title.isSequel ? <Badge tone="accent">続編</Badge> : null}
-          {entry.title.isSplitCour ? <Badge>分割2クール想定</Badge> : null}
-        </div>
-        <h1>{entry.title.name}</h1>
-        <p>{entry.title.summary}</p>
-      </section>
+    <article>
+      <nav className={styles.breadcrumb} aria-label="パンくず">
+        <Link href="/search">作品を探す</Link>
+        <span aria-hidden="true">/</span>
+        <span>TID {title.slug}</span>
+      </nav>
+      <PageHeader
+        kicker="Title"
+        title={title.name}
+        lead={
+          <>
+            {title.yomi ? <span>{title.yomi}</span> : null}
+            {title.nameEn ? <span className={styles.en}>{title.nameEn}</span> : null}
+          </>
+        }
+        meta={
+          <>
+            {title.categoryLabel ? <Badge>{title.categoryLabel}</Badge> : null}
+            {title.seasons.map((season) => (
+              <Badge key={`${season.year}-${season.quarter}`} tone="accent">
+                {formatSeason(season)}
+              </Badge>
+            ))}
+            {title.detailsFetchedAt === null ? <Badge tone="danger">タイトル情報未取得</Badge> : null}
+          </>
+        }
+      />
 
-      <SectionCard title="基本情報" description="文化的な放送時刻と実日時刻を並行して表示します。">
-        <dl className="detail-grid">
-          <div className="detail-item">
-            <dt>初回放送</dt>
-            <dd>{entry.firstAiring ? formatDateTimeJst(entry.firstAiring.broadcastStartAt) : "未設定"}</dd>
-          </div>
-          <div className="detail-item">
-            <dt>アニメ文脈時刻</dt>
-            <dd>
-              {entry.firstAiring
-                ? formatAnimeSchedule(entry.firstAiring.animeBroadcastDay, entry.firstAiring.animeBroadcastTimeText)
-                : "未設定"}
-            </dd>
-          </div>
-          <div className="detail-item">
-            <dt>最速地域</dt>
-            <dd>{entry.fastestAiring?.region.name ?? "未設定"}</dd>
-          </div>
-          <div className="detail-item">
-            <dt>主要放送枠</dt>
-            <dd>{entry.slots[0]?.name ?? "未分類"}</dd>
-          </div>
-          <div className="detail-item">
-            <dt>ジャンル</dt>
-            <dd>{entry.title.genres.join(" / ")}</dd>
-          </div>
-          <div className="detail-item">
-            <dt>制作会社</dt>
-            <dd>{entry.primaryCompanies.map((company) => company.name).join(" / ") || "未設定"}</dd>
-          </div>
-        </dl>
-      </SectionCard>
-
-      <div className="two-column">
-        <SectionCard title="放送履歴" description="地域別・局別・枠別の放送履歴です。">
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>放送局</th>
-                  <th>地域</th>
-                  <th>実日時刻</th>
-                  <th>アニメ文脈時刻</th>
-                  <th>放送枠</th>
-                  <th>状態</th>
-                </tr>
-              </thead>
-              <tbody>
-                {entry.airings.map((airing) => (
-                  <tr key={airing.id}>
-                    <td>{airing.channel.name}</td>
-                    <td>{airing.region.name}</td>
-                    <td>{formatDateTimeJst(airing.broadcastStartAt)}</td>
-                    <td>{formatAnimeSchedule(airing.animeBroadcastDay, airing.animeBroadcastTimeText)}</td>
-                    <td>
-                      {airing.slot ? (
-                        <Link href={`/slots/${airing.slot.slug}`} className="inline-link">
-                          {airing.slot.name}
-                        </Link>
-                      ) : (
-                        "未分類"
-                      )}
-                    </td>
-                    <td>
-                      <div className="badge-row">
-                        {airing.isRebroadcast ? <Badge tone="accent">再放送</Badge> : <Badge>初回系</Badge>}
-                        {airing.hasNote && airing.note ? <Badge tone="warm">{airing.note}</Badge> : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </SectionCard>
-
-        <div className="page-stack">
-          <SectionCard title="制作情報" description="nullable 前提のため、今後スタッフや会社を増やしやすい構造です。">
-            <div className="stack-sm">
-              <div>
-                <strong>制作会社</strong>
-                <p className="muted">{entry.companies.map((company) => company.name).join(" / ") || "未設定"}</p>
-              </div>
-              <div>
-                <strong>主要スタッフ</strong>
-                <div className="link-list">
-                  {entry.staffCredits.map((credit) => (
-                    <span key={`${credit.role}-${credit.person.id}`} className="badge badge-neutral">
-                      {formatStaffRole(credit.role)}: {credit.person.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </SectionCard>
-
-          <SectionCard title="続編関係" description="続編や分割2クールの接続を後から拡張できる構成です。">
-            <div className="stack-sm">
-              <p className="muted">
-                前作:{" "}
-                {sequelLinks.previous ? (
-                  <Link href={`/titles/${sequelLinks.previous.title.slug}`} className="inline-link">
-                    {sequelLinks.previous.title.name}
-                  </Link>
-                ) : (
-                  "なし"
-                )}
-              </p>
-              <p className="muted">
-                次作:{" "}
-                {sequelLinks.next ? (
-                  <Link href={`/titles/${sequelLinks.next.title.slug}`} className="inline-link">
-                    {sequelLinks.next.title.name}
-                  </Link>
-                ) : (
-                  "なし"
-                )}
-              </p>
-            </div>
-          </SectionCard>
-        </div>
-      </div>
-
-      <div className="grid-two">
-        <SectionCard title="類似枠作品" description="同じ放送枠に属する作品を表示します。">
-          {relatedSlotTitles.length === 0 ? (
-            <div className="empty-state">同じ枠に属する別作品はまだありません。</div>
-          ) : (
-            <div className="stack-sm">
-              {relatedSlotTitles.map((item) => (
-                <article key={item.title.id} className="panel">
-                  <Link href={`/titles/${item.title.slug}`} className="inline-link">
-                    {item.title.name}
-                  </Link>
-                  <p className="muted">
-                    {formatSeason(item.title.seasonYear, item.title.seasonQuarter)} / {item.slots[0]?.name ?? "未分類"}
-                  </p>
-                </article>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="同時期被り作品" description="同じ年・クールの作品を一覧します。">
-          {sameSeasonTitles.length === 0 ? (
-            <div className="empty-state">同時期の他作品は登録されていません。</div>
-          ) : (
-            <div className="stack-sm">
-              {sameSeasonTitles.map((item) => (
-                <article key={item.title.id} className="panel">
-                  <Link href={`/titles/${item.title.slug}`} className="inline-link">
-                    {item.title.name}
-                  </Link>
-                  <p className="muted">
-                    {item.firstAiring
-                      ? formatAnimeSchedule(item.firstAiring.animeBroadcastDay, item.firstAiring.animeBroadcastTimeText)
-                      : "放送未設定"}
-                  </p>
-                </article>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <SectionCard title="参照元と更新情報" description="MVPではダミーデータですが、データソース置換を想定しています。">
-        <p className="footer-note">
-          参照元: {entry.title.sourceName} / 最終更新: {formatDateTimeJst(entry.title.lastUpdatedAt)}
+      {headline?.regular ? (
+        <p className={styles.headline}>
+          <span className={styles.headlineChannel}>{headline.channel.name}</span>
+          <span className={styles.headlineTime}>
+            <span className={headline.regular.weekday === 5 ? "sat" : headline.regular.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[headline.regular.weekday]}曜</span>{" "}
+            {formatStartTime(headline.regular.minute, "anime")}
+          </span>
+          <span className={styles.headlineNote}>{firstRun.length > 0 ? "最も早い新作放送局での主な放送時刻" : "主な放送時刻"}</span>
         </p>
-      </SectionCard>
-    </div>
+      ) : null}
+
+      <div className={styles.columns}>
+        <div className={styles.mainColumn}>
+          <Section id="channels" title="放送局別の放送" description="各局の主な放送位置（新作放送の最頻の曜日・時刻）、初回の放送日、放送回数。">
+            {title.groups.length === 0 ? (
+              <EmptyState title="対象局での放送記録はありません">本サイトは対象局の放送のみを取得しています。</EmptyState>
+            ) : (
+              <ul role="list" className={styles.channelCards}>
+                {title.groups.map((group) => (
+                  <ChannelCard key={group.channel.slug} group={group} />
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {title.slots.length > 0 ? (
+            <Section id="slots" title="関連する放送枠" description="出典の記載、または同じ位置に新作が続いたことによる判定です。判定根拠は各枠のページで確認できます。">
+              <ul role="list" className={styles.slotList}>
+                {title.slots.map((slot) => (
+                  <li key={slot.slug} className={styles.slotItem}>
+                    <div className={styles.slotHead}>
+                      <SlotKindBadge kind={slot.kind} />
+                      <Link href={`/slots/${encodeURIComponent(slot.slug)}`} className={styles.slotName}>
+                        {slot.name}
+                      </Link>
+                      {slot.channelShortName ? <span className="muted">{slot.channelShortName}</span> : null}
+                    </div>
+                    {slot.evidence ? (
+                      <p className={styles.evidence}>
+                        出典の記載: <q className={styles.quote}>{slot.evidence}</q>
+                        {slot.confidence !== "HIGH" ? "（再放送時の記載）" : null}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          ) : null}
+
+          <Section id="history" title="放送履歴" description="出典に登録された各回の放送。時刻はアニメ時刻（5時切替）。変更回数は本サイトが取得後に観測した変更です。">
+            <div className={styles.histories}>
+              {title.groups.map((group, index) => (
+                <Disclosure
+                  key={group.channel.slug}
+                  defaultOpen={index === 0}
+                  summary={
+                    <span className={styles.historySummary}>
+                      <strong>{group.channel.name}</strong>
+                      <span className="muted">{group.broadcasts.length}件</span>
+                    </span>
+                  }
+                >
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th scope="col">放送日</th>
+                          <th scope="col">時刻</th>
+                          <th scope="col">話数</th>
+                          <th scope="col">サブタイトル・備考</th>
+                          <th scope="col">区分</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.broadcasts.map((b) => (
+                          <tr key={b.id} className={b.deleted || b.missing ? styles.struck : undefined}>
+                            <td className="mono">
+                              {formatDateShort(b.animeDate)}
+                              <span className={b.animeWeekday === 5 ? "sat" : b.animeWeekday === 6 ? "sun" : "muted"}>({WEEKDAY_LABELS[b.animeWeekday]})</span>
+                            </td>
+                            <td className="mono">{formatStartTime(b.animeStartMinute, "anime")}</td>
+                            <td className="mono">{episodeText(b.episodeNumber, b.episodeLabel) ?? "—"}</td>
+                            <td>
+                              <div className={styles.subtitleCell}>
+                                {b.subtitle ? <span>「{b.subtitle}」</span> : null}
+                                {/* Syoboi prefixes notable notes with "!" */}
+                                {b.comment ? <span className={styles.comment}>{b.comment.replace(/^!+\s*/, "")}</span> : null}
+                              </div>
+                            </td>
+                            <td>
+                              <span className={styles.flagCell}>
+                                <FlagBadges flagNew={b.flagNew} flagFinal={b.flagFinal} isRerun={b.isRerun} rerunBasis={b.rerunBasis} flagNote={b.flagNote} />
+                                {b.deleted ? <Badge tone="danger" variant="outline">削除</Badge> : null}
+                                {b.missing ? <Badge tone="danger" variant="dashed" title="出典の再取得で見つからなくなった放送">消失</Badge> : null}
+                                {b.revisionCount > 0 ? <Badge title="本サイトが観測した変更回数">変更{b.revisionCount}</Badge> : null}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Disclosure>
+              ))}
+            </div>
+          </Section>
+        </div>
+
+        <aside className={styles.sideColumn} aria-label="作品データ">
+          <section className={styles.sideCard}>
+            <h2 className={styles.sideTitle}>出典データ</h2>
+            <KeyValue
+              items={[
+                { label: "放送開始（出典）", value: formatYearMonth(title.firstYear, title.firstMonth) ?? "不明" },
+                { label: "放送終了（出典）", value: formatYearMonth(title.firstEndYear, title.firstEndMonth) ?? "未設定" },
+                { label: "初回放送局（出典）", value: title.firstChannelText ?? "不明" },
+                { label: "公式サイト", value: title.officialUrl ? <ExternalLink href={title.officialUrl}>リンク</ExternalLink> : "記載なし" },
+                { label: "出典ページ", value: <ExternalLink href={title.sourceUrl}>TID {title.slug}</ExternalLink> },
+                { label: "出典の最終更新", value: title.sourceUpdatedAt ? formatDateTime(title.sourceUpdatedAt) : "不明" },
+                { label: "本サイトの最終確認", value: title.lastSeenAt ? formatDateTime(title.lastSeenAt) : "—" }
+              ]}
+            />
+          </section>
+          {title.related.length > 0 ? (
+            <section className={styles.sideCard}>
+              <h2 className={styles.sideTitle}>関連作品の候補</h2>
+              <p className={styles.sideNote}>読み（よみがな）が一致するタイトル。シリーズ関係は確認していません。</p>
+              <ul role="list" className={styles.relatedList}>
+                {title.related.map((related) => (
+                  <li key={related.slug}>
+                    <Link href={`/titles/${related.slug}`}>{related.name}</Link>
+                    <span className="muted">{formatYearMonth(related.firstYear, related.firstMonth) ?? ""}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </aside>
+      </div>
+    </article>
+  );
+}
+
+function ChannelCard({ group }: { group: TitleChannelGroup }) {
+  const reruns = group.broadcasts.filter((b) => b.isRerun && !b.deleted).length;
+  return (
+    <li className={styles.channelCard}>
+      <div className={styles.channelCardHead}>
+        <span className={styles.channelCardName}>{group.channel.name}</span>
+        <span className="muted">{group.channel.medium ? MEDIUM_LABELS[group.channel.medium as Medium] : ""}</span>
+      </div>
+      <p className={styles.channelCardTime}>
+        {group.regular ? (
+          <>
+            <span className={group.regular.weekday === 5 ? "sat" : group.regular.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[group.regular.weekday]}曜</span>{" "}
+            <span className="mono">{formatStartTime(group.regular.minute, "anime")}</span>
+          </>
+        ) : (
+          "—"
+        )}
+      </p>
+      <dl className={styles.channelCardMeta}>
+        <div>
+          <dt>初回</dt>
+          <dd className="mono">{group.firstStartAt ? formatDateTime(group.firstStartAt).split(" ")[0] : "—"}</dd>
+        </div>
+        <div>
+          <dt>新作</dt>
+          <dd className="mono">{group.firstRunCount}回</dd>
+        </div>
+        <div>
+          <dt>再放送</dt>
+          <dd className="mono">{reruns}回</dd>
+        </div>
+      </dl>
+    </li>
   );
 }

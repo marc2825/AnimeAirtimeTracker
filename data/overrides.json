@@ -1,0 +1,6 @@
+{
+  "$comment": "Manual corrections applied on every import. Each entry needs a reason and evidence. See docs/data-pipeline.md#manual-corrections.",
+  "broadcasts": [],
+  "titles": [],
+  "slotMemberships": []
+}

@@ -1,0 +1,168 @@
+.weekNav {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  border: var(--border);
+  background: var(--color-surface-1);
+}
+
+.weekArrow {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 4px;
+  color: var(--color-ink-2);
+}
+
+.weekArrow:hover {
+  background: var(--state-hover);
+  color: var(--color-ink);
+}
+
+.weekLabel {
+  display: grid;
+  text-align: center;
+  padding: 0 var(--space-2);
+  line-height: 1.2;
+  min-width: 9.5rem;
+}
+
+.weekSeason {
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+}
+
+.weekRange {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+}
+
+.todayLink {
+  margin-left: var(--space-1);
+  padding: 0 var(--space-3);
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-accent);
+}
+
+.todayLink:hover {
+  background: var(--color-accent-soft);
+  text-decoration: none;
+}
+
+.dayTabs {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.dayTab {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--radius-sm);
+  border: var(--border);
+  background: var(--color-surface-1);
+  line-height: 1.25;
+  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.dayTab:hover {
+  text-decoration: none;
+  border-color: var(--color-line-strong);
+}
+
+.dayTab[aria-current="page"] {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+
+.dayTab[aria-current="page"] .dayLabel,
+.dayTab[aria-current="page"] .dayDate,
+.dayTab[aria-current="page"] .dayCount {
+  color: inherit;
+}
+
+.dayLabel {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+}
+
+.dayDate {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+}
+
+.dayCount {
+  display: none;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+}
+
+.todayDot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-new);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
+
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+}
+
+.swatchNew {
+  background: var(--color-new);
+}
+
+.swatchFinal {
+  border: 2px solid var(--color-final);
+}
+
+.swatchRerun {
+  border: 1.5px dashed var(--color-rerun);
+}
+
+.legendTime {
+  font-family: var(--font-mono);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+}
+
+@media (min-width: 40rem) {
+  .dayCount {
+    display: block;
+  }
+}

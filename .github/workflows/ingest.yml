@@ -1,0 +1,51 @@
+# Scheduled ingestion from Syoboi Calendar into the production database.
+# Disabled until the repository variable INGEST_ENABLED is "true" and the secrets
+# DATABASE_URL and SYOBOI_USER_AGENT are configured (see docs/operations.md#scheduled-ingestion).
+name: Ingest
+
+on:
+  schedule:
+    # Off the hour on purpose (source rules ask clients not to cluster on :00).
+    - cron: "23 */6 * * *"
+    - cron: "41 19 * * *"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "ingest command"
+        required: true
+        default: update
+        type: choice
+        options: [update, recent, season, derive, channels]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    if: vars.INGEST_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SYOBOI_USER_AGENT: ${{ secrets.SYOBOI_USER_AGENT }}
+      SYOBOI_MIN_INTERVAL_MS: "3000"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run db:deploy
+      - name: Random delay (spread load)
+        run: sleep $((RANDOM % 240))
+      - name: Run ingest
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then CMD="${{ inputs.command }}";
+          elif [ "${{ github.event.schedule }}" = "41 19 * * *" ]; then CMD="recent";
+          else CMD="update"; fi
+          npm run ingest -- "$CMD"

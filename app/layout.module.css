@@ -1,0 +1,27 @@
+.main {
+  min-height: calc(100dvh - var(--header-height) - 12rem);
+  padding-top: var(--space-6);
+}
+
+.skipLink {
+  position: absolute;
+  left: var(--space-4);
+  top: -3rem;
+  z-index: calc(var(--z-header) + 1);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+  font-weight: var(--weight-bold);
+  transition: top var(--duration-fast) var(--ease-out);
+}
+
+.skipLink:focus {
+  top: var(--space-2);
+}
+
+@media (min-width: 48rem) {
+  .main {
+    padding-top: var(--space-8);
+  }
+}
