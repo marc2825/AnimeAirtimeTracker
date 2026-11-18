@@ -23,6 +23,7 @@ export default defineConfig({
           name: "db",
           environment: "node",
           include: ["src/**/*.db.test.ts"],
+          setupFiles: ["src/test/load-env.ts"],
           // DB tests share one database; run files serially.
           fileParallelism: false,
           testTimeout: 60_000,
