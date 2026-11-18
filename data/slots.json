@@ -1,0 +1,4 @@
+{
+  "$comment": "Curated slot registry. Only labels that already appear in source data are matched. kind=OFFICIAL requires an evidenceUrl to the broadcaster's own page. See docs/data-pipeline.md#slots.",
+  "slots": []
+}
