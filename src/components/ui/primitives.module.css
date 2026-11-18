@@ -1,0 +1,374 @@
+/* ---- Page header ---------------------------------------------------------- */
+.pageHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-8);
+  margin-bottom: var(--space-6);
+}
+
+.pageHeaderMain {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 48rem;
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--color-accent);
+  font-weight: var(--weight-medium);
+}
+
+.pageTitle {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
+}
+
+.lead {
+  color: var(--color-ink-2);
+  font-size: var(--text-md);
+  line-height: var(--leading-snug);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  margin-top: var(--space-1);
+}
+
+.pageActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+@media (min-width: 48rem) {
+  .pageTitle {
+    font-size: var(--text-3xl);
+  }
+}
+
+/* ---- Section ------------------------------------------------------------------ */
+.section {
+  margin-top: var(--space-10);
+}
+
+.sectionHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3) var(--space-6);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border);
+}
+
+.sectionHeading {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.sectionTitle {
+  font-size: var(--text-xl);
+}
+
+.subsectionTitle {
+  font-size: var(--text-lg);
+}
+
+.sectionDescription {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  line-height: var(--leading-snug);
+  max-width: 48rem;
+}
+
+.sectionActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ---- Card ----------------------------------------------------------------------- */
+.card {
+  background: var(--color-surface-1);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+}
+
+/* ---- Badge ---------------------------------------------------------------------- */
+.badgeRow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  vertical-align: middle;
+}
+
+.badge {
+  --badge-color: var(--color-ink-2);
+  --badge-soft: var(--state-pressed);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 1.25rem;
+  padding: 0 0.4rem;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.variant-soft {
+  background: var(--badge-soft);
+  color: var(--badge-color);
+}
+
+.variant-solid {
+  background: var(--badge-color);
+  color: var(--color-surface-2);
+}
+
+.variant-outline {
+  border-color: var(--badge-color);
+  color: var(--badge-color);
+}
+
+.variant-dashed {
+  border: 1px dashed var(--badge-color);
+  color: var(--badge-color);
+}
+
+.tone-accent {
+  --badge-color: var(--color-accent);
+  --badge-soft: var(--color-accent-soft);
+}
+.tone-new {
+  --badge-color: var(--color-new);
+  --badge-soft: var(--color-new-soft);
+}
+.tone-final {
+  --badge-color: var(--color-final);
+  --badge-soft: var(--color-final-soft);
+}
+.tone-rerun {
+  --badge-color: var(--color-rerun);
+  --badge-soft: var(--color-rerun-soft);
+}
+.tone-note {
+  --badge-color: var(--color-note);
+  --badge-soft: var(--color-note-soft);
+}
+.tone-official {
+  --badge-color: var(--color-kind-official);
+}
+.tone-source {
+  --badge-color: var(--color-kind-source);
+}
+.tone-inferred {
+  --badge-color: var(--color-kind-inferred);
+}
+.tone-danger {
+  --badge-color: var(--color-danger);
+  --badge-soft: var(--color-danger-soft);
+}
+
+/* ---- Empty / notice ----------------------------------------------------------------- */
+.empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-12) var(--space-6);
+  border: 1px dashed var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+}
+
+.emptyIcon {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--color-surface-3);
+  color: var(--color-ink-3);
+}
+
+.emptyTitle {
+  font-weight: var(--weight-bold);
+}
+
+.emptyBody {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+  max-width: 32rem;
+  line-height: var(--leading-snug);
+}
+
+.emptyAction {
+  margin-top: var(--space-2);
+}
+
+.notice {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-sm);
+  border: var(--border);
+  background: var(--color-surface-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--color-ink-2);
+}
+
+.notice-warning {
+  border-color: color-mix(in srgb, var(--color-warning) 35%, transparent);
+  background: var(--color-note-soft);
+}
+
+.notice-danger {
+  border-color: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  background: var(--color-danger-soft);
+}
+
+.noticeIcon {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+  color: var(--color-ink-3);
+}
+
+.noticeTitle {
+  font-weight: var(--weight-bold);
+  color: var(--color-ink);
+  margin-bottom: var(--space-0-5);
+}
+
+.noticeBody {
+  display: grid;
+  gap: var(--space-1);
+}
+
+/* ---- Skeleton ------------------------------------------------------------------------ */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-surface-3) 0%, var(--color-surface-1) 50%, var(--color-surface-3) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+.skeletonBlock {
+  display: grid;
+  gap: var(--space-2);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
+/* ---- Stat tiles --------------------------------------------------------------------- */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--color-line);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.statTile {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--color-surface-1);
+}
+
+.statLabel {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  font-weight: var(--weight-medium);
+}
+
+.statValue {
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.statUnit {
+  margin-left: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-2);
+}
+
+.statHint {
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+  line-height: var(--leading-snug);
+}
+
+@media (min-width: 64rem) {
+  .statGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* ---- Key/value ---------------------------------------------------------------------- */
+.keyValue {
+  display: grid;
+  gap: 0;
+}
+
+.keyValueRow {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: var(--border);
+  font-size: var(--text-sm);
+}
+
+.keyValueRow dt {
+  color: var(--color-ink-3);
+}
+
+.keyValueRow dd {
+  min-width: 0;
+}
+
+.external {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-accent);
+}

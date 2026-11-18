@@ -1,0 +1,171 @@
+.scroller {
+  overflow-x: auto;
+  padding-bottom: var(--space-3);
+  scroll-snap-type: x proximity;
+  border-radius: var(--radius-md);
+}
+
+.scroller:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.timeline {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(11.5rem, 13rem);
+  gap: 0;
+  min-width: min-content;
+}
+
+.season {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  scroll-snap-align: end;
+  border-left: 1px solid var(--color-grid);
+}
+
+.season:first-child {
+  border-left: 0;
+}
+
+.axis {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: end;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  min-height: 3rem;
+}
+
+/* The continuous time rail */
+.axis::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--space-2) * -1);
+  right: calc(var(--space-2) * -1);
+  bottom: 4px;
+  height: 2px;
+  background: var(--color-line-strong);
+}
+
+.year {
+  grid-column: 1 / -1;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+  line-height: 1;
+  min-height: 1em;
+}
+
+.quarter {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+
+.node {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-bg);
+}
+
+.nodeEmpty {
+  background: var(--color-bg);
+  border: 2px solid var(--color-line-strong);
+}
+
+.nodeMoved {
+  background: var(--color-new);
+}
+
+.position {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  min-height: 1.75rem;
+}
+
+.positionTime {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0;
+}
+
+.positionNone {
+  color: var(--color-ink-3);
+}
+
+.moved {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  padding: 0.05rem 0.35rem;
+  border-radius: var(--radius-xs);
+  color: var(--color-new);
+  border: 1px solid var(--color-new);
+}
+
+.titles {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.title {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  border: var(--border);
+  border-top: 3px solid var(--color-accent);
+  box-shadow: var(--shadow-1);
+}
+
+.titleContinued {
+  border-top-color: var(--color-line-strong);
+  background: var(--color-surface-1);
+}
+
+.titleLink {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+}
+
+.titleMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+}
+
+.continued {
+  font-family: var(--font-sans);
+}
+
+.none {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+  padding: var(--space-3);
+  border: 1px dashed var(--color-line);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.seasonEmpty .quarter {
+  color: var(--color-ink-3);
+}
