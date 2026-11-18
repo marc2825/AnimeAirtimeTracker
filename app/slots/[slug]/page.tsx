@@ -89,11 +89,11 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
       <StatGrid>
         <StatTile label="作品" value={slot.titleCount} unit="作品" hint="この枠に属すると判定した作品数" />
         <StatTile label="観測クール" value={slot.seasonCount} unit="クール" hint={first && last ? `${formatSeasonOrdinal(first)}〜${formatSeasonOrdinal(last)}` : "対象局での定時放送なし"} />
-        <StatTile label="時刻移動" value={changes.length} unit="回" hint="クール間で主な開始時刻・曜日が変わった回数" />
+        <StatTile label="開始時刻の変化" value={changes.length} unit="回" hint="枠の開始（所属作品の最も早い開始）の曜日・時刻がクール間で変わった回数" />
         <StatTile label="関連枠" value={slot.related.length} unit="枠" hint="作品が重なる他の枠" />
       </StatGrid>
 
-      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。各クールの位置は、そのクールに所属作品が放送された最頻の曜日・時刻です。灰色の上線は前クールから継続している作品を示します。">
+      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。各クールの位置は、所属作品の定時放送のうち最も早い開始時刻（同じ曜日内）です。灰色の上線は前クールから継続している作品。出典記載枠では、所属の記載がない作品は含まれないため、開始時刻の変化が記載状況による場合があります。">
         {slot.timeline.length === 0 ? (
           <EmptyState title="対象局での定時放送が確認できません">
             出典にこの枠名の記載はありますが、本サイトの対象局・取得期間では{MIN_REGULAR_AIRINGS}回以上の定時放送を確認できませんでした。
@@ -104,7 +104,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
       </Section>
 
       <div className={styles.columns}>
-        <Section id="changes" title="時刻の変更履歴" level={3}>
+        <Section id="changes" title="開始時刻の変化" level={3}>
           {changes.length === 0 ? (
             <p className={styles.muted}>取得期間内に時刻・曜日の変更はありません。</p>
           ) : (

@@ -58,8 +58,8 @@ Process: report via GitHub Issue → PR editing the file (reviewed) → next imp
 
 ## Slots
 
-Rule version `slots-v2` (`src/domain/slots.ts`, explained publicly on `/about#slots`):
+Rule version `slots-v3` (`src/domain/slots.ts`, explained publicly on `/about#slots`):
 
-- **SOURCE_LABEL**: comment lines matching `「X」枠で/にて/内で放送`; ≥2 member titles; home channel = most member titles with regular positions; rerun-context statements get `MEDIUM` confidence.
+- **SOURCE_LABEL**: comment lines matching `「X」枠で/にて/内で放送`; ≥2 member titles; home channel = most member titles with regular positions; the per-season position is the block (modal weekday, earliest start, span to latest end); rerun-context statements get `MEDIUM` confidence.
 - **INFERRED**: exact (channel, weekday, start) with regular positions of ≥3 titles across ≥3 seasons.
 - **OFFICIAL**: only via `data/slots.json` with an `evidenceUrl` on the broadcaster's own site (registry intentionally empty until verified).

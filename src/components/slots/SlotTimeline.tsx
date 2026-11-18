@@ -34,7 +34,7 @@ export function SlotTimeline({ seasons }: { seasons: TimelineSeason[] }) {
                       <span className={entry.position.weekday === 5 ? "sat" : entry.position.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[entry.position.weekday]}</span>{" "}
                       {formatAnimeMinute(entry.position.minute)}
                     </span>
-                    {entry.moved ? <span className={styles.moved}>時刻移動</span> : null}
+                    {entry.moved ? <span className={styles.moved}>開始変更</span> : null}
                   </>
                 ) : (
                   <span className={styles.positionNone}>—</span>

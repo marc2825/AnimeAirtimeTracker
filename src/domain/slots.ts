@@ -13,7 +13,7 @@
 import { seasonOfAnimeDate, seasonOrdinal } from "./season";
 import { formatAnimeMinute, WEEKDAY_KEYS, WEEKDAY_LABELS, type IsoDate, type Weekday } from "./time";
 
-export const SLOT_RULE_VERSION = "slots-v2";
+export const SLOT_RULE_VERSION = "slots-v3";
 export const MIN_REGULAR_AIRINGS = 3;
 export const INFERRED_MIN_TITLES = 3;
 export const INFERRED_MIN_SEASONS = 3;
@@ -180,6 +180,11 @@ function membershipFromPositions(
   };
 }
 
+/**
+ * Per-season slot position on one channel. A slot can hold several titles per season (e.g. a one-hour
+ * block with shows at 23:00 and 23:30), so the position is the block: the modal weekday, the earliest
+ * start on that weekday, and the span to the latest end. A "time move" is a change of the block start.
+ */
 function seasonsFromPositions(positions: TitlePosition[], channelId: number): DerivedSlotSeason[] {
   const bySeason = new Map<number, TitlePosition[]>();
   for (const position of positions) {
@@ -191,14 +196,16 @@ function seasonsFromPositions(positions: TitlePosition[], channelId: number): De
   return [...bySeason.entries()]
     .sort(([a], [b]) => a - b)
     .map(([ordinal, list]) => {
-      const modal = mode(list, (p) => `${p.weekday}|${String(p.startMinute).padStart(4, "0")}`)!.value;
-      const duration = mode(list, (p) => String(p.durationMinutes).padStart(4, "0"))!.value.durationMinutes;
+      const weekday = mode(list, (p) => String(p.weekday))!.value.weekday;
+      const sameDay = list.filter((p) => p.weekday === weekday);
+      const start = Math.min(...sameDay.map((p) => p.startMinute));
+      const end = Math.max(...sameDay.map((p) => p.startMinute + p.durationMinutes));
       return {
         seasonOrdinal: ordinal,
         channelId,
-        animeWeekday: modal.weekday,
-        animeStartMinute: modal.startMinute,
-        durationMinutes: duration,
+        animeWeekday: weekday,
+        animeStartMinute: start,
+        durationMinutes: end - start,
         titleCount: new Set(list.map((p) => p.titleId)).size
       };
     });

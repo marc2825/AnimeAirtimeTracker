@@ -162,6 +162,22 @@ describe("slots", () => {
     expect(inferred.memberships.map((m) => m.titleId).sort()).toEqual([1, 2]);
   });
 
+  it("treats a multi-title block as one position (no false time moves)", () => {
+    // Two shows per season at 23:00 and 23:30 in the same labelled slot.
+    const broadcasts: SlotInputBroadcast[] = [
+      ...weekly(1, "2026-07-06", 1380, { channelId: 10 }),
+      ...weekly(2, "2026-07-06", 1410, { channelId: 10 }),
+      ...weekly(3, "2026-10-05", 1380, { channelId: 10 }),
+      ...weekly(4, "2026-10-05", 1410, { channelId: 10 })
+    ].map((a) => toSlotInput(a));
+    const titles = [1, 2, 3, 4].map((id) => ({ id, externalId: String(id), slotLabels: ["ブロック"], evidence: {} }));
+    const [slot] = deriveSlots({ titles, channels: [{ id: 10, slug: "ntv", shortName: "日テレ", sortOrder: 1 }], broadcasts, registry: [], membershipOverrides: [] });
+    expect(slot!.seasons.map((s) => [s.animeStartMinute, s.durationMinutes])).toEqual([
+      [1380, 60],
+      [1380, 60]
+    ]);
+  });
+
   it("skips labels with a single member unless curated", () => {
     const slots = deriveSlots({
       titles: [{ id: 1, externalId: "1", slotLabels: ["単独枠"], evidence: {} }],
