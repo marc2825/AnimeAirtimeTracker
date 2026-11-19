@@ -1,6 +1,7 @@
 # Scheduled ingestion from Syoboi Calendar into the production database.
-# Disabled until the repository variable INGEST_ENABLED is "true" and the secrets
-# DATABASE_URL and SYOBOI_USER_AGENT are configured (see docs/operations.md#scheduled-ingestion).
+# Runs only when the repository variable INGEST_ENABLED is "true" and the secrets
+# DIRECT_DATABASE_URL (owner role, NON-pooled: the ingest lock is session-scoped) and
+# SYOBOI_USER_AGENT are configured. See docs/operations.md#scheduled-ingestion.
 name: Ingest
 
 on:
@@ -15,7 +16,15 @@ on:
         required: true
         default: update
         type: choice
-        options: [update, recent, season, derive, channels]
+        options: [update, recent, season, backfill, derive, channels]
+      from:
+        description: "backfill: first season (e.g. 2024-winter)"
+        required: false
+        default: ""
+      to:
+        description: "backfill: last season (e.g. 2026-summer)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -28,11 +37,17 @@ jobs:
   ingest:
     if: vars.INGEST_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
       SYOBOI_USER_AGENT: ${{ secrets.SYOBOI_USER_AGENT }}
       SYOBOI_MIN_INTERVAL_MS: "3000"
+      EVENT: ${{ github.event_name }}
+      SCHEDULE: ${{ github.event.schedule }}
+      INPUT_COMMAND: ${{ inputs.command }}
+      INPUT_FROM: ${{ inputs.from }}
+      INPUT_TO: ${{ inputs.to }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -42,10 +57,19 @@ jobs:
       - run: npm ci
       - run: npm run db:deploy
       - name: Random delay (spread load)
+        if: github.event_name == 'schedule'
         run: sleep $((RANDOM % 240))
       - name: Run ingest
+        # Inputs arrive via env and are validated, never interpolated into the script.
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then CMD="${{ inputs.command }}";
-          elif [ "${{ github.event.schedule }}" = "41 19 * * *" ]; then CMD="recent";
+          if [ "$EVENT" = "workflow_dispatch" ]; then CMD="$INPUT_COMMAND";
+          elif [ "$SCHEDULE" = "41 19 * * *" ]; then CMD="recent";
           else CMD="update"; fi
-          npm run ingest -- "$CMD"
+          case "$CMD" in update|recent|season|derive|channels) npm run ingest -- "$CMD" ;;
+            backfill)
+              for s in "$INPUT_FROM" "$INPUT_TO"; do
+                echo "$s" | grep -Eq '^[0-9]{4}-(winter|spring|summer|autumn)$' || { echo "invalid season: $s"; exit 1; }
+              done
+              npm run ingest -- backfill --from "$INPUT_FROM" --to "$INPUT_TO" ;;
+            *) echo "unknown command"; exit 1 ;;
+          esac

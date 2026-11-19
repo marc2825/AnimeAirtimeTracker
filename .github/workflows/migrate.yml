@@ -1,0 +1,34 @@
+# Applies Prisma migrations to the production database when migrations change on main.
+# Runs only when the repository variable MIGRATE_ON_PUSH is "true" and the secret
+# DIRECT_DATABASE_URL (owner role, non-pooled) is configured. Keep migrations additive
+# (expand → deploy code → contract) because Vercel deploys the app in parallel.
+name: Migrate
+
+on:
+  push:
+    branches: [main]
+    paths: ["prisma/migrations/**", "prisma/schema.prisma"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: vars.MIGRATE_ON_PUSH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run db:deploy

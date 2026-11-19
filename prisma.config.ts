@@ -12,7 +12,8 @@ export default defineConfig({
     path: "prisma/migrations"
   },
   datasource: {
-    // Placeholder keeps `prisma generate` working without a database (postinstall, CI build).
-    url: process.env.DATABASE_URL ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+    // Migrations need a direct (non-pooled) connection when the runtime goes through a pooler (Neon).
+    // The placeholder keeps `prisma generate` working without a database (postinstall, CI build).
+    url: process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL ?? "postgresql://placeholder:placeholder@localhost:5432/placeholder"
   }
 });

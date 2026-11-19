@@ -8,7 +8,9 @@ export const SOURCE_NAME = "しょぼいカレンダー";
 export const SOURCE_URL = "https://cal.syoboi.jp/";
 
 export function siteUrl(): URL {
-  const raw = process.env.SITE_URL ?? "http://localhost:3000";
+  // SITE_URL wins; on Vercel fall back to the production domain it injects.
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined;
+  const raw = process.env.SITE_URL ?? vercel ?? "http://localhost:3000";
   try {
     return new URL(raw);
   } catch {
