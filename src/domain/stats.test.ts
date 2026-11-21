@@ -54,9 +54,30 @@ describe("seasonTrend", () => {
       ...weekly(2, "2026-10-05", 22 * 60) // autumn, prime time
     ]);
     expect(rows).toEqual([
-      { seasonOrdinal: 20263, titles: 1, broadcasts: 4, newTitles: 1, lateNightShare: 1 },
-      { seasonOrdinal: 20264, titles: 2, broadcasts: 8, newTitles: 1, lateNightShare: 0.5 }
+      { seasonOrdinal: 20263, titles: 1, broadcasts: 4, newTitles: 1, lateNightShare: 1, bandTitles: {} },
+      { seasonOrdinal: 20264, titles: 2, broadcasts: 8, newTitles: 1, lateNightShare: 0.5, bandTitles: {} }
     ]);
+  });
+
+  it("counts each title once per season in the band of its modal start time", () => {
+    const bands = [
+      { key: "prime", from: 19 * 60, to: 23 * 60 },
+      { key: "late", from: 23 * 60, to: 25 * 60 },
+      { key: "latelate", from: 25 * 60, to: 29 * 60 }
+    ];
+    const rows = seasonTrend(
+      [
+        ...weekly(1, "2026-10-05", 25 * 60), // 25:00 → latelate
+        ...weekly(2, "2026-10-05", 23 * 60), // 23:00 boundary → late
+        ...weekly(3, "2026-10-05", 22 * 60 + 59), // 22:59 → prime
+        // Title 4 moves from 22:00 (3 weeks) to 24:30 (1 week): its modal start stays prime.
+        ...weekly(4, "2026-10-05", 22 * 60).slice(0, 3),
+        ...weekly(4, "2026-10-26", 24 * 60 + 30).slice(0, 1)
+      ],
+      bands
+    );
+    expect(rows[0]!.bandTitles).toEqual({ prime: 2, late: 1, latelate: 1 });
+    expect(Object.values(rows[0]!.bandTitles).reduce((a, b) => a + b, 0)).toBe(rows[0]!.titles);
   });
 });
 

@@ -7,11 +7,11 @@ import { Disclosure, FilterChips, Pagination, SegmentedLinks, SelectField, Submi
 import { FilterForm } from "@/components/ui/FilterForm";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState, FlagBadges, Notice, PageHeader, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
-import { REGIONS, REGION_KEYS, channelsInRegion } from "@/domain/coverage";
+import { NETWORKS, NETWORK_KEYS, REGIONS, REGION_KEYS, channelSlugsFor } from "@/domain/coverage";
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatSeasonOrdinal } from "@/lib/format";
-import { buildHref, flattenParams, parseCommonFilters, parsePage, parseQuery, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, flattenParams, LENGTH_OPTIONS, LENGTHS, parseCommonFilters, parsePage, parseQuery, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
 import { isUnfiltered, matchSlotPosition, type SlotCriteria } from "@/lib/slot-search";
 import { getTrackedChannels } from "@/server/queries/common";
 import { listSlots } from "@/server/queries/slots";
@@ -63,19 +63,33 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
     return <Notice tone="danger" title="検索できませんでした">時間をおいて再読み込みしてください。</Notice>;
   }
 
-  const filter = { season: filters.season, region: filters.region, channelSlug: filters.channel, weekday: filters.weekday, band: filters.band, rerun: filters.rerun, allKinds: filters.allKinds };
+  const filter = {
+    season: filters.season,
+    region: filters.region,
+    network: filters.network,
+    channelSlug: filters.channel,
+    weekday: filters.weekday,
+    band: filters.band,
+    length: filters.length,
+    rerun: filters.rerun,
+    allKinds: filters.allKinds
+  };
   const channelName = (id: number) => channels.find((c) => c.id === id)?.shortName ?? "";
 
   const chips: { label: string; removeHref: string }[] = [];
   if (query) chips.push({ label: `「${query}」`, removeHref: href({ q: null }) });
   if (single(params, "season")) chips.push({ label: filters.season ? formatSeason(filters.season) : "全期間", removeHref: href({ season: null }) });
   if (filters.region) chips.push({ label: REGIONS[filters.region].label, removeHref: href({ region: null }) });
+  if (filters.network) chips.push({ label: NETWORKS[filters.network].label, removeHref: href({ network: null }) });
   if (filters.channel) chips.push({ label: channels.find((c) => c.slug === filters.channel)?.name ?? filters.channel, removeHref: href({ channel: null }) });
   if (filters.weekday !== null) chips.push({ label: `${WEEKDAY_LABELS[filters.weekday]}曜`, removeHref: href({ day: null }) });
   if (filters.band) chips.push({ label: TIME_BANDS[filters.band].label, removeHref: href({ time: null }) });
+  if (filters.length) chips.push({ label: LENGTHS[filters.length].label, removeHref: href({ length: null }) });
   if (filters.rerun !== "exclude") chips.push({ label: filters.rerun === "include" ? "再放送を含む" : "再放送のみ", removeHref: href({ rerun: null }) });
   if (filters.allKinds) chips.push({ label: "関連番組も含む", removeHref: href({ kind: null }) });
-  const advancedOpen = Boolean(single(params, "season") || filters.region || filters.channel || filters.weekday !== null || filters.band || filters.rerun !== "exclude" || filters.allKinds);
+  const advancedOpen = Boolean(
+    single(params, "season") || filters.region || filters.network || filters.channel || filters.weekday !== null || filters.band || filters.length || filters.rerun !== "exclude" || filters.allKinds
+  );
 
   return (
     <div className={styles.layout}>
@@ -109,6 +123,13 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
               autoSubmit={false}
               options={[{ value: "", label: "すべて" }, ...REGION_KEYS.map((key) => ({ value: key, label: REGIONS[key].label }))]}
             />
+            <SelectField
+              label="系列"
+              name="network"
+              value={filters.network ?? ""}
+              autoSubmit={false}
+              options={[{ value: "", label: "すべて" }, ...NETWORK_KEYS.map((key) => ({ value: key, label: NETWORKS[key].label }))]}
+            />
             <SelectField label="放送局" name="channel" value={filters.channel ?? ""} autoSubmit={false} options={[{ value: "", label: "すべて" }, ...channels.map((c) => ({ value: c.slug, label: c.name }))]} />
             <SelectField
               label="曜日（アニメ時刻）"
@@ -118,6 +139,7 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
               options={[{ value: "", label: "すべて" }, ...WEEKDAY_LABELS.map((label, index) => ({ value: WEEKDAY_KEYS[index]!, label: `${label}曜` }))]}
             />
             <SelectField label="時間帯（開始時刻）" name="time" value={filters.band ?? ""} autoSubmit={false} options={TIME_BAND_OPTIONS} />
+            <SelectField label="放送時間（長さ）" name="length" value={filters.length ?? ""} autoSubmit={false} options={LENGTH_OPTIONS} />
             <SelectField
               label="再放送"
               name="rerun"
@@ -163,12 +185,12 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
           query={query}
           criteria={{
             season: single(params, "season") ? (filters.season ? seasonOrdinal(filters.season) : "any") : "latest",
-            channelSlugs: filters.channel ? new Set([filters.channel]) : filters.region ? new Set(channelsInRegion(filters.region).map((c) => c.slug)) : null,
+            channelSlugs: filters.channel ? new Set([filters.channel]) : channelSlugsFor(filters.region, filters.network),
             weekday: filters.weekday,
             band: filters.band
           }}
           seasonLabel={filters.season ? formatSeason(filters.season) : null}
-          ignoresAiringOnly={filters.rerun !== "exclude" || filters.allKinds}
+          ignoresAiringOnly={filters.rerun !== "exclude" || filters.allKinds || filters.length !== null}
         />
       )}
     </div>
@@ -309,7 +331,7 @@ async function SlotResults({ query, criteria, seasonLabel, ignoresAiringOnly }: 
         </h2>
         <p className={styles.resultsNote}>
           {unfiltered ? "放送枠はクール・地域・放送局・曜日・時間帯でも絞り込めます。" : basis}
-          {ignoresAiringOnly ? "再放送・番組の種類の条件は放送枠には適用されません。" : null}
+          {ignoresAiringOnly ? "再放送・番組の種類・放送時間の条件は放送枠には適用されません。" : null}
         </p>
       </div>
       {matched.length === 0 ? (

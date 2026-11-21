@@ -79,6 +79,41 @@ export function parseRegionKey(value: string | undefined | null): RegionKey | nu
   return value && (REGION_KEYS as string[]).includes(value) ? (value as RegionKey) : null;
 }
 
+/**
+ * Network (系列) filters. A network spans regions and media: 日本テレビ系 is 日本テレビ, 読売テレビ and BS日テレ.
+ * Combined with a region, the filter is the intersection (BS + 日テレ系 = BS日テレ).
+ */
+export const NETWORKS = {
+  nhk: { label: "NHK", networks: ["NHK"] },
+  ntv: { label: "日本テレビ系", networks: ["NTV"] },
+  tbs: { label: "TBS系", networks: ["TBS"] },
+  cx: { label: "フジテレビ系", networks: ["CX"] },
+  ex: { label: "テレビ朝日系", networks: ["EX"] },
+  tx: { label: "テレビ東京系", networks: ["TX"] },
+  independent: { label: "独立局（MX・BS11・AT-X）", networks: ["INDEPENDENT", "SATELLITE"] }
+} as const satisfies Record<string, { label: string; networks: readonly Network[] }>;
+
+export type NetworkKey = keyof typeof NETWORKS;
+export const NETWORK_KEYS = Object.keys(NETWORKS) as NetworkKey[];
+
+export function channelsInNetwork(key: NetworkKey): TrackedChannel[] {
+  const networks: readonly Network[] = NETWORKS[key].networks;
+  return TRACKED_CHANNELS.filter((channel) => networks.includes(channel.network));
+}
+
+export function parseNetworkKey(value: string | undefined | null): NetworkKey | null {
+  return value && (NETWORK_KEYS as string[]).includes(value) ? (value as NetworkKey) : null;
+}
+
+/** Channel slugs selected by region and network filters (null = no restriction). */
+export function channelSlugsFor(region: RegionKey | null, network: NetworkKey | null): Set<string> | null {
+  if (!region && !network) return null;
+  const inRegion = region ? new Set(channelsInRegion(region).map((c) => c.slug)) : null;
+  const inNetwork = network ? new Set(channelsInNetwork(network).map((c) => c.slug)) : null;
+  if (inRegion && inNetwork) return new Set([...inRegion].filter((slug) => inNetwork.has(slug)));
+  return inRegion ?? inNetwork;
+}
+
 export const MEDIUM_LABELS: Record<Medium, string> = { TERRESTRIAL: "地上波", BS: "BS", CS: "CS" };
 export const AREA_LABELS: Record<Area, string> = { NATIONWIDE: "全国", KANTO: "関東", KANSAI: "関西" };
 

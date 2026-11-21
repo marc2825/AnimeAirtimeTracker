@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHref, inTimeBand, parseCommonFilters, parseIsoDateParam, parsePage, parseQuery, parseSlug, parseTimeBand, TIME_BANDS, type TimeBand } from "./search-params";
+import { buildHref, inLength, inTimeBand, parseCommonFilters, parseIsoDateParam, parseLength, parsePage, parseQuery, parseSlug, parseTimeBand, TIME_BANDS, type TimeBand } from "./search-params";
 
 const at = (hour: number, minute = 0) => hour * 60 + minute;
 const bandsOf = (minute: number) => (Object.keys(TIME_BANDS) as TimeBand[]).filter((band) => inTimeBand(minute, band));
@@ -51,7 +51,7 @@ describe("URL state", () => {
       { season: "2026-autumn", region: "kansai", day: "sat", time: "latelate", rerun: "only", kind: "all", channel: "MX;DROP" },
       { rerun: "exclude", season: null }
     );
-    expect(filters).toEqual({ season: { year: 2026, quarter: 4 }, region: "kansai", channel: null, weekday: 5, band: "latelate", rerun: "only", allKinds: true });
+    expect(filters).toEqual({ season: { year: 2026, quarter: 4 }, region: "kansai", network: null, channel: null, weekday: 5, band: "latelate", length: null, rerun: "only", allKinds: true });
     const defaults = parseCommonFilters({ season: "bogus", region: "tokyo", day: "x", time: "noon", rerun: "maybe" }, { rerun: "exclude", season: { year: 2026, quarter: 4 } });
     expect(defaults).toMatchObject({ season: { year: 2026, quarter: 4 }, region: null, weekday: null, band: null, rerun: "exclude" });
     expect(parseCommonFilters({ season: "all" }, { rerun: "exclude", season: { year: 2026, quarter: 4 } }).season).toBeNull();
@@ -72,5 +72,25 @@ describe("URL state", () => {
     expect(buildHref("/search", { q: "月", page: "3", region: "kanto" }, { region: null, view: "airings" })).toBe("/search?q=%E6%9C%88&view=airings");
     expect(buildHref("/search", { page: "2" }, { page: "3" })).toBe("/search?page=3");
     expect(buildHref("/schedule", {}, {})).toBe("/schedule");
+  });
+});
+
+describe("airing length presets", () => {
+  it.each([
+    [5, "short"],
+    [15, "short"],
+    [16, "standard"],
+    [30, "standard"],
+    [45, "standard"],
+    [46, "long"],
+    [120, "long"]
+  ] as const)("%i minutes is %s (half-open bounds)", (minutes, expected) => {
+    expect((["short", "standard", "long"] as const).filter((key) => inLength(minutes, key))).toEqual([expected]);
+  });
+
+  it("parses network and length from the URL, ignoring unknown values", () => {
+    expect(parseCommonFilters({ network: "ntv", length: "short" }, { rerun: "exclude", season: null })).toMatchObject({ network: "ntv", length: "short" });
+    expect(parseCommonFilters({ network: "toString", length: "constructor" }, { rerun: "exclude", season: null })).toMatchObject({ network: null, length: null });
+    expect(parseLength("long")).toBe("long");
   });
 });

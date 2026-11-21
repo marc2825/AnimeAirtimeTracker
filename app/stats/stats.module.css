@@ -106,3 +106,38 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+.compare {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.caption {
+  margin-bottom: var(--space-2);
+  text-align: left;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-ink-2);
+}
+
+@media (min-width: 64rem) {
+  .compare {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.filterForm > details {
+  flex: 1 1 100%;
+}
+
+.filterDetails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: flex-end;
+}
+
+.filterDetails > label {
+  min-width: 9rem;
+}

@@ -88,6 +88,17 @@ describe("time band filters (PostgreSQL)", () => {
     expect([...selectedMinutes].sort((a, b) => a - b)).toEqual([23 * 60, 23 * 60 + 59, 24 * 60, 24 * 60 + 59, 25 * 60, 28 * 60 + 59]);
   });
 
+  it.each<[AiringFilter]>([
+    [{ band: "latenight", network: "independent", rerun: "include", allKinds: true }],
+    [{ region: "kanto", network: "independent", rerun: "include", allKinds: true }],
+    [{ region: "bs", network: "cx", rerun: "include", allKinds: true }],
+    [{ length: "standard", rerun: "include", allKinds: true }],
+    [{ length: "short", rerun: "include", allKinds: true }],
+    [{ band: "aftermidnight", length: "standard", rerun: "exclude", allKinds: true }]
+  ])("network and length filters select the same airings in Prisma and SQL: %j", async (filter) => {
+    expect(await viaSql(filter)).toEqual(await viaPrisma(filter));
+  });
+
   it.each<[RerunMode, "kanto" | null]>([
     ["exclude", null],
     ["only", null],

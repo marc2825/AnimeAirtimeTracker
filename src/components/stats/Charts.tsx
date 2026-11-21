@@ -190,3 +190,54 @@ export function ColumnChart({ columns, unit }: { columns: { key: string; label: 
     </div>
   );
 }
+
+/**
+ * Stacked columns for ordered series (e.g. time of day). Series i uses the sequential step `firstStep + i`, so later
+ * series are more prominent in both themes; segments are separated by a 2px surface gap and carry a hover title.
+ */
+export function StackedColumnChart({
+  columns,
+  series,
+  unit,
+  firstStep = 3
+}: {
+  columns: { key: string; label: string; sublabel?: string; segments: number[]; highlight?: boolean }[];
+  series: { key: string; label: string }[];
+  unit: string;
+  firstStep?: number;
+}) {
+  const totals = columns.map((column) => column.segments.reduce((a, b) => a + b, 0));
+  const max = Math.max(1, ...totals);
+  return (
+    <div>
+      <ul role="list" className={styles.seriesLegend}>
+        {series.map((item, index) => (
+          <li key={item.key}>
+            <span className={styles.seriesSwatch} data-step={firstStep + index} aria-hidden="true" />
+            {item.label}
+          </li>
+        ))}
+      </ul>
+      <div className={styles.columnsWrap}>
+        <ol role="list" className={styles.columns} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
+          {columns.map((column, columnIndex) => (
+            <li key={column.key} className={`${styles.column} ${column.highlight ? styles.columnHighlight : ""}`} title={`${column.label}: 計${totals[columnIndex]}${unit}`}>
+              <span className={styles.columnValue}>{totals[columnIndex]}</span>
+              <span className={styles.stack} style={{ height: `${(totals[columnIndex]! / max) * 100}%` }}>
+                {column.segments.map((value, index) =>
+                  value > 0 ? (
+                    <span key={series[index]!.key} className={styles.stackSegment} data-step={firstStep + index} style={{ flexGrow: value }} title={`${column.sublabel ?? ""}${column.label} ${series[index]!.label}: ${value}${unit}`} />
+                  ) : null
+                )}
+              </span>
+              <span className={styles.columnLabel}>
+                {column.sublabel ? <span className={styles.columnYear}>{column.sublabel}</span> : null}
+                {column.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}

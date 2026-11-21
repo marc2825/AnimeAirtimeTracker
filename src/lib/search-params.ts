@@ -2,7 +2,7 @@
  * URL state parsing shared by pages. Every value is whitelisted; unknown values fall back to defaults,
  * so a hand-edited URL can never reach the database layer unvalidated.
  */
-import { parseRegionKey, type RegionKey } from "@/domain/coverage";
+import { parseNetworkKey, parseRegionKey, type NetworkKey, type RegionKey } from "@/domain/coverage";
 import { parseSeasonId, type Season } from "@/domain/season";
 import { isIsoDate, parseWeekdayKey, type IsoDate, type Weekday } from "@/domain/time";
 
@@ -46,6 +46,25 @@ export function inTimeBand(animeStartMinute: number, band: TimeBand): boolean {
 
 export const TIME_BAND_OPTIONS = [{ value: "", label: "すべて" }, ...Object.entries(TIME_BANDS).map(([value, band]) => ({ value, label: band.label }))];
 
+/** Airing length presets on durationMinutes, half-open [min, max). */
+export const LENGTHS = {
+  short: { label: "短編（15分以下）", min: 0, max: 16 },
+  standard: { label: "30分前後（16〜45分）", min: 16, max: 46 },
+  long: { label: "長尺（46分以上）", min: 46, max: null }
+} as const satisfies Record<string, { label: string; min: number; max: number | null }>;
+export type LengthKey = keyof typeof LENGTHS;
+
+export function parseLength(value: string | undefined): LengthKey | null {
+  return value && Object.hasOwn(LENGTHS, value) ? (value as LengthKey) : null;
+}
+
+export function inLength(durationMinutes: number, key: LengthKey): boolean {
+  const { min, max } = LENGTHS[key];
+  return durationMinutes >= min && (max === null || durationMinutes < max);
+}
+
+export const LENGTH_OPTIONS = [{ value: "", label: "すべて" }, ...Object.entries(LENGTHS).map(([value, length]) => ({ value, label: length.label }))];
+
 export function parseRerunMode(value: string | undefined, fallback: RerunMode): RerunMode {
   return value === "exclude" || value === "include" || value === "only" ? value : fallback;
 }
@@ -70,9 +89,11 @@ export function parseQuery(value: string | undefined): string {
 export interface CommonFilters {
   season: Season | null;
   region: RegionKey | null;
+  network: NetworkKey | null;
   channel: string | null;
   weekday: Weekday | null;
   band: TimeBand | null;
+  length: LengthKey | null;
   rerun: RerunMode;
   allKinds: boolean;
 }
@@ -82,9 +103,11 @@ export function parseCommonFilters(params: RawSearchParams, defaults: { rerun: R
   return {
     season: seasonParam === "all" ? null : (parseSeasonId(seasonParam) ?? defaults.season),
     region: parseRegionKey(single(params, "region")),
+    network: parseNetworkKey(single(params, "network")),
     channel: parseSlug(single(params, "channel")),
     weekday: parseWeekdayKey(single(params, "day")),
     band: parseTimeBand(single(params, "time")),
+    length: parseLength(single(params, "length")),
     rerun: parseRerunMode(single(params, "rerun"), defaults.rerun),
     allKinds: single(params, "kind") === "all"
   };

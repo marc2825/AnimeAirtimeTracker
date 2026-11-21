@@ -59,10 +59,20 @@ export interface SeasonTrendRow {
   newTitles: number;
   /** Share (0–1) of the season's titles whose modal start time is 24:00 or later. */
   lateNightShare: number;
+  /** Titles per band, each title counted once by its modal start time in the season (bands should not overlap). */
+  bandTitles: Record<string, number>;
 }
 
-export function seasonTrend(airings: StatAiring[]): SeasonTrendRow[] {
-  const bySeason = new Map<number, StatAiring[]>();
+export interface TrendBand {
+  key: string;
+  from: number;
+  to: number;
+}
+
+type TrendAiring = Pick<StatAiring, "titleId" | "animeDate" | "animeStartMinute">;
+
+export function seasonTrend(airings: TrendAiring[], bands: readonly TrendBand[] = []): SeasonTrendRow[] {
+  const bySeason = new Map<number, TrendAiring[]>();
   const firstSeasonOfTitle = new Map<number, number>();
   for (const airing of airings) {
     const ordinal = seasonOrdinal(seasonOfAnimeDate(airing.animeDate));
@@ -82,9 +92,12 @@ export function seasonTrend(airings: StatAiring[]): SeasonTrendRow[] {
         titleStarts.set(airing.titleId, counts);
       }
       let late = 0;
+      const bandTitles: Record<string, number> = Object.fromEntries(bands.map((band) => [band.key, 0]));
       for (const counts of titleStarts.values()) {
         const modal = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]![0];
         if (modal >= 24 * 60) late += 1;
+        const band = bands.find((candidate) => modal >= candidate.from && modal < candidate.to);
+        if (band) bandTitles[band.key]! += 1;
       }
       const titles = titleStarts.size;
       return {
@@ -92,7 +105,8 @@ export function seasonTrend(airings: StatAiring[]): SeasonTrendRow[] {
         titles,
         broadcasts: list.length,
         newTitles: [...titleStarts.keys()].filter((id) => firstSeasonOfTitle.get(id) === ordinal).length,
-        lateNightShare: titles === 0 ? 0 : late / titles
+        lateNightShare: titles === 0 ? 0 : late / titles,
+        bandTitles
       };
     });
 }
