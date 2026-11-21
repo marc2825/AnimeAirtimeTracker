@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { io } from "next/cache";
-import { Suspense } from "react";
+import { Suspense, type CSSProperties } from "react";
 
-import { latestOrdinal, SlotCard } from "@/components/slots/SlotCard";
+import { latestOrdinal, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
+import { StripTooltip } from "@/components/slots/StripTooltip";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
 import { ButtonLink } from "@/components/ui/controls";
 import { CountUp } from "@/components/ui/CountUp";
-import { FlagBadges, Notice, Skeleton, SkeletonBlock } from "@/components/ui/primitives";
+import { FlagBadges, MoreInfo, Notice, Skeleton, SkeletonBlock } from "@/components/ui/primitives";
 import { REGIONS, REGION_KEYS } from "@/domain/coverage";
 import { currentSeason, formatSeason } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, currentAnimeDate, formatIsoDateJa, toAnimeTime, weekdayOf } from "@/domain/time";
 import { episodeText, formatCoverage, formatDateTime, formatStartTime } from "@/lib/format";
-import { SITE_NAME } from "@/lib/site";
 import { getSchedule } from "@/server/queries/schedule";
-import { listSlots } from "@/server/queries/slots";
+import { getSlotStripTitles, listSlots, type StripTitles } from "@/server/queries/slots";
 import { getSeasonStats, statsFilter } from "@/server/queries/stats";
 import { getDatasetStatus } from "@/server/queries/status";
 
@@ -25,41 +25,48 @@ export default function HomePage() {
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
           <h1 id="hero-title" className={styles.heroTitle}>
-            アニメの放送編成を、
-            <br />
-            今週から過去まで。
+            TVアニメの番組表・放送枠・編成統計
           </h1>
-          <p className={styles.heroLead}>
-            今週の番組表から、ノイタミナのような放送枠の作品の移り変わり、曜日×時間帯の編成統計まで。しょぼいカレンダーの番組データを、編成の時系列として読み解けるようにまとめています。
-          </p>
-          <div className={styles.heroActions}>
-            <ButtonLink href="/schedule" variant="primary" icon="arrowRight">
-              今週の番組表
-            </ButtonLink>
-            <Link href="/seasons" className={styles.textLink}>
-              クール別の新作
-            </Link>
-            <Link href="/slots" className={styles.textLink}>
-              放送枠の年表
-            </Link>
-          </div>
-          <div className={styles.index}>
-            <nav className={styles.indexRow} aria-label="曜日から探す">
-              <span className={styles.indexLabel}>曜日</span>
-              {WEEKDAY_LABELS.map((label, index) => (
-                <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={`${styles.indexLink} ${index === 5 ? "sat" : index === 6 ? "sun" : ""}`}>
-                  {label}
-                </Link>
-              ))}
-            </nav>
-            <nav className={styles.indexRow} aria-label="地域・媒体から探す">
-              <span className={styles.indexLabel}>地域</span>
-              {REGION_KEYS.map((key) => (
-                <Link key={key} href={key === "kanto" ? "/schedule" : `/schedule?region=${key}`} className={styles.indexLink}>
-                  {REGIONS[key].short}
-                </Link>
-              ))}
-            </nav>
+          <MoreInfo summary="このサイトについて">
+            <p>
+              今週の番組表、ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計をまとめています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠と統計は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
+            </p>
+            <p>
+              <Link href="/about" className="inline-link">
+                取得元と判定・集計のルール
+              </Link>
+            </p>
+          </MoreInfo>
+          <div className={styles.heroBar}>
+            <div className={styles.heroActions}>
+              <ButtonLink href="/schedule" variant="primary" icon="arrowRight">
+                今週の番組表
+              </ButtonLink>
+              <Link href="/seasons" className={styles.textLink}>
+                クール別の新作
+              </Link>
+              <Link href="/slots" className={styles.textLink}>
+                放送枠の年表
+              </Link>
+            </div>
+            <div className={styles.index}>
+              <nav className={styles.indexRow} aria-label="曜日から探す">
+                <span className={styles.indexLabel}>曜日</span>
+                {WEEKDAY_LABELS.map((label, index) => (
+                  <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={`${styles.indexLink} ${index === 5 ? "sat" : index === 6 ? "sun" : ""}`}>
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+              <nav className={styles.indexRow} aria-label="地域・媒体から探す">
+                <span className={styles.indexLabel}>地域</span>
+                {REGION_KEYS.map((key) => (
+                  <Link key={key} href={key === "kanto" ? "/schedule" : `/schedule?region=${key}`} className={styles.indexLink}>
+                    {REGIONS[key].short}
+                  </Link>
+                ))}
+              </nav>
+            </div>
           </div>
         </div>
         <Suspense fallback={<OnAirSkeleton />}>
@@ -116,7 +123,7 @@ async function OnAirPanel() {
       {upcoming.length === 0 ? (
         <p className={styles.onAirEmpty}>本日（5時切替）の関東地上波の新作放送は終了しました。</p>
       ) : (
-        <ol role="list" className={styles.onAirList}>
+        <ol role="list" className={styles.onAirList} style={{ "--rows": Math.ceil(upcoming.length / 2) } as CSSProperties}>
           {upcoming.map((item) => {
             const live = item.animeStartMinute <= nowMinute;
             return (
@@ -157,6 +164,12 @@ async function FeaturedSlots() {
   }
   const featured = slots.filter((slot) => slot.kind !== "INFERRED" && slot.seasonCount > 0).slice(0, 4);
   if (featured.length === 0) return null;
+  const stripEnd = latestOrdinal(slots);
+  // Names behind the strip ticks are a nicety: the cards still render if they cannot be read.
+  const titles: StripTitles = await getSlotStripTitles(
+    stripStartOrdinal(stripEnd),
+    featured.map((slot) => slot.slug)
+  ).catch(() => ({}));
   return (
     <section className={styles.block} aria-labelledby="featured-title">
       <div className={styles.blockHead}>
@@ -164,7 +177,7 @@ async function FeaturedSlots() {
           <h2 id="featured-title" className={styles.blockTitle}>
             放送枠の年表
           </h2>
-          <p className={styles.blockLead}>同じ枠でどの作品がどの順に放送され、時刻がいつ動いたか。出典に枠名が記載された主な枠です。</p>
+          <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品。</p>
         </div>
         <ButtonLink href="/slots" variant="ghost" icon="arrowRight">
           すべての放送枠
@@ -172,9 +185,10 @@ async function FeaturedSlots() {
       </div>
       <ul role="list" className={styles.slotGrid}>
         {featured.map((slot) => (
-          <SlotCard key={slot.slug} slot={slot} stripEnd={latestOrdinal(slots)} />
+          <SlotCard key={slot.slug} slot={slot} stripEnd={stripEnd} stripTitles={titles[slot.slug]} />
         ))}
       </ul>
+      <StripTooltip />
     </section>
   );
 }
@@ -197,7 +211,7 @@ async function StatsPreview() {
           <h2 id="stats-title" className={styles.blockTitle}>
             {formatSeason(season)}の編成
           </h2>
-          <p className={styles.blockLead}>関東地上波・新作のみ。夕方から深夜にかけて、どの曜日のどの時間に作品が集まっているか。</p>
+          <p className={styles.blockLead}>関東地上波・新作のみ。</p>
         </div>
         <ButtonLink href="/stats" variant="ghost" icon="arrowRight">
           統計を詳しく見る
@@ -244,9 +258,6 @@ async function StatsPreview() {
           </div>
         </dl>
       </div>
-      <p className={styles.siteNote}>
-        {SITE_NAME}は放送データを独自に入力していません。番組情報はしょぼいカレンダーの公開データを取得・保存し、放送枠と統計を算出しています。
-      </p>
     </section>
   );
 }

@@ -4,14 +4,30 @@ import { CountUp } from "./CountUp";
 import { Icon, type IconName } from "./Icon";
 import styles from "./primitives.module.css";
 
+/** Secondary explanation, collapsed: the visible text stays one line, the rest is a click away. */
+export function MoreInfo({ summary = "詳しく", children }: { summary?: ReactNode; children: ReactNode }) {
+  return (
+    <details className={styles.more}>
+      <summary className={styles.moreSummary}>
+        <Icon name="chevronRight" size={12} className={styles.moreIcon} />
+        {summary}
+      </summary>
+      <div className={styles.moreBody}>{children}</div>
+    </details>
+  );
+}
+
 export function PageHeader({
   title,
   lead,
+  details,
   meta,
   actions
 }: {
   title: ReactNode;
+  /** One line: what the page is. Anything longer goes in `details`. */
   lead?: ReactNode;
+  details?: ReactNode;
   meta?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -20,6 +36,7 @@ export function PageHeader({
       <div className={styles.pageHeaderMain}>
         <h1 className={styles.pageTitle}>{title}</h1>
         {lead ? <p className={styles.lead}>{lead}</p> : null}
+        {details ? <MoreInfo>{details}</MoreInfo> : null}
         {meta ? <div className={styles.meta}>{meta}</div> : null}
       </div>
       {actions ? <div className={styles.pageActions}>{actions}</div> : null}
@@ -30,13 +47,16 @@ export function PageHeader({
 export function Section({
   title,
   description,
+  details,
   actions,
   children,
   id,
   level = 2
 }: {
   title: ReactNode;
+  /** One line: what the section shows, with its unit or scope. Anything longer goes in `details`. */
   description?: ReactNode;
+  details?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   id?: string;
@@ -51,6 +71,7 @@ export function Section({
             {title}
           </Heading>
           {description ? <p className={styles.sectionDescription}>{description}</p> : null}
+          {details ? <MoreInfo>{details}</MoreInfo> : null}
         </div>
         {actions ? <div className={styles.sectionActions}>{actions}</div> : null}
       </div>

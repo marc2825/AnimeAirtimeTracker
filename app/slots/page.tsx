@@ -3,12 +3,13 @@ import { Suspense } from "react";
 
 import Link from "next/link";
 
-import { latestOrdinal, SeasonStrip, SlotCard } from "@/components/slots/SlotCard";
+import { latestOrdinal, SeasonStrip, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
+import { StripTooltip } from "@/components/slots/StripTooltip";
 import { Disclosure, SegmentedLinks } from "@/components/ui/controls";
-import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
+import { EmptyState, MoreInfo, Notice, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { buildHref, flattenParams, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
-import { listSlots, type SlotSummary } from "@/server/queries/slots";
+import { getSlotStripTitles, listSlots, type SlotSummary, type StripTitles } from "@/server/queries/slots";
 
 import styles from "./slots.module.css";
 
@@ -23,7 +24,7 @@ export default function SlotsPage({ searchParams }: PageProps<"/slots">) {
     <div className="container">
       <PageHeader
         title="放送枠"
-        lead="「どの局の、どの曜日・時刻に、どの作品が続いてきたか」を枠ごとに追えます。枠には判定の根拠に応じた種別があります。"
+        lead="局・曜日・時刻ごとの作品の移り変わり。"
       />
       <Suspense fallback={<SkeletonBlock rows={6} label="放送枠を読み込み中" />}>
         <SlotsContent searchParams={searchParams} />
@@ -47,6 +48,8 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
   const filtered = slots.filter((slot) => (!kind || slot.kind === kind) && (!channel || slot.channel?.slug === channel));
   const channels = [...new Map(slots.filter((s) => s.channel).map((s) => [s.channel!.slug, s.channel!])).values()];
   const stripEnd = latestOrdinal(slots);
+  // Names behind the strip ticks are a nicety: the list still renders if they cannot be read.
+  const stripTitles: StripTitles = await getSlotStripTitles(stripStartOrdinal(stripEnd)).catch(() => ({}));
   const href = (overrides: Record<string, string | null>) => buildHref("/slots", current, overrides);
   const labelled = filtered.filter((slot) => slot.kind !== "INFERRED");
   const inferred = filtered.filter((slot) => slot.kind === "INFERRED");
@@ -69,24 +72,28 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
         />
       </div>
 
-      <dl className={styles.kinds}>
-        {Object.entries(SLOT_KIND_LABELS).map(([key, meta]) => (
-          <div key={key}>
-            <dt>{meta.label}</dt>
-            <dd>{meta.description}</dd>
-          </div>
-        ))}
-      </dl>
+      <div className={styles.kindsInfo}>
+        <MoreInfo summary="枠の種別について">
+          <dl className={styles.kinds}>
+            {Object.entries(SLOT_KIND_LABELS).map(([key, meta]) => (
+              <div key={key}>
+                <dt>{meta.label}</dt>
+                <dd>{meta.description}</dd>
+              </div>
+            ))}
+          </dl>
+        </MoreInfo>
+      </div>
 
       {filtered.length === 0 ? (
         <EmptyState title="該当する放送枠はありません">条件を変えてください。推定枠は2クール以上のデータが揃うと表示されます。</EmptyState>
       ) : null}
 
       {labelled.length > 0 ? (
-        <Section id="labelled" title="名前のある枠" description="出典（しょぼいカレンダーの作品備考）に「〜枠で放送」と記載された枠。">
+        <Section id="labelled" title="名前のある枠" description="出典の作品備考に「〜枠で放送」と記載された枠。">
           <ul role="list" className={styles.grid}>
             {labelled.map((slot) => (
-              <SlotCard key={slot.slug} slot={slot} stripEnd={stripEnd} />
+              <SlotCard key={slot.slug} slot={slot} stripEnd={stripEnd} stripTitles={stripTitles[slot.slug]} />
             ))}
           </ul>
         </Section>
@@ -96,7 +103,8 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
         <Section
           id="inferred"
           title="推定枠"
-          description="同じ局・曜日・開始時刻に、3クール以上にわたり3作品以上の新作が定時放送された位置。枠の公式な存在を示すものではありません。局ごとに位置を時刻順に並べています。"
+          description="同じ局・曜日・時刻に新作が続いた位置（3クール・3作品以上）。"
+          details="枠の公式な存在を示すものではありません。局ごとに位置を時刻順に並べています。"
         >
           <div className={styles.channelGroups}>
             {groupByChannel(inferred).map(([channelName, items], index) => (
@@ -138,7 +146,7 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
                           <td className="mono">{slot.titleCount}</td>
                           <td className="mono">{slot.seasonCount}</td>
                           <td className={styles.stripCell}>
-                            <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} />
+                            <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} titles={stripTitles[slot.slug]} />
                           </td>
                         </tr>
                       ))}
@@ -150,6 +158,7 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
           </div>
         </Section>
       ) : null}
+      <StripTooltip />
     </>
   );
 }

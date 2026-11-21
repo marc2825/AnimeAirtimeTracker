@@ -46,7 +46,7 @@ export default function StatsPage({ searchParams }: PageProps<"/stats">) {
     <div className="container">
       <PageHeader
         title="編成統計"
-        lead="アニメがどの曜日・時間帯・局に集まっているか。すべての図に集計単位・対象期間・対象局・再放送の扱いを記載しています。"
+        lead="アニメがどの曜日・時間帯・局に集まっているか。"
       />
       <Suspense fallback={<SkeletonBlock rows={8} label="統計を集計中" />}>
         <StatsContent searchParams={searchParams} />
@@ -302,7 +302,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         </Section>
       </div>
 
-      <Section id="trend" title="クール別の推移" description="集計対象と同じ条件での作品本数の推移。選択中のクールを強調しています。">
+      <Section id="trend" title="クール別の推移" description="集計対象と同じ条件での作品本数の推移。">
         <ChartFrame
           title="クール別の作品本数"
           takeaway={

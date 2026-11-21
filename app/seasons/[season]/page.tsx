@@ -68,7 +68,7 @@ async function SeasonContent({ params, searchParams }: { params: Promise<{ seaso
       </nav>
       <PageHeader
         title={`${formatSeason(season)}の新作アニメ`}
-        lead={`第1話の放送があった作品を、最初の放送の曜日・時刻順に並べています。${region ? REGIONS[region].label : "全対象局"}で${premieres.length}作品。`}
+        lead={`第1話が放送された作品（曜日・時刻順）。${region ? REGIONS[region].label : "全対象局"}で${premieres.length}作品。`}
       />
       <div className={styles.toolbar}>
         <SegmentedLinks

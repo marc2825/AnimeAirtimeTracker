@@ -92,7 +92,8 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
         <StatTile label="関連枠" value={slot.related.length} unit="枠" hint="作品が重なる他の枠" />
       </StatGrid>
 
-      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。各クールの位置は、所属作品の定時放送のうち最も早い開始時刻（同じ曜日内）です。灰色の上線は前クールから継続している作品。出典記載枠では、所属の記載がない作品は含まれないため、開始時刻の変化が記載状況による場合があります。">
+      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。"
+        details="各クールの位置は、所属作品の定時放送のうち最も早い開始時刻（同じ曜日内）です。灰色の上線は前クールから継続している作品。出典記載枠では、所属の記載がない作品は含まれないため、開始時刻の変化が記載状況による場合があります。">
         {slot.timeline.length === 0 ? (
           <EmptyState title="対象局での定時放送が確認できません">
             出典にこの枠名の記載はありますが、本サイトの対象局・取得期間では{MIN_REGULAR_AIRINGS}回以上の定時放送を確認できませんでした。
@@ -168,7 +169,8 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
         </div>
       </Section>
 
-      <Section id="members" title="所属作品" description="新しい順。根拠が出典記載の場合は、しょぼいカレンダーの作品備考の該当行を引用しています。">
+      <Section id="members" title="所属作品" description="新しい順。"
+        details="根拠が出典記載の場合は、しょぼいカレンダーの作品備考の該当行を引用しています。">
         <div className={styles.tableWrap}>
           <table className={styles.memberTable}>
             <thead>

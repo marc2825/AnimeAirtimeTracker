@@ -26,6 +26,47 @@
   line-height: 1.7;
 }
 
+/* MoreInfo: a quiet "詳しく" toggle under a one-line lead. */
+.more {
+  font-size: var(--text-sm);
+  color: var(--color-ink-2);
+}
+
+.moreSummary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.5rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-2);
+}
+
+.moreSummary::-webkit-details-marker {
+  display: none;
+}
+
+.moreSummary:hover {
+  color: var(--color-ink);
+}
+
+.moreIcon {
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.more[open] .moreIcon {
+  transform: rotate(90deg);
+}
+
+.moreBody {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 44rem;
+  margin-top: var(--space-1);
+  line-height: 1.7;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
