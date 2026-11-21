@@ -3,24 +3,38 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { Suspense } from "react";
 
-import { BarList, ChartFrame, ColumnChart, ConcurrencyStrip, HeatmapTable, WeekdayHourHeatmap } from "@/components/stats/Charts";
-import { SegmentedLinks, SelectField } from "@/components/ui/controls";
+import { BarList, ChartFrame, ColumnChart, ConcurrencyStrip, HeatmapTable, StackedColumnChart, WeekdayHourHeatmap } from "@/components/stats/Charts";
+import { Disclosure, SegmentedLinks, SelectField } from "@/components/ui/controls";
 import { FilterForm } from "@/components/ui/FilterForm";
 import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, StatGrid, StatTile } from "@/components/ui/primitives";
-import { REGIONS, parseRegionKey, type RegionKey } from "@/domain/coverage";
-import { currentSeason, formatSeason, parseSeasonId, seasonDateRange, seasonFromOrdinal, seasonId, seasonOrdinal, type Season } from "@/domain/season";
+import { NETWORKS, NETWORK_KEYS, REGIONS, TRACKED_CHANNELS, channelSlugsFor, parseNetworkKey, parseRegionKey, type RegionKey } from "@/domain/coverage";
+import { currentSeason, formatSeason, parseSeasonId, seasonDateRange, seasonFromOrdinal, seasonId, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
 import { DELAY_BUCKETS, type CountUnit } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { formatDateJa, formatDelay, formatNumber, formatPercent, formatSeasonOrdinal } from "@/lib/format";
-import { buildHref, flattenParams, parseRerunMode, single, type RawSearchParams, type RerunMode } from "@/lib/search-params";
-import { getRegionalDelay, getSeasonStats, getSeasonTrend, regionChannelNames } from "@/server/queries/stats";
+import {
+  buildHref,
+  flattenParams,
+  LENGTH_OPTIONS,
+  LENGTHS,
+  parseLength,
+  parseRerunMode,
+  parseSlug,
+  parseTimeBand,
+  single,
+  TIME_BAND_OPTIONS,
+  TIME_BANDS,
+  type RawSearchParams,
+  type RerunMode
+} from "@/lib/search-params";
+import { getRegionalDelay, getSeasonStats, getSeasonTrend, scopeChannelNames, statsFilter, TREND_BANDS, type StatsFilter } from "@/server/queries/stats";
 import { getCoveredSeasonOrdinals, getSeasonCoverage } from "@/server/queries/status";
 
 import styles from "./stats.module.css";
 
 export const metadata: Metadata = {
   title: "編成統計",
-  description: "アニメ放送編成の統計。曜日×時間帯の分布、同時放送数、放送局別の本数、クール別推移、関東と関西の放送時差を、集計単位と対象範囲を明示して示します。",
+  description: "アニメ放送編成の統計。曜日×時間帯の分布、同時放送数、放送局別の本数、クール別・時間帯別の推移、クール間の比較、関東と関西の放送時差を、集計単位と対象範囲を明示して示します。",
   alternates: { canonical: "/stats" }
 };
 
@@ -66,21 +80,51 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
   const now = currentSeason();
   const latestCovered = seasonFromOrdinal(Math.min(covered.at(-1)!, seasonOrdinal(now)));
   const season: Season = parseSeasonId(single(params, "season")) ?? latestCovered;
-  const region: RegionKey = parseRegionKey(single(params, "region")) ?? "kanto";
+  const regionParam = single(params, "region");
+  const region: RegionKey | null = regionParam === "all" ? null : (parseRegionKey(regionParam) ?? "kanto");
   const unit: CountUnit = single(params, "unit") === "broadcasts" ? "broadcasts" : "titles";
-  const rerun = parseRerunMode(single(params, "rerun"), "exclude");
+  const filter: StatsFilter = statsFilter({
+    region,
+    rerun: parseRerunMode(single(params, "rerun"), "exclude"),
+    band: parseTimeBand(single(params, "time")),
+    network: parseNetworkKey(single(params, "network")),
+    channelSlug: parseSlug(single(params, "channel")),
+    length: parseLength(single(params, "length"))
+  });
+  const { rerun, band, network, channelSlug, length } = filter;
+  const coveredSet = new Set(covered);
+  // Default comparison: the same quarter a year earlier, else the previous covered season.
+  const compare: Season | null =
+    parseSeasonId(single(params, "compare")) ??
+    [shiftSeason(season, -4), shiftSeason(season, -1)].find((candidate) => coveredSet.has(seasonOrdinal(candidate))) ??
+    null;
   const href = (overrides: Record<string, string | null>) => buildHref(PATH, current, overrides);
 
-  const [stats, coverage, trend, delay] = await Promise.all([
-    getSeasonStats({ season, region, unit, rerun }),
+  const [stats, coverage, trend, delay, compareStats] = await Promise.all([
+    getSeasonStats(season, unit, filter),
     getSeasonCoverage(season),
-    getSeasonTrend(region, rerun, seasonFromOrdinal(covered[0]!), latestCovered),
-    getRegionalDelay(season)
+    getSeasonTrend(filter, seasonFromOrdinal(covered[0]!), latestCovered),
+    getRegionalDelay(season, { band, network, length }),
+    compare ? getSeasonStats(compare, unit, filter) : Promise.resolve(null)
   ]);
 
   const range = seasonDateRange(season);
   const isCurrent = seasonOrdinal(season) === seasonOrdinal(now);
-  const scopeText = `${formatSeason(season)}（${range.first.replaceAll("-", "/")}〜${range.last.replaceAll("-", "/")}）・${REGIONS[region].label}（${regionChannelNames(region)}）・アニメカテゴリ・${rerunLabel(rerun)}`;
+  const channelName = channelSlug ? (TRACKED_CHANNELS.find((c) => c.slug === channelSlug)?.name ?? channelSlug) : null;
+  const scopeText = [
+    `${formatSeason(season)}（${range.first.replaceAll("-", "/")}〜${range.last.replaceAll("-", "/")}）`,
+    `${channelName ?? (region ? REGIONS[region].label : "全対象局")}${network && !channelSlug ? `の${NETWORKS[network].label}` : ""}（${scopeChannelNames(filter)}）`,
+    band ? `${TIME_BANDS[band].label}に始まる放送` : null,
+    length ? LENGTHS[length].label : null,
+    "アニメカテゴリ",
+    rerunLabel(rerun)
+  ]
+    .filter(Boolean)
+    .join("・");
+  const channelOptions = TRACKED_CHANNELS.filter((c) => {
+    const slugs = channelSlugsFor(region, network);
+    return !slugs || slugs.has(c.slug) || c.slug === channelSlug;
+  });
 
   // Takeaways computed from the data — never hand-written.
   let peakCell = { weekday: 0, hour: 0, value: 0 };
@@ -91,6 +135,8 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
   );
   const lateTitles = stats.heatmap.cells.reduce((sum, row) => sum + row.slice(24 - 5).reduce((a, b) => a + b, 0), 0);
   const trendRow = trend.find((row) => row.seasonOrdinal === seasonOrdinal(season));
+  const compareRow = compare ? trend.find((row) => row.seasonOrdinal === seasonOrdinal(compare)) : undefined;
+  const lateShareOf = (row: (typeof trend)[number]) => (row.titles === 0 ? 0 : ((row.bandTitles.late ?? 0) + (row.bandTitles.latelate ?? 0)) / row.titles);
   const topChannel = stats.byChannel[0];
   const concurrencyPeak = stats.concurrency.peak;
   const delayTotal = delay.compared.length;
@@ -108,7 +154,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
               .reverse()
               .map((ordinal) => ({ value: seasonId(seasonFromOrdinal(ordinal)), label: formatSeasonOrdinal(ordinal) }))}
           />
-          <input type="hidden" name="region" value={region === "kanto" ? "" : region} />
+          <input type="hidden" name="region" value={region === "kanto" ? "" : (region ?? "all")} />
           <input type="hidden" name="unit" value={unit === "titles" ? "" : unit} />
           <SelectField
             label="再放送"
@@ -120,11 +166,39 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
               { value: "only", label: "再放送のみ" }
             ]}
           />
+          <Disclosure summary="詳細条件" defaultOpen={Boolean(band || network || channelSlug || length)}>
+            <div className={styles.filterDetails}>
+            <SelectField
+              label="比較するクール"
+              name="compare"
+              value={compare ? seasonId(compare) : ""}
+              options={[...covered]
+                .filter((ordinal) => ordinal <= seasonOrdinal(now) + 1 && ordinal !== seasonOrdinal(season))
+                .reverse()
+                .map((ordinal) => ({ value: seasonId(seasonFromOrdinal(ordinal)), label: formatSeasonOrdinal(ordinal) }))}
+            />
+            <SelectField label="時間帯（開始時刻）" name="time" value={band ?? ""} options={TIME_BAND_OPTIONS} />
+            <SelectField
+              label="系列"
+              name="network"
+              value={network ?? ""}
+              options={[{ value: "", label: "すべて" }, ...NETWORK_KEYS.map((key) => ({ value: key, label: NETWORKS[key].label }))]}
+            />
+            <SelectField label="放送局" name="channel" value={channelSlug ?? ""} options={[{ value: "", label: "すべて" }, ...channelOptions.map((c) => ({ value: c.slug, label: c.name }))]} />
+            <SelectField label="放送時間（長さ）" name="length" value={length ?? ""} options={LENGTH_OPTIONS} />
+            </div>
+          </Disclosure>
           <noscript>
             <button type="submit">集計</button>
           </noscript>
         </FilterForm>
-        <SegmentedLinks label="対象地域・媒体" options={STAT_REGIONS.map((key) => ({ href: href({ region: key === "kanto" ? null : key }), label: REGIONS[key].short, active: key === region }))} />
+        <SegmentedLinks
+          label="対象地域・媒体"
+          options={[
+            ...STAT_REGIONS.map((key) => ({ href: href({ region: key === "kanto" ? null : key, channel: null }), label: REGIONS[key].short, active: key === region })),
+            { href: href({ region: "all", channel: null }), label: "すべて", active: region === null }
+          ]}
+        />
         <SegmentedLinks
           label="集計単位"
           options={[
@@ -191,7 +265,11 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
       </Section>
 
       <div className={styles.twoColumn}>
-        <Section id="concurrency" title="同時放送の密度" description="同じ時刻に何本の新作が重なっていたか（18時〜29時）。">
+        <Section
+          id="concurrency"
+          title="同時放送の密度"
+          description={`同じ時刻に何本の新作が重なっていたか（${formatAnimeMinute(stats.concurrency.fromMinute)}〜${formatAnimeMinute(stats.concurrency.fromMinute + stats.concurrency.counts[0]!.length * stats.concurrency.bucketMinutes)}）。${band ? `${TIME_BANDS[band].label}に始まった放送だけを数え、帯の外にはみ出す時間も含めて描きます。` : ""}`}
+        >
           <ChartFrame
             title="15分ごとの同時放送数"
             takeaway={concurrencyPeak ? `ピークは${WEEKDAY_LABELS[concurrencyPeak.weekday]}曜${formatAnimeMinute(concurrencyPeak.minute)}からの15分で、${concurrencyPeak.count}本が重なっていました。` : "重なりはありません。"}
@@ -221,7 +299,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         </Section>
       </div>
 
-      <Section id="trend" title="クール別の推移" description={`${REGIONS[region].label}での作品本数の推移。選択中のクールを強調しています。`}>
+      <Section id="trend" title="クール別の推移" description="集計対象と同じ条件での作品本数の推移。選択中のクールを強調しています。">
         <ChartFrame
           title="クール別の作品本数"
           takeaway={
@@ -273,7 +351,97 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         </ChartFrame>
       </Section>
 
-      <Section id="regional" title="関東と関西の放送時差" description={`${formatSeason(season)}に関東・関西の両方で放送された作品について、関西での放送が関東よりどれだけ遅いか。`}>
+      <Section id="bands" title="時間帯別の推移" description="各クールの作品を、そのクールで最も多かった開始時刻の時間帯に分けた本数。">
+        <ChartFrame
+          title="時間帯別の作品本数（クール別）"
+          takeaway={
+            trend.length > 1
+              ? `23時以降に始まる作品の割合は、${formatSeasonOrdinal(trend[0]!.seasonOrdinal)}の${formatPercent(lateShareOf(trend[0]!))}から${formatSeasonOrdinal(trend.at(-1)!.seasonOrdinal)}の${formatPercent(lateShareOf(trend.at(-1)!))}になりました。`
+              : undefined
+          }
+          scope={`単位: 作品本数。各作品はクールごとに、最も多かった開始時刻（同数なら早い時刻）の時間帯に1回だけ数えます。朝と昼は本数が少ないため「5–17時」にまとめています。${band ? `時間帯の条件（${TIME_BANDS[band].label}）で放送を絞り込んでいるため、帯の外の時間帯は0になります。` : ""}`}
+          table={
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">クール</th>
+                    {TREND_BANDS.map((group) => (
+                      <th key={group.key} scope="col">
+                        {group.label}
+                      </th>
+                    ))}
+                    <th scope="col">23時以降の割合</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trend.map((row) => (
+                    <tr key={row.seasonOrdinal}>
+                      <th scope="row">{formatSeasonOrdinal(row.seasonOrdinal)}</th>
+                      {TREND_BANDS.map((group) => (
+                        <td key={group.key} className="mono">
+                          {row.bandTitles[group.key] ?? 0}
+                        </td>
+                      ))}
+                      <td className="mono">{formatPercent(lateShareOf(row))}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          }
+        >
+          <StackedColumnChart
+            unit="作品"
+            series={TREND_BANDS.map((group) => ({ key: group.key, label: group.label }))}
+            columns={trend.map((row) => {
+              const s = seasonFromOrdinal(row.seasonOrdinal);
+              return {
+                key: String(row.seasonOrdinal),
+                label: ["冬", "春", "夏", "秋"][s.quarter - 1]!,
+                sublabel: s.quarter === 1 || row === trend[0] ? String(s.year) : undefined,
+                segments: TREND_BANDS.map((group) => row.bandTitles[group.key] ?? 0),
+                highlight: row.seasonOrdinal === seasonOrdinal(season)
+              };
+            })}
+          />
+        </ChartFrame>
+      </Section>
+
+      {compare && compareStats ? (
+        <Section id="compare" title="クール間の比較" description={`${formatSeason(season)}と${formatSeason(compare)}を、集計対象と同じ条件で比べます。比較するクールは上の条件で変えられます。`}>
+          <ComparisonTable
+            seasonLabel={formatSeason(season)}
+            compareLabel={formatSeason(compare)}
+            rows={[
+              { key: "titles", label: "作品本数", value: stats.titleCount, other: compareStats.titleCount },
+              { key: "airings", label: "放送件数", value: stats.airingCount, other: compareStats.airingCount },
+              ...(trendRow && compareRow
+                ? [
+                    { key: "new", label: "新規作品", value: trendRow.newTitles, other: compareRow.newTitles },
+                    { key: "late-share", label: "23時以降の割合", value: lateShareOf(trendRow), other: lateShareOf(compareRow), percent: true },
+                    ...TREND_BANDS.map((group) => ({ key: `band-${group.key}`, label: `　${group.label}`, value: trendRow.bandTitles[group.key] ?? 0, other: compareRow.bandTitles[group.key] ?? 0 }))
+                  ]
+                : [])
+            ]}
+            channelRows={[...new Set([...stats.byChannel, ...compareStats.byChannel].map((row) => row.channel.slug))]
+              .map((slug) => ({
+                key: slug,
+                label: TRACKED_CHANNELS.find((c) => c.slug === slug)?.name ?? slug,
+                value: stats.byChannel.find((row) => row.channel.slug === slug)?.titles ?? 0,
+                other: compareStats.byChannel.find((row) => row.channel.slug === slug)?.titles ?? 0
+              }))
+              .sort((a, b) => b.value - a.value || b.other - a.other)}
+          />
+        </Section>
+      ) : null}
+
+      <Section
+        id="regional"
+        title="関東と関西の放送時差"
+        description={`${formatSeason(season)}に関東・関西の両方で放送された作品について、関西での放送が関東よりどれだけ遅いか。${band ? `時間帯（${TIME_BANDS[band].label}）は関東での開始時刻で判定しています。` : ""}`}
+      >
+        {channelSlug ? <Notice tone="info" title="放送局の条件はこの図に適用していません">地域をまたいで比べるため、系列・時間帯・放送時間の条件だけを使います。</Notice> : null}
         <ChartFrame
           title="関西の放送の遅れ（作品ごとの中央値）"
           takeaway={
@@ -307,6 +475,58 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
       <p className={styles.footnote}>
         定義と限界の詳細は<Link href="/about#method" className="inline-link">方法論</Link>を参照してください。出典の登録漏れ・再放送フラグの付け忘れは集計に影響します。
       </p>
+    </div>
+  );
+}
+
+type ComparisonRow = { key: string; label: string; value: number; other: number; percent?: boolean };
+
+function formatDelta(row: ComparisonRow): string {
+  const delta = row.value - row.other;
+  if (row.percent) return `${delta >= 0 ? "+" : "−"}${Math.abs(delta * 100).toFixed(1)}pt`;
+  return delta === 0 ? "±0" : `${delta > 0 ? "+" : "−"}${formatNumber(Math.abs(delta))}`;
+}
+
+function ComparisonTable({ seasonLabel, compareLabel, rows, channelRows }: { seasonLabel: string; compareLabel: string; rows: ComparisonRow[]; channelRows: ComparisonRow[] }) {
+  const body = (list: ComparisonRow[]) =>
+    list.map((row) => (
+      <tr key={row.key}>
+        <th scope="row">{row.label}</th>
+        <td className="mono">{row.percent ? formatPercent(row.value) : formatNumber(row.value)}</td>
+        <td className="mono">{row.percent ? formatPercent(row.other) : formatNumber(row.other)}</td>
+        <td className="mono">{formatDelta(row)}</td>
+      </tr>
+    ));
+  return (
+    <div className={styles.compare}>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <caption className={styles.caption}>全体と時間帯別（作品本数）</caption>
+          <thead>
+            <tr>
+              <th scope="col">指標</th>
+              <th scope="col">{seasonLabel}</th>
+              <th scope="col">{compareLabel}</th>
+              <th scope="col">差</th>
+            </tr>
+          </thead>
+          <tbody>{body(rows)}</tbody>
+        </table>
+      </div>
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <caption className={styles.caption}>放送局別（作品本数）</caption>
+          <thead>
+            <tr>
+              <th scope="col">放送局</th>
+              <th scope="col">{seasonLabel}</th>
+              <th scope="col">{compareLabel}</th>
+              <th scope="col">差</th>
+            </tr>
+          </thead>
+          <tbody>{body(channelRows)}</tbody>
+        </table>
+      </div>
     </div>
   );
 }

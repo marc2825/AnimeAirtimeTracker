@@ -13,7 +13,7 @@ import { episodeText, formatCoverage, formatDateTime, formatNumber, formatStartT
 import { SITE_NAME } from "@/lib/site";
 import { getSchedule } from "@/server/queries/schedule";
 import { listSlots } from "@/server/queries/slots";
-import { getSeasonStats } from "@/server/queries/stats";
+import { getSeasonStats, statsFilter } from "@/server/queries/stats";
 import { getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./home.module.css";
@@ -180,7 +180,7 @@ async function StatsPreview() {
   let stats;
   let status;
   try {
-    [stats, status] = await Promise.all([getSeasonStats({ season, region: "kanto", unit: "titles", rerun: "exclude" }), getDatasetStatus()]);
+    [stats, status] = await Promise.all([getSeasonStats(season, "titles", statsFilter()), getDatasetStatus()]);
   } catch {
     return null;
   }

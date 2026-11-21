@@ -307,3 +307,64 @@
 .columnsWrap {
   padding-bottom: 2.5rem;
 }
+
+/* Stacked columns (StackedColumnChart): first series at the bottom, 2px surface gap between segments. */
+.stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: 70%;
+  max-width: 2.25rem;
+  min-height: 2px;
+}
+
+.stackSegment {
+  min-height: 1px;
+}
+
+.stack > .stackSegment:last-child {
+  border-radius: 4px 4px 0 0;
+}
+
+.seriesLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
+
+.seriesLegend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.seriesSwatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+}
+
+.stackSegment[data-step="3"],
+.seriesSwatch[data-step="3"] {
+  background: var(--viz-3);
+}
+.stackSegment[data-step="4"],
+.seriesSwatch[data-step="4"] {
+  background: var(--viz-4);
+}
+.stackSegment[data-step="5"],
+.seriesSwatch[data-step="5"] {
+  background: var(--viz-5);
+}
+.stackSegment[data-step="6"],
+.seriesSwatch[data-step="6"] {
+  background: var(--viz-6);
+}
+.stackSegment[data-step="7"],
+.seriesSwatch[data-step="7"] {
+  background: var(--viz-7);
+}
