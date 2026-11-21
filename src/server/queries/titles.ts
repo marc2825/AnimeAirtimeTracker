@@ -240,6 +240,13 @@ export async function searchTitles(filter: AiringFilter, query: string, sort: Ti
     ORDER BY ${TITLE_SORTS[sort]}
     LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
   `;
+  if (rows.length === 0 && page > 1) {
+    // Past the last page the windowed total is unavailable; count separately so the page can say where results are.
+    const [count] = await db().$queryRaw<{ total: number }[]>`
+      SELECT COUNT(DISTINCT t.id)::int AS total FROM "Broadcast" b JOIN "Title" t ON t.id = b."titleId" WHERE ${where} ${textFilter}
+    `;
+    return { total: count?.total ?? 0, rows: [] };
+  }
   return {
     total: rows[0]?.total ?? 0,
     rows: rows.map((row) => ({
@@ -293,6 +300,12 @@ export async function searchBroadcasts(filter: AiringFilter, query: string, orde
     ORDER BY b."startAt" ${direction}, b.id
     LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
   `;
+  if (rows.length === 0 && page > 1) {
+    const [count] = await db().$queryRaw<{ total: number }[]>`
+      SELECT COUNT(*)::int AS total FROM "Broadcast" b JOIN "Title" t ON t.id = b."titleId" WHERE ${where} ${textFilter}
+    `;
+    return { total: count?.total ?? 0, rows: [] };
+  }
   return {
     total: rows[0]?.total ?? 0,
     rows: rows.map(

@@ -211,7 +211,9 @@ async function TitleResults({ filter, query, sort, page, href, channelName }: { 
         </h2>
         <SegmentedLinks size="sm" label="並び替え" options={(Object.keys(SORT_LABELS) as TitleSort[]).map((key) => ({ href: href({ sort: key }), label: SORT_LABELS[key], active: key === sort }))} />
       </div>
-      {result.rows.length === 0 ? (
+      {result.rows.length === 0 && result.total > 0 ? (
+        <OutOfRange totalPages={totalPages} href={href} />
+      ) : result.rows.length === 0 ? (
         <EmptyState title="該当する作品はありません" icon="search">
           条件を減らすか、クールを「全期間」にしてください。
         </EmptyState>
@@ -263,7 +265,9 @@ async function AiringResults({ filter, query, order, page, href, channelName }: 
           ]}
         />
       </div>
-      {result.rows.length === 0 ? (
+      {result.rows.length === 0 && result.total > 0 ? (
+        <OutOfRange totalPages={totalPages} href={href} />
+      ) : result.rows.length === 0 ? (
         <EmptyState title="該当する放送はありません" icon="search">
           条件を変えてください。
         </EmptyState>
@@ -355,5 +359,16 @@ async function SlotResults({ query, criteria, seasonLabel, ignoresAiringOnly }: 
         </ul>
       )}
     </section>
+  );
+}
+
+function OutOfRange({ totalPages, href }: { totalPages: number; href: Href }) {
+  return (
+    <EmptyState title="このページには結果がありません" icon="search">
+      結果は{totalPages}ページまでです。
+      <Link href={href({ page: null })} className="inline-link">
+        1ページ目へ
+      </Link>
+    </EmptyState>
   );
 }
