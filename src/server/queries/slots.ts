@@ -1,6 +1,7 @@
 import { computeTitlePositions } from "@/domain/slots";
 import { seasonFromOrdinal, seasonsBetween, seasonOrdinal, type Season } from "@/domain/season";
 import { dbDateToIsoDate, type IsoDate } from "@/domain/time";
+import type { SlotPosition } from "@/lib/slot-search";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
@@ -21,11 +22,16 @@ export interface SlotSummary {
   seasonOrdinals: number[];
 }
 
-export async function listSlots(): Promise<SlotSummary[]> {
+export interface SlotListItem extends SlotSummary {
+  /** Position per season, newest first (search filters match against these). */
+  positions: SlotPosition[];
+}
+
+export async function listSlots(): Promise<SlotListItem[]> {
   "use cache";
   datasetCacheProfile();
   const rows = await db().slot.findMany({
-    include: { homeChannel: true, seasons: { orderBy: { seasonOrdinal: "desc" } } },
+    include: { homeChannel: true, seasons: { orderBy: { seasonOrdinal: "desc" }, include: { channel: { select: { slug: true } } } } },
     orderBy: [{ seasonCount: "desc" }, { titleCount: "desc" }, { slug: "asc" }]
   });
   return rows.map((row) => ({
@@ -40,7 +46,8 @@ export async function listSlots(): Promise<SlotSummary[]> {
     latest: row.seasons[0]
       ? { seasonOrdinal: row.seasons[0].seasonOrdinal, weekday: row.seasons[0].animeWeekday, minute: row.seasons[0].animeStartMinute, durationMinutes: row.seasons[0].durationMinutes }
       : null,
-    seasonOrdinals: row.seasons.map((season) => season.seasonOrdinal).reverse()
+    seasonOrdinals: row.seasons.map((season) => season.seasonOrdinal).reverse(),
+    positions: row.seasons.map((season) => ({ seasonOrdinal: season.seasonOrdinal, weekday: season.animeWeekday, minute: season.animeStartMinute, channelSlug: season.channel.slug }))
   }));
 }
 

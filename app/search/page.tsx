@@ -7,11 +7,12 @@ import { Disclosure, FilterChips, Pagination, SegmentedLinks, SelectField, Submi
 import { FilterForm } from "@/components/ui/FilterForm";
 import { Icon } from "@/components/ui/Icon";
 import { EmptyState, FlagBadges, Notice, PageHeader, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
-import { REGIONS, REGION_KEYS } from "@/domain/coverage";
-import { currentSeason, formatSeason, seasonFromOrdinal, seasonId } from "@/domain/season";
+import { REGIONS, REGION_KEYS, channelsInRegion } from "@/domain/coverage";
+import { currentSeason, formatSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatSeasonOrdinal } from "@/lib/format";
-import { buildHref, flattenParams, parseCommonFilters, parsePage, parseQuery, single, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, flattenParams, parseCommonFilters, parsePage, parseQuery, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
+import { isUnfiltered, matchSlotPosition, type SlotCriteria } from "@/lib/slot-search";
 import { getTrackedChannels } from "@/server/queries/common";
 import { listSlots } from "@/server/queries/slots";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
@@ -50,7 +51,7 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
   const viewParam = single(params, "view");
   const view = viewParam === "airings" ? "airings" : viewParam === "slots" ? "slots" : "titles";
   const sortParam = single(params, "sort") as TitleSort | undefined;
-  const sort: TitleSort = sortParam && sortParam in SORT_LABELS ? sortParam : query ? "first" : "position";
+  const sort: TitleSort = sortParam && Object.hasOwn(SORT_LABELS, sortParam) ? sortParam : query ? "first" : "position";
   const page = parsePage(single(params, "page"));
   const href = (overrides: Record<string, string | null>) => buildHref(PATH, current, overrides);
 
@@ -116,13 +117,7 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
               autoSubmit={false}
               options={[{ value: "", label: "すべて" }, ...WEEKDAY_LABELS.map((label, index) => ({ value: WEEKDAY_KEYS[index]!, label: `${label}曜` }))]}
             />
-            <SelectField
-              label="時間帯"
-              name="time"
-              value={filters.band ?? ""}
-              autoSubmit={false}
-              options={[{ value: "", label: "すべて" }, ...Object.entries(TIME_BANDS).map(([key, band]) => ({ value: key, label: band.label }))]}
-            />
+            <SelectField label="時間帯（開始時刻）" name="time" value={filters.band ?? ""} autoSubmit={false} options={TIME_BAND_OPTIONS} />
             <SelectField
               label="再放送"
               name="rerun"
@@ -164,7 +159,17 @@ async function SearchContent({ searchParams }: { searchParams: Promise<RawSearch
       ) : view === "airings" ? (
         <AiringResults filter={filter} query={query} order={single(params, "order") === "asc" ? "asc" : "desc"} page={page} href={href} channelName={channelName} />
       ) : (
-        <SlotResults query={query} channel={filters.channel} />
+        <SlotResults
+          query={query}
+          criteria={{
+            season: single(params, "season") ? (filters.season ? seasonOrdinal(filters.season) : "any") : "latest",
+            channelSlugs: filters.channel ? new Set([filters.channel]) : filters.region ? new Set(channelsInRegion(filters.region).map((c) => c.slug)) : null,
+            weekday: filters.weekday,
+            band: filters.band
+          }}
+          seasonLabel={filters.season ? formatSeason(filters.season) : null}
+          ignoresAiringOnly={filters.rerun !== "exclude" || filters.allKinds}
+        />
       )}
     </div>
   );
@@ -281,29 +286,46 @@ async function AiringResults({ filter, query, order, page, href, channelName }: 
   );
 }
 
-async function SlotResults({ query, channel }: { query: string; channel: string | null }) {
+async function SlotResults({ query, criteria, seasonLabel, ignoresAiringOnly }: { query: string; criteria: SlotCriteria; seasonLabel: string | null; ignoresAiringOnly: boolean }) {
   const slots = await listSlots();
   const normalized = query.toLowerCase();
-  const filtered = slots.filter((slot) => (!query || slot.name.toLowerCase().includes(normalized)) && (!channel || slot.channel?.slug === channel));
+  const unfiltered = isUnfiltered(criteria);
+  const matched = slots.flatMap((slot) => {
+    if (query && !slot.name.toLowerCase().includes(normalized)) return [];
+    const position = unfiltered ? (slot.positions[0] ?? null) : matchSlotPosition(slot.positions, criteria);
+    return unfiltered || position ? [{ slot, position }] : [];
+  });
+  const basis =
+    criteria.season === "latest"
+      ? "放送局・曜日・時間帯は各枠の最新クールの放送位置で判定しています。"
+      : criteria.season === "any"
+        ? "いずれかのクールで条件に一致した枠です（表示は一致した最新のクールの位置）。"
+        : `${seasonLabel}に放送があった枠を、そのクールの放送位置で判定しています。`;
   return (
     <section aria-labelledby="results-title" className={styles.results}>
       <div className={styles.resultsHead}>
         <h2 id="results-title" className={styles.count}>
-          <span className="mono">{filtered.length}</span> 枠
+          <span className="mono">{matched.length}</span> 枠
         </h2>
-        <p className={styles.resultsNote}>放送枠はキーワードと放送局で絞り込めます（クール・曜日などの条件は作品・放送の表示に適用されます）。</p>
+        <p className={styles.resultsNote}>
+          {unfiltered ? "放送枠はクール・地域・放送局・曜日・時間帯でも絞り込めます。" : basis}
+          {ignoresAiringOnly ? "再放送・番組の種類の条件は放送枠には適用されません。" : null}
+        </p>
       </div>
-      {filtered.length === 0 ? (
+      {matched.length === 0 ? (
         <EmptyState title="該当する放送枠はありません" icon="search" />
       ) : (
         <ul role="list" className={styles.slotList}>
-          {filtered.slice(0, 120).map((slot) => (
+          {matched.slice(0, 120).map(({ slot, position }) => (
             <li key={slot.slug} className={styles.slotRow}>
               <SlotKindBadge kind={slot.kind} />
               <Link href={`/slots/${encodeURIComponent(slot.slug)}`} className={styles.tableTitle}>
                 {slot.name}
               </Link>
               <span className="muted">
+                {position ? <span className="mono">{`${WEEKDAY_LABELS[position.weekday]} ${formatAnimeMinute(position.minute)}`}</span> : null}
+                {position && criteria.season === "any" ? `（${formatSeasonOrdinal(position.seasonOrdinal)}）` : null}
+                {position ? "・" : null}
                 {slot.titleCount}作品・{slot.seasonCount}クール
               </span>
             </li>

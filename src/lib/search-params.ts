@@ -14,21 +14,37 @@ export function single(params: RawSearchParams, key: string): string | undefined
   return first === undefined || first === "" ? undefined : first;
 }
 
+/**
+ * Start-time presets on the anime clock (the day runs 05:00–29:00). Each band is half-open [from, to) and an
+ * airing belongs to a band by its start minute only. Bands may overlap (latenight covers late, aftermidnight
+ * and latelate); they are filters, not a partition. Object order is the order shown in selects.
+ */
 export const TIME_BANDS = {
-  morning: { label: "朝 5–12時", from: 5 * 60, to: 12 * 60 },
-  daytime: { label: "昼 12–17時", from: 12 * 60, to: 17 * 60 },
-  evening: { label: "夕方 17–19時", from: 17 * 60, to: 19 * 60 },
-  prime: { label: "夜 19–23時", from: 19 * 60, to: 23 * 60 },
-  late: { label: "深夜 23–25時", from: 23 * 60, to: 25 * 60 },
-  latelate: { label: "深夜 25時以降", from: 25 * 60, to: 29 * 60 }
+  morning: { name: "朝", label: "朝 5–12時", from: 5 * 60, to: 12 * 60 },
+  daytime: { name: "昼", label: "昼 12–17時", from: 12 * 60, to: 17 * 60 },
+  evening: { name: "夕方", label: "夕方 17–19時", from: 17 * 60, to: 19 * 60 },
+  prime: { name: "夜", label: "夜 19–23時", from: 19 * 60, to: 23 * 60 },
+  latenight: { name: "深夜アニメ", label: "深夜アニメ 23–29時", from: 23 * 60, to: 29 * 60 },
+  late: { name: "深夜", label: "深夜 23–25時", from: 23 * 60, to: 25 * 60 },
+  aftermidnight: { name: "24時以降", label: "24時以降", from: 24 * 60, to: 29 * 60 },
+  latelate: { name: "25時以降", label: "25時以降", from: 25 * 60, to: 29 * 60 }
 } as const;
 export type TimeBand = keyof typeof TIME_BANDS;
 
 export type RerunMode = "exclude" | "include" | "only";
 
+/** Own keys only: `value in TIME_BANDS` would also accept "constructor", "toString", … */
 export function parseTimeBand(value: string | undefined): TimeBand | null {
-  return value && value in TIME_BANDS ? (value as TimeBand) : null;
+  return value && Object.hasOwn(TIME_BANDS, value) ? (value as TimeBand) : null;
 }
+
+/** Whether an airing starting at `animeStartMinute` falls in the band. The DB filters use the same bounds. */
+export function inTimeBand(animeStartMinute: number, band: TimeBand): boolean {
+  const { from, to } = TIME_BANDS[band];
+  return animeStartMinute >= from && animeStartMinute < to;
+}
+
+export const TIME_BAND_OPTIONS = [{ value: "", label: "すべて" }, ...Object.entries(TIME_BANDS).map(([value, band]) => ({ value, label: band.label }))];
 
 export function parseRerunMode(value: string | undefined, fallback: RerunMode): RerunMode {
   return value === "exclude" || value === "include" || value === "only" ? value : fallback;

@@ -14,6 +14,11 @@
 
 <!-- PC とスマホ、ライトとダーク -->
 
+## ドキュメント
+
+- [ ] 利用者に影響する変更は `CHANGELOG.md` の「未リリース」に追記した（該当する場合）
+- [ ] `docs/roadmap.md` の状態を更新した（該当する場合）
+
 ## 実行したコマンド
 
 - [ ] `npm run lint && npm run typecheck && npm test && npm run build`

@@ -54,6 +54,84 @@ test("search finds a title across all seasons", async ({ page }) => {
   await expect(page.getByRole("heading", { name: /2\s*件の放送/ })).toBeVisible();
 });
 
+// Fixture Monday on TOKYO MX (Kanto): 21:54, 22:00, 22:30 … then 23:00 PSYREN, 23:30, 24:00 信者ゼロ, 24:30 rerun.
+const mondayTab = (page: import("@playwright/test").Page) => page.getByRole("navigation", { name: "曜日" }).getByRole("link").first();
+
+test("schedule: the late-night preset filters airings and day counts, and survives view and week changes", async ({ page }) => {
+  await page.goto(FIXTURE_WEEK);
+  const bands = page.getByRole("navigation", { name: "時間帯" });
+  await expect(bands.getByRole("link", { name: "全時間帯" })).toHaveAttribute("aria-current", "true");
+  await bands.getByRole("link", { name: "深夜アニメ" }).click();
+  await expect(page).toHaveURL(/time=latenight/);
+  await expect(page.getByRole("link", { name: /PSYREN/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /信者ゼロ/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "ふんばるず" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /惚れ薬/ })).toHaveCount(0);
+  await expect(mondayTab(page)).toHaveText(/^月\s*11\/16\s*4$/);
+  await expect(page.getByRole("link", { name: "次の週" })).toHaveAttribute("href", /time=latenight/);
+
+  await page.getByRole("link", { name: "週間リスト" }).click();
+  await expect(page).toHaveURL(/view=list/);
+  await expect(page).toHaveURL(/time=latenight/);
+  await expect(page.getByRole("heading", { name: /月曜.*4件/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "ふんばるず" })).toHaveCount(0);
+});
+
+test("schedule: the band combines with rerun, region and the real-time clock", async ({ page }) => {
+  await page.goto(`${FIXTURE_WEEK}&time=latenight&rerun=exclude`);
+  await expect(mondayTab(page)).toHaveText(/^月\s*11\/16\s*3$/);
+  await expect(page.getByRole("link", { name: /逃げ上手/ })).toHaveCount(0);
+
+  // BS11 airs 転生ゴブリン at 24:00 (MX airs it at 22:00, outside the band).
+  await page.goto(`${FIXTURE_WEEK}&time=latenight&region=bs`);
+  await expect(page.getByRole("link", { name: /転生ゴブリン/ }).first()).toBeVisible();
+  await expect(mondayTab(page)).toHaveText(/^月\s*11\/16\s*4$/);
+
+  // The clock setting changes labels only; the band is judged on the anime-clock start time.
+  await page.goto(`${FIXTURE_WEEK}&time=latenight&clock=real`);
+  await expect(mondayTab(page)).toHaveText(/^月\s*11\/16\s*4$/);
+  await expect(page.getByRole("link", { name: "ふんばるず" })).toHaveCount(0);
+});
+
+test("schedule: an empty band explains itself, and unknown band values fall back to all", async ({ page }) => {
+  await page.goto(`${FIXTURE_WEEK}&time=morning`);
+  await expect(page.getByText("この週に該当する番組はありません")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "時間帯" }).getByRole("link", { name: "朝 5–12時" })).toHaveAttribute("aria-current", "true");
+  await page.getByRole("link", { name: "全時間帯を表示" }).click();
+  await expect(page).not.toHaveURL(/time=/);
+  await expect(page.getByRole("link", { name: "ふんばるず" }).first()).toBeVisible();
+
+  await page.goto(`${FIXTURE_WEEK}&time=constructor`);
+  await expect(page.getByRole("navigation", { name: "時間帯" }).getByRole("link", { name: "全時間帯" })).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("link", { name: "ふんばるず" }).first()).toBeVisible();
+});
+
+test("search: the late-night preset applies to titles and airings and can be removed", async ({ page }) => {
+  await page.goto("/search?season=all&time=latenight");
+  await expect(page.getByRole("heading", { name: /4\s*作品/ })).toBeVisible();
+  // The representative time comes from the matching airings only (MX 22:00 is outside the band).
+  const goblin = page.getByRole("listitem").filter({ has: page.getByRole("link", { name: /転生ゴブリン/ }) });
+  await expect(goblin).toContainText("24:00");
+  await expect(goblin).not.toContainText("22:00");
+
+  await page.getByRole("link", { name: "放送", exact: true }).click();
+  await expect(page).toHaveURL(/time=latenight/);
+  await expect(page.getByRole("heading", { name: /6\s*件の放送/ })).toBeVisible();
+
+  await page.getByRole("link", { name: "深夜アニメ 23–29時 を解除" }).click();
+  await expect(page).not.toHaveURL(/time=/);
+  await expect(page.getByRole("link", { name: "深夜アニメ 23–29時 を解除" })).toHaveCount(0);
+  await expect(page).toHaveURL(/view=airings/);
+});
+
+test("search: the slot tab states how time conditions are judged", async ({ page }) => {
+  await page.goto("/search?view=slots&time=latenight");
+  await expect(page.getByText("各枠の最新クールの放送位置で判定しています")).toBeVisible();
+  await page.goto("/search?view=slots&season=all&time=latenight&rerun=include");
+  await expect(page.getByText(/いずれかのクールで条件に一致した枠です/)).toBeVisible();
+  await expect(page.getByText(/再放送・番組の種類の条件は放送枠には適用されません/)).toBeVisible();
+});
+
 test("stats always state scope and units", async ({ page }) => {
   await page.goto("/stats?season=2026-autumn");
   await expect(page.getByText("集計対象")).toBeVisible();
