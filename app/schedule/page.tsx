@@ -12,7 +12,7 @@ import { REGIONS, REGION_KEYS, TRACKED_CHANNELS, channelsInRegion, parseRegionKe
 import { formatSeason, seasonOfAnimeDate } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, addDays, animeWeekStart, currentAnimeDate, diffDays, formatIsoDateJa, parseWeekdayKey, type IsoDate } from "@/domain/time";
 import type { ClockMode } from "@/lib/format";
-import { buildHref, flattenParams, parseIsoDateParam, parseRerunMode, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, flattenParams, inTimeBand, parseIsoDateParam, parseRerunMode, parseSlug, parseTimeBand, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
 import { getSchedule } from "@/server/queries/schedule";
 
 import styles from "./schedule.module.css";
@@ -55,6 +55,7 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
   const rerun = parseRerunMode(single(params, "rerun"), "include");
   const allKinds = single(params, "kind") === "all";
   const clock: ClockMode = single(params, "clock") === "real" ? "real" : "anime";
+  const band = parseTimeBand(single(params, "time"));
   const requestedDay = parseWeekdayKey(single(params, "day"));
   const todayIndex = diffDays(today, weekStart);
   const activeDay = requestedDay ?? (todayIndex >= 0 && todayIndex < 7 ? todayIndex : 0);
@@ -73,7 +74,10 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
 
   const regionSlugs = new Set((region ? channelsInRegion(region) : TRACKED_CHANNELS).map((c) => c.slug));
   const columns = data.channels.filter((c) => (channelSlug ? c.slug === channelSlug : regionSlugs.has(c.slug)));
-  const byDay = Array.from({ length: 7 }, (_, index) => data.items.filter((item) => item.animeDate === addDays(weekStart, index)));
+  // The week is fetched (and cached) once; the time band is applied here with the same bounds as the DB filters,
+  // so "no data for this week" and "nothing in this band" stay distinguishable.
+  const shown = band ? data.items.filter((item) => inTimeBand(item.animeStartMinute, band)) : data.items;
+  const byDay = Array.from({ length: 7 }, (_, index) => shown.filter((item) => item.animeDate === addDays(weekStart, index)));
   const dayItems = byDay[activeDay] ?? [];
   const href = (overrides: Record<string, string | null>) => buildHref(PATH, current, overrides);
   const season = seasonOfAnimeDate(activeDate);
@@ -97,14 +101,26 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
       </div>
 
       <div className={styles.toolbar}>
-        <SegmentedLinks
-          label="地域・媒体"
-          size="sm"
-          options={[
-            ...REGION_KEYS.map((key) => ({ href: href({ region: key === "kanto" ? null : key, channel: null }), label: REGIONS[key].short, active: region === key && !channelSlug })),
-            { href: href({ region: "all", channel: null }), label: "すべて", active: region === null && !channelSlug }
-          ]}
-        />
+        <div className={styles.quickFilters}>
+          <SegmentedLinks
+            label="地域・媒体"
+            size="sm"
+            options={[
+              ...REGION_KEYS.map((key) => ({ href: href({ region: key === "kanto" ? null : key, channel: null }), label: REGIONS[key].short, active: region === key && !channelSlug })),
+              { href: href({ region: "all", channel: null }), label: "すべて", active: region === null && !channelSlug }
+            ]}
+          />
+          <SegmentedLinks
+            label="時間帯"
+            size="sm"
+            options={[
+              { href: href({ time: null }), label: "全時間帯", active: band === null },
+              { href: href({ time: "latenight" }), label: TIME_BANDS.latenight.name, active: band === "latenight" },
+              // Another band chosen in the settings stays visible here instead of looking like "all".
+              ...(band && band !== "latenight" ? [{ href: href({}), label: TIME_BANDS[band].label, active: true }] : [])
+            ]}
+          />
+        </div>
         <Disclosure summary="表示設定" defaultOpen={Boolean(channelSlug || rerun !== "include" || allKinds || clock === "real")}>
           <FilterForm action={PATH} className={styles.settings} label="番組表の表示設定">
             <input type="hidden" name="week" value={requestedWeek ? weekStart : ""} />
@@ -117,6 +133,7 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
               value={channelSlug ?? ""}
               options={[{ value: "", label: "地域内のすべて" }, ...data.channels.map((c) => ({ value: c.slug, label: c.name }))]}
             />
+            <SelectField label="時間帯（開始時刻）" name="time" value={band ?? ""} options={TIME_BAND_OPTIONS} />
             <SelectField
               label="再放送"
               name="rerun"
@@ -157,6 +174,10 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
       {data.items.length === 0 ? (
         <EmptyState title="この週の放送データはありません">
           対象期間外か、まだ取得していない週です。データの取得範囲は<a href="/status" className="inline-link">データ更新状況</a>で確認できます。
+        </EmptyState>
+      ) : shown.length === 0 ? (
+        <EmptyState title="この週に該当する番組はありません">
+          {band ? TIME_BANDS[band].label : ""}に始まる放送がありません。<a href={href({ time: null })} className="inline-link">全時間帯を表示</a>
         </EmptyState>
       ) : view === "list" ? (
         <div className={styles.week}>
