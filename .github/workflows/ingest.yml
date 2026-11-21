@@ -49,13 +49,20 @@ jobs:
       INPUT_FROM: ${{ inputs.from }}
       INPUT_TO: ${{ inputs.to }}
     steps:
+      # Logs of a public repository are public. The URL is a masked secret, but its host is not and
+      # the Prisma CLI prints it; mask the host and the endpoint id for all later steps.
+      - name: Mask database host
+        run: node -e 'try { const h = new URL(process.env.DIRECT_DATABASE_URL).hostname; console.log(`::add-mask::${h}`); console.log(`::add-mask::${h.split(".")[0]}`); } catch {}'
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run db:deploy
+      # Migrations are applied only by migrate.yml (MIGRATE_ON_PUSH or a manual run). Exits non-zero while
+      # migrations are pending, so ingestion never writes into an outdated schema.
+      - name: Check database schema is up to date
+        run: npx prisma migrate status
       - name: Random delay (spread load)
         if: github.event_name == 'schedule'
         run: sleep $((RANDOM % 240))

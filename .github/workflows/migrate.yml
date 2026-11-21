@@ -1,6 +1,7 @@
-# Applies Prisma migrations to the production database when migrations change on main.
-# Runs only when the repository variable MIGRATE_ON_PUSH is "true" and the secret
-# DIRECT_DATABASE_URL (owner role, non-pooled) is configured. Keep migrations additive
+# The only workflow that applies Prisma migrations to the production database (ingest.yml only
+# checks that none are pending). On push it runs only when the repository variable MIGRATE_ON_PUSH
+# is "true"; a manual run (workflow_dispatch) is itself the opt-in. Needs the secret
+# DIRECT_DATABASE_URL (owner role, non-pooled). Keep migrations additive
 # (expand → deploy code → contract) because Vercel deploys the app in parallel.
 name: Migrate
 
@@ -19,12 +20,15 @@ concurrency:
 
 jobs:
   migrate:
-    if: vars.MIGRATE_ON_PUSH == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.MIGRATE_ON_PUSH == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
       DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
     steps:
+      # Logs of a public repository are public; see ingest.yml.
+      - name: Mask database host
+        run: node -e 'try { const h = new URL(process.env.DIRECT_DATABASE_URL).hostname; console.log(`::add-mask::${h}`); console.log(`::add-mask::${h.split(".")[0]}`); } catch {}'
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
