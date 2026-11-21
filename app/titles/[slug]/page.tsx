@@ -52,7 +52,6 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
         <span>TID {title.slug}</span>
       </nav>
       <PageHeader
-        kicker="Title"
         title={title.name}
         lead={
           <>

@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<string, string> = { SUCCEEDED: "成功", FAILED: "失
 export default function StatusPage() {
   return (
     <div className="container">
-      <PageHeader kicker="Data status" title="データ更新状況" lead="本サイトのデータベースに記録された実際の取得履歴です。取得が止まっている場合や失敗した場合もそのまま表示します。" />
+      <PageHeader title="データ更新状況" lead="本サイトのデータベースに記録された実際の取得履歴です。取得が止まっている場合や失敗した場合もそのまま表示します。" />
       <Suspense fallback={<SkeletonBlock rows={6} label="更新状況を読み込み中" />}>
         <StatusContent />
       </Suspense>
@@ -55,8 +55,8 @@ async function StatusContent() {
           value={<span className={styles.small}>{status.coverage ? formatCoverage(status.coverage) : "—"}</span>}
           hint="対象局を欠けなく取得できた範囲の最初と最後（アニメ時刻の日付）。今後の放送予定を含みます。"
         />
-        <StatTile label="放送" value={formatNumber(status.totals.broadcasts)} unit="件" hint={`作品 ${formatNumber(status.totals.titles)}・対象局 ${status.totals.channels}`} />
-        <StatTile label="放送枠" value={formatNumber(status.totals.slots)} unit="枠" hint="出典記載枠と推定枠の合計" />
+        <StatTile label="放送" value={status.totals.broadcasts} unit="件" hint={`作品 ${formatNumber(status.totals.titles)}・対象局 ${status.totals.channels}`} />
+        <StatTile label="放送枠" value={status.totals.slots} unit="枠" hint="出典記載枠と推定枠の合計" />
       </StatGrid>
 
       <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件。リクエスト数は出典への実際のアクセス回数です。失敗時の備考は原因の概要のみを表示します。">

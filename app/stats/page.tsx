@@ -45,7 +45,6 @@ export default function StatsPage({ searchParams }: PageProps<"/stats">) {
   return (
     <div className="container">
       <PageHeader
-        kicker="Programming statistics"
         title="編成統計"
         lead="アニメがどの曜日・時間帯・局に集まっているか。すべての図に集計単位・対象期間・対象局・再放送の扱いを記載しています。"
       />
@@ -225,8 +224,8 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
       ) : null}
 
       <StatGrid>
-        <StatTile label="作品本数" value={formatNumber(stats.titleCount)} unit="作品" hint="対象範囲で1回以上放送されたタイトル数" />
-        <StatTile label="放送件数" value={formatNumber(stats.airingCount)} unit="件" hint="各話の放送1回を1件として数えた値" />
+        <StatTile label="作品本数" value={stats.titleCount} unit="作品" hint="対象範囲で1回以上放送されたタイトル数" />
+        <StatTile label="放送件数" value={stats.airingCount} unit="件" hint="各話の放送1回を1件として数えた値" />
         <StatTile
           label="最大同時放送数"
           value={concurrencyPeak?.count ?? 0}
@@ -235,7 +234,8 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         />
         <StatTile
           label="24時以降開始の割合"
-          value={trendRow ? formatPercent(trendRow.lateNightShare) : "—"}
+          value={trendRow ? Math.round(trendRow.lateNightShare * 100) : "—"}
+          unit={trendRow ? "%" : undefined}
           hint="作品ごとの最頻開始時刻が24:00以降の割合"
         />
       </StatGrid>

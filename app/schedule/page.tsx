@@ -45,7 +45,6 @@ export default function SchedulePage({ searchParams }: PageProps<"/schedule">) {
   return (
     <div className="container">
       <PageHeader
-        kicker="Weekly schedule"
         title="週間番組表"
         lead="対象局のアニメ放送を、アニメ時刻（5時切替）で表示します。番組をクリックすると作品の放送履歴へ移動します。"
       />

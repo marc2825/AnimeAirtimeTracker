@@ -8,10 +8,8 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--space-3) var(--space-4);
-  padding: var(--space-4);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
+  padding-bottom: var(--space-4);
+  border-bottom: var(--border-strong);
 }
 
 .filterForm {

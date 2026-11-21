@@ -69,7 +69,6 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
         <span>{slot.name}</span>
       </nav>
       <PageHeader
-        kicker="Slot chronicle"
         title={slot.name}
         meta={
           <>

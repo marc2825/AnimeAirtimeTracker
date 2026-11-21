@@ -1,16 +1,15 @@
 import type { ReactNode } from "react";
 
+import { CountUp } from "./CountUp";
 import { Icon, type IconName } from "./Icon";
 import styles from "./primitives.module.css";
 
 export function PageHeader({
-  kicker,
   title,
   lead,
   meta,
   actions
 }: {
-  kicker?: string;
   title: ReactNode;
   lead?: ReactNode;
   meta?: ReactNode;
@@ -19,7 +18,6 @@ export function PageHeader({
   return (
     <header className={styles.pageHeader}>
       <div className={styles.pageHeaderMain}>
-        {kicker ? <p className={styles.kicker}>{kicker}</p> : null}
         <h1 className={styles.pageTitle}>{title}</h1>
         {lead ? <p className={styles.lead}>{lead}</p> : null}
         {meta ? <div className={styles.meta}>{meta}</div> : null}
@@ -164,12 +162,13 @@ export function SkeletonBlock({ rows = 6, label = "読み込み中" }: { rows?: 
   );
 }
 
+/** A key figure. A numeric `value` counts up to its final value when it comes into view. */
 export function StatTile({ label, value, unit, hint }: { label: string; value: ReactNode; unit?: string; hint?: ReactNode }) {
   return (
     <div className={styles.statTile}>
       <dt className={styles.statLabel}>{label}</dt>
       <dd className={styles.statValue}>
-        {value}
+        {typeof value === "number" ? <CountUp value={value} /> : value}
         {unit ? <span className={styles.statUnit}>{unit}</span> : null}
       </dd>
       {hint ? <dd className={styles.statHint}>{hint}</dd> : null}

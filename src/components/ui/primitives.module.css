@@ -5,23 +5,14 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-4) var(--space-8);
-  margin-bottom: var(--space-6);
+  margin-bottom: var(--space-8);
 }
 
 .pageHeaderMain {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-width: 0;
-  max-width: 48rem;
-}
-
-.kicker {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--color-accent);
-  font-weight: var(--weight-medium);
+  max-width: 44rem;
 }
 
 .pageTitle {
@@ -31,8 +22,8 @@
 
 .lead {
   color: var(--color-ink-2);
-  font-size: var(--text-md);
-  line-height: var(--leading-snug);
+  font-size: var(--text-base);
+  line-height: 1.7;
 }
 
 .meta {
@@ -53,13 +44,14 @@
 
 @media (min-width: 48rem) {
   .pageTitle {
-    font-size: var(--text-3xl);
+    font-size: var(--text-4xl);
   }
 }
 
 /* ---- Section ------------------------------------------------------------------ */
+/* A section opens with a heavy rule, like a block in a printed listing; more space above than below. */
 .section {
-  margin-top: var(--space-10);
+  margin-top: var(--space-16);
 }
 
 .sectionHeader {
@@ -68,9 +60,9 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-3) var(--space-6);
-  margin-bottom: var(--space-4);
-  padding-bottom: var(--space-3);
-  border-bottom: var(--border);
+  margin-bottom: var(--space-5);
+  padding-top: var(--space-3);
+  border-top: var(--rule);
 }
 
 .sectionHeading {
@@ -80,7 +72,7 @@
 }
 
 .sectionTitle {
-  font-size: var(--text-xl);
+  font-size: var(--text-2xl);
 }
 
 .subsectionTitle {
@@ -102,10 +94,8 @@
 
 /* ---- Card ----------------------------------------------------------------------- */
 .card {
-  background: var(--color-surface-1);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
+  border-top: var(--border-strong);
+  padding: var(--space-4) 0;
 }
 
 /* ---- Badge ---------------------------------------------------------------------- */
@@ -293,22 +283,28 @@
 }
 
 /* ---- Stat tiles --------------------------------------------------------------------- */
+/* Key figures as a ruled strip, not boxes: a heavy rule above, hairlines between the figures. */
 .statGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  background: var(--color-line);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  border-top: var(--rule);
+  border-bottom: var(--border-strong);
 }
 
 .statTile {
   display: grid;
   align-content: start;
   gap: var(--space-1);
-  padding: var(--space-4);
-  background: var(--color-surface-1);
+  padding: var(--space-4) var(--space-4) var(--space-4) 0;
+}
+
+.statTile:nth-child(even) {
+  padding-left: var(--space-4);
+  border-left: var(--border);
+}
+
+.statTile:nth-child(n + 3) {
+  border-top: var(--border);
 }
 
 .statLabel {
@@ -318,10 +314,12 @@
 }
 
 .statValue {
-  font-size: var(--text-3xl);
-  font-weight: var(--weight-bold);
+  font-family: var(--font-geist), var(--font-sans);
+  font-size: 2.5rem;
+  font-weight: 600;
   line-height: 1.1;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .statUnit {
@@ -340,6 +338,17 @@
 @media (min-width: 64rem) {
   .statGrid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .statTile:nth-child(n) {
+    padding-left: var(--space-5);
+    border-left: var(--border);
+    border-top: 0;
+  }
+
+  .statTile:first-child {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 

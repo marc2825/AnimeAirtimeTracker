@@ -34,17 +34,17 @@
 }
 
 .brandKicker {
-  font-family: var(--font-mono);
-  font-size: 0.5625rem;
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  font-size: var(--text-2xs);
+  letter-spacing: 0.02em;
   color: var(--color-ink-3);
 }
 
+/* The site name is the masthead: mincho, like the headings. */
 .brandName {
-  font-size: var(--text-md);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
   font-weight: var(--weight-bold);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .desktopNav {

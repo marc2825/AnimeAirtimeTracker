@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { ScrollToEnd } from "@/components/slots/ScrollToEnd";
 import { Disclosure } from "@/components/ui/controls";
 import { ANIME_HOURS } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
@@ -174,7 +175,7 @@ export function BarList({ rows, unit, max: maxOverride }: { rows: { key: string;
 export function ColumnChart({ columns, unit }: { columns: { key: string; label: string; sublabel?: string; value: number; highlight?: boolean }[]; unit: string }) {
   const max = Math.max(1, ...columns.map((column) => column.value));
   return (
-    <div className={styles.columnsWrap}>
+    <ScrollToEnd className={styles.columnsWrap} label="クール別のグラフ（左が古く、右が新しい）">
       <ol role="list" className={styles.columns} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
         {columns.map((column) => (
           <li key={column.key} className={`${styles.column} ${column.highlight ? styles.columnHighlight : ""}`} title={`${column.label}: ${column.value}${unit}`}>
@@ -187,7 +188,7 @@ export function ColumnChart({ columns, unit }: { columns: { key: string; label: 
           </li>
         ))}
       </ol>
-    </div>
+    </ScrollToEnd>
   );
 }
 
@@ -218,7 +219,7 @@ export function StackedColumnChart({
           </li>
         ))}
       </ul>
-      <div className={styles.columnsWrap}>
+      <ScrollToEnd className={styles.columnsWrap} label="クール別・時間帯別のグラフ（左が古く、右が新しい）">
         <ol role="list" className={styles.columns} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
           {columns.map((column, columnIndex) => (
             <li key={column.key} className={`${styles.column} ${column.highlight ? styles.columnHighlight : ""}`} title={`${column.label}: 計${totals[columnIndex]}${unit}`}>
@@ -237,7 +238,7 @@ export function StackedColumnChart({
             </li>
           ))}
         </ol>
-      </div>
+      </ScrollToEnd>
     </div>
   );
 }

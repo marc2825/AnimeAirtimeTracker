@@ -5,11 +5,12 @@ import { Suspense } from "react";
 import { latestOrdinal, SlotCard } from "@/components/slots/SlotCard";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
 import { ButtonLink } from "@/components/ui/controls";
+import { CountUp } from "@/components/ui/CountUp";
 import { FlagBadges, Notice, Skeleton, SkeletonBlock } from "@/components/ui/primitives";
 import { REGIONS, REGION_KEYS } from "@/domain/coverage";
 import { currentSeason, formatSeason } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, currentAnimeDate, formatIsoDateJa, toAnimeTime, weekdayOf } from "@/domain/time";
-import { episodeText, formatCoverage, formatDateTime, formatNumber, formatStartTime } from "@/lib/format";
+import { episodeText, formatCoverage, formatDateTime, formatStartTime } from "@/lib/format";
 import { SITE_NAME } from "@/lib/site";
 import { getSchedule } from "@/server/queries/schedule";
 import { listSlots } from "@/server/queries/slots";
@@ -23,7 +24,6 @@ export default function HomePage() {
     <div className="container">
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
-          <p className={styles.kicker}>Japanese anime broadcast observatory</p>
           <h1 id="hero-title" className={styles.heroTitle}>
             アニメの放送編成を、
             <br />
@@ -36,25 +36,31 @@ export default function HomePage() {
             <ButtonLink href="/schedule" variant="primary" icon="arrowRight">
               今週の番組表
             </ButtonLink>
-            <ButtonLink href="/seasons">クール別の新作</ButtonLink>
-            <ButtonLink href="/slots">放送枠の年表を見る</ButtonLink>
+            <Link href="/seasons" className={styles.textLink}>
+              クール別の新作
+            </Link>
+            <Link href="/slots" className={styles.textLink}>
+              放送枠の年表
+            </Link>
           </div>
-          <nav className={styles.quick} aria-label="曜日から探す">
-            <span className={styles.quickLabel}>曜日</span>
-            {WEEKDAY_LABELS.map((label, index) => (
-              <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={`${styles.quickPill} ${index === 5 ? "sat" : index === 6 ? "sun" : ""}`}>
-                {label}
-              </Link>
-            ))}
-          </nav>
-          <nav className={styles.quick} aria-label="地域・媒体から探す">
-            <span className={styles.quickLabel}>地域</span>
-            {REGION_KEYS.map((key) => (
-              <Link key={key} href={key === "kanto" ? "/schedule" : `/schedule?region=${key}`} className={styles.quickPill}>
-                {REGIONS[key].short}
-              </Link>
-            ))}
-          </nav>
+          <div className={styles.index}>
+            <nav className={styles.indexRow} aria-label="曜日から探す">
+              <span className={styles.indexLabel}>曜日</span>
+              {WEEKDAY_LABELS.map((label, index) => (
+                <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={`${styles.indexLink} ${index === 5 ? "sat" : index === 6 ? "sun" : ""}`}>
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            <nav className={styles.indexRow} aria-label="地域・媒体から探す">
+              <span className={styles.indexLabel}>地域</span>
+              {REGION_KEYS.map((key) => (
+                <Link key={key} href={key === "kanto" ? "/schedule" : `/schedule?region=${key}`} className={styles.indexLink}>
+                  {REGIONS[key].short}
+                </Link>
+              ))}
+            </nav>
+          </div>
         </div>
         <Suspense fallback={<OnAirSkeleton />}>
           <OnAirPanel />
@@ -101,7 +107,6 @@ async function OnAirPanel() {
     <aside className={styles.onAir} aria-labelledby="onair-title">
       <div className={styles.onAirHead}>
         <h2 id="onair-title" className={styles.onAirTitle}>
-          <span className={styles.signal} aria-hidden="true" />
           今日のこれからの新作
         </h2>
         <span className={styles.onAirMeta}>
@@ -156,7 +161,6 @@ async function FeaturedSlots() {
     <section className={styles.block} aria-labelledby="featured-title">
       <div className={styles.blockHead}>
         <div>
-          <p className={styles.blockKicker}>Slot chronicles</p>
           <h2 id="featured-title" className={styles.blockTitle}>
             放送枠の年表
           </h2>
@@ -190,7 +194,6 @@ async function StatsPreview() {
     <section className={styles.block} aria-labelledby="stats-title">
       <div className={styles.blockHead}>
         <div>
-          <p className={styles.blockKicker}>This season in numbers</p>
           <h2 id="stats-title" className={styles.blockTitle}>
             {formatSeason(season)}の編成
           </h2>
@@ -201,7 +204,7 @@ async function StatsPreview() {
         </ButtonLink>
       </div>
       <div className={styles.statsGrid}>
-        <div className={styles.statsCard}>
+        <div className={styles.statsFigure}>
           <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" hours={hours} />
           <p className={styles.statsNote}>単位: 作品本数（17時〜28時台、アニメ時刻）。</p>
         </div>
@@ -209,21 +212,21 @@ async function StatsPreview() {
           <div>
             <dt>作品本数</dt>
             <dd>
-              {formatNumber(stats.titleCount)}
+              <CountUp value={stats.titleCount} />
               <span>作品</span>
             </dd>
           </div>
           <div>
             <dt>放送件数</dt>
             <dd>
-              {formatNumber(stats.airingCount)}
+              <CountUp value={stats.airingCount} />
               <span>件</span>
             </dd>
           </div>
-          <div className={styles.wide}>
+          <div>
             <dt>最大同時放送数</dt>
             <dd>
-              {stats.concurrency.peak?.count ?? 0}
+              <CountUp value={stats.concurrency.peak?.count ?? 0} />
               <span>本</span>
             </dd>
           </div>

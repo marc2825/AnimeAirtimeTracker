@@ -1,8 +1,6 @@
 .list {
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
-  overflow: hidden;
+  border-top: var(--border-strong);
+  border-bottom: var(--border-strong);
 }
 
 .row {
@@ -11,9 +9,8 @@
   grid-template-areas: "time channel main" "time channel flags";
   column-gap: var(--space-3);
   align-items: baseline;
-  padding: var(--space-2-5, 0.625rem) var(--space-3);
-  padding-block: 0.6rem;
-  border-top: 1px solid var(--color-grid);
+  padding: 0.7rem 0;
+  border-top: var(--border);
 }
 
 .row:first-child {

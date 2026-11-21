@@ -1,17 +1,10 @@
+/* A ledger entry, not a box: a rule above, the content below it. */
 .card {
   display: grid;
   align-content: start;
   gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
-  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-}
-
-.card:hover {
-  border-color: var(--color-line-strong);
-  box-shadow: var(--shadow-1);
+  padding: var(--space-3) 0 var(--space-5);
+  border-top: var(--border-strong);
 }
 
 .head {
@@ -28,7 +21,8 @@
 }
 
 .name {
-  font-size: var(--text-lg);
+  font-family: var(--font-serif);
+  font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   line-height: var(--leading-tight);
 }
@@ -73,8 +67,6 @@
   grid-template-columns: auto auto 1fr;
   gap: var(--space-4);
   font-size: var(--text-xs);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-grid);
 }
 
 .stats dt {
