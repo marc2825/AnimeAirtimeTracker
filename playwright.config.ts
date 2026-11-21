@@ -28,7 +28,9 @@ export default defineConfig({
   webServer: {
     // Requires `npm run build` first (CI does this). Uses the production server, not dev.
     command: `npx next start --port ${PORT}`,
-    url: `http://localhost:${PORT}/about`,
+    // The server starts before globalSetup seeds the database. Poll a route that reads no data, so the
+    // cached dataset status (rendered in every page footer) is not filled from the pre-seed database.
+    url: `http://localhost:${PORT}/robots.txt`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     env: { DATABASE_URL: DATABASE_URL ?? "", SITE_URL: `http://localhost:${PORT}` }
