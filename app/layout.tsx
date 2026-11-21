@@ -25,7 +25,9 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   openGraph: { type: "website", siteName: SITE_NAME, locale: "ja_JP" },
   twitter: { card: "summary_large_image" },
-  formatDetection: { telephone: false }
+  formatDetection: { telephone: false },
+  // Search Console ownership via the HTML-tag method (a *.vercel.app domain cannot be verified through DNS).
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined
 };
 
 export const viewport: Viewport = {
