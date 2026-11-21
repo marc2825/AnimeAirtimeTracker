@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ExternalLink, PageHeader } from "@/components/ui/primitives";
-import { ANIME_CATEGORIES, AREA_LABELS, MEDIUM_LABELS, REGIONS, REGION_KEYS, SYOBOI_CATEGORY_LABELS, TRACKED_CHANNELS, channelsInRegion } from "@/domain/coverage";
+import { ANIME_CATEGORIES, AREA_LABELS, MEDIUM_LABELS, REGIONS, REGION_KEYS, SPARSE_SOURCE_NOTE, SYOBOI_CATEGORY_LABELS, TRACKED_CHANNELS, channelsInRegion } from "@/domain/coverage";
 import { RERUN_AGE_THRESHOLD_MONTHS } from "@/domain/flags";
 import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, LABEL_MIN_TITLES, MIN_REGULAR_AIRINGS, SLOT_RULE_VERSION } from "@/domain/slots";
 import { ISSUES_URL, REPOSITORY_URL, SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
@@ -154,7 +154,7 @@ export default function AboutPage() {
             <h2>データの限界</h2>
             <ul>
               <li>出典は有志の手入力です。登録漏れ・誤り・遅れがあり得ます。出典自身も1週間以上先のデータは誤りの可能性が高いと案内しています。</li>
-              <li>取得対象外の局で放送された作品や、取得期間より前の放送は含まれません。過去分は取得済みのクールのみです。</li>
+              <li>取得対象外の局で放送された作品や、取得期間より前の放送は含まれません。過去分は2000年冬クール以降を取得していますが、{SPARSE_SOURCE_NOTE}</li>
               <li>放送の中止・時間変更は、出典が更新され本サイトが再取得した時点で反映されます。取得後に観測した変更は作品ページに「変更」として表示します。</li>
               <li>出典の放送データにある開始時刻の補正値（StOffset）は意味が公開仕様で確認できないため、表示する時刻には適用していません。</li>
               <li>作品のシリーズ関係は確認していません。作品ページの「関連作品の候補」は読みが一致するタイトルです。</li>

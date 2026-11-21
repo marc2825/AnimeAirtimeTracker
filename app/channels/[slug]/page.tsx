@@ -7,7 +7,7 @@ import { Suspense } from "react";
 import { ChartFrame, HeatmapTable, StackedColumnChart, WeekdayHourHeatmap } from "@/components/stats/Charts";
 import { Disclosure } from "@/components/ui/controls";
 import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, StatGrid, StatTile } from "@/components/ui/primitives";
-import { MEDIUM_LABELS, AREA_LABELS, TRACKED_CHANNELS, networkLabelOf } from "@/domain/coverage";
+import { AREA_LABELS, MEDIUM_LABELS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, TRACKED_CHANNELS, networkLabelOf } from "@/domain/coverage";
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { formatPercent, formatSeasonOrdinal } from "@/lib/format";
@@ -98,7 +98,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         <ChartFrame
           title="クール別・時間帯別の作品本数"
           takeaway={peak ? `最も多かったのは${formatSeasonOrdinal(peak.seasonOrdinal)}の${peak.titles}作品です。` : "放送の記録がありません。"}
-          scope="単位: 作品本数（そのクールに1回以上放送された作品、再放送を除く）。各作品はクールごとに最頻の開始時刻の時間帯に1回だけ数えます。"
+          scope={`単位: 作品本数（そのクールに1回以上放送された作品、再放送を除く）。各作品はクールごとに最頻の開始時刻の時間帯に1回だけ数えます。${trend.length > 0 && Math.floor(trend[0]!.seasonOrdinal / 10) < SOURCE_COMPLETE_FROM_YEAR ? SPARSE_SOURCE_NOTE : ""}`}
           table={
             <div className={styles.tableWrap}>
               <table className={styles.table}>

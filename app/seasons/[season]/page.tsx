@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { SegmentedLinks } from "@/components/ui/controls";
 import { EmptyState, Notice, PageHeader, SkeletonBlock } from "@/components/ui/primitives";
-import { REGIONS, REGION_KEYS, parseRegionKey } from "@/domain/coverage";
+import { REGIONS, REGION_KEYS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, parseRegionKey } from "@/domain/coverage";
 import { formatSeason, parseSeasonId, seasonId, seasonOrdinal, shiftSeason } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { formatDateShort } from "@/lib/format";
@@ -88,6 +88,11 @@ async function SeasonContent({ params, searchParams }: { params: Promise<{ seaso
         ) : null}
       </div>
 
+      {season.year < SOURCE_COMPLETE_FROM_YEAR && coveredSet.has(seasonOrdinal(season)) ? (
+        <Notice tone="warning" title="出典の登録が少ない時期です">
+          {SPARSE_SOURCE_NOTE}この一覧に載っていない新作も多くあります。
+        </Notice>
+      ) : null}
       {!coveredSet.has(seasonOrdinal(season)) ? (
         <EmptyState title="このクールのデータはまだありません">
           取得済みの範囲は<Link href="/status" className="inline-link">データ更新状況</Link>で確認できます。
