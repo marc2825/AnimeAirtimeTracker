@@ -34,7 +34,7 @@ Any PostgreSQL ≥ 16 works instead of the embedded one (Docker, Homebrew, manag
 
 ## Deployment (recommendation)
 
-Facts that drive the choice (checked 2026-11-19): the app relies on Next.js 16 Cache Components; the whole dataset for 11 seasons is **62 MB** (≈5 MB per season); traffic is read-only; ingestion runs ~5 short jobs per day.
+Facts that drive the choice (checked 2026-11-19): the app relies on Next.js 16 Cache Components; the whole dataset for 11 seasons is **62 MB** (≈5 MB per season; on 2026-11-21, 2000 winter – 2026 autumn is ≈ 370 MB of the 1 GB Neon Free branch limit); traffic is read-only; ingestion runs ~5 short jobs per day.
 
 | Option | Web | DB | Ingest | Cost | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -70,8 +70,12 @@ Actions logs of a public repository are public: the workflows mask the database 
 
 ## Backup and restore
 
-- Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan. Additionally keep a logical dump from a trusted machine (not as an Actions artifact: artifacts of a public repository are downloadable):
-  `pg_dump --format=custom --no-owner "$DIRECT_DATABASE_URL" > backup-$(date +%F).dump`
+- Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan. Keep a copy outside Neon from a trusted machine, at least monthly (not as an Actions artifact: artifacts of a public repository are downloadable). Either:
+  - copy into a local PostgreSQL 18 with the read-only role (no PostgreSQL client needed; verifies row counts per table):
+    `DIRECT_DATABASE_URL=<local db> npm run db:deploy && SOURCE_DATABASE_URL=<web_readonly url> TARGET_DATABASE_URL=<local db> npx tsx scripts/copy-db.ts`
+  - or a logical dump with a **PostgreSQL 18** client (older `pg_dump` refuses an 18 server):
+    `pg_dump --format=custom --no-owner "$DIRECT_DATABASE_URL" > backup-$(date +%F).dump`
+- Restore check done 2026-11-21: production → local PostgreSQL 18 with `copy-db.ts` (≈ 6.5 min); all 12 tables matched (326,151 airings, 6,490 titles, 866 slots) and the site served every page from the copy.
 - Restore into a **new** database, verify, then switch `DATABASE_URL`:
   `createdb restore_test && pg_restore --no-owner -d restore_test backup.dump`
 - Test a restore at least once per quarter. Derived tables can be rebuilt with `npm run ingest -- derive`; source tables can be re-fetched from the API if ever lost (respecting the request budget).
@@ -95,7 +99,8 @@ Status 2026-11-21.
 - [x] Migrations applied; initial season + backfill ingested; `/status` shows success
 - [x] Security headers verified; `npm audit` clean; Dependabot version updates configured
 - [ ] Dependabot security updates, secret scanning and push protection enabled (repository settings)
-- [ ] Backup: one logical dump + one restore test done
+- [x] Restore test done (2026-11-21, copy into a separate database; see Backup and restore)
+- [ ] Monthly copy or dump kept outside Neon (owner)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
 - [ ] Open Graph preview checked; Search Console verified (optional)
 - [x] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first

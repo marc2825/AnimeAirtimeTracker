@@ -4,7 +4,7 @@
 
 日本のアニメ放送編成を、**今週の番組表**から**放送枠の年表**、**編成統計**まで横断して調べられるWebサイトです。番組データは[しょぼいカレンダー](https://cal.syoboi.jp/)の公式の非HTMLインターフェースから取得し、放送枠と統計は本サイトが算出します。
 
-**公開サイト: <https://anime-airtime-tracker.vercel.app>** — 2024年冬クール以降のデータを掲載し、6時間ごとに更新しています（[データ更新状況](https://anime-airtime-tracker.vercel.app/status)）。
+**公開サイト: <https://anime-airtime-tracker.vercel.app>** — 2000年冬クール以降のデータ（出典の登録がそろうのは2006年以降）を掲載し、6時間ごとに更新しています（[データ更新状況](https://anime-airtime-tracker.vercel.app/status)）。
 
 ## できること
 

@@ -23,7 +23,7 @@ Attribution shown on every page footer and on `/about`; each title links to its 
 | `recent` | daily | ~4 windows covering today−7 … today+14 (complete windows → absence detection) |
 | `derive` | after every run (automatic) | 0 (DB only) |
 
-Request budget in steady state: ≈ 4 × (2–4) + 4 ≈ **20 requests/day**. The initial backfill of 11 seasons on 2026-11-18 took 294 requests (before title batching per season was added; now ≈ 190). All requests: serial, `SYOBOI_MIN_INTERVAL_MS` (default 3000, floor 1000) + up to 25% jitter after each response, 60 s timeout, max 4 retries with exponential backoff from 10 s, Retry-After respected.
+Request budget in steady state: ≈ 4 × (2–4) + 4 ≈ **20 requests/day**. The initial backfill of 11 seasons on 2026-11-18 took 294 requests (before title batching per season was added; now ≈ 190). The production backfill from 2000 winter to 2023 autumn on 2026-11-21 took 1,402 requests in 12 workflow runs of 8 seasons (≈ 117 each, ≈ 13 min per run including derive); 2005 and earlier hold far fewer records (2002 and earlier: 3–4 channels). All requests: serial, `SYOBOI_MIN_INTERVAL_MS` (default 3000, floor 1000) + up to 25% jitter after each response, 60 s timeout, max 4 retries with exponential backoff from 10 s, Retry-After respected.
 
 User-Agent: configured via `SYOBOI_USER_AGENT`; the CLI refuses to run unless it matches `AppName/version (+https://…)`. The info URL must lead to a page with contact information (the repository README + Issues).
 

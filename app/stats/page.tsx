@@ -7,7 +7,7 @@ import { BarList, ChartFrame, ColumnChart, ConcurrencyStrip, HeatmapTable, Stack
 import { Disclosure, SegmentedLinks, SelectField } from "@/components/ui/controls";
 import { FilterForm } from "@/components/ui/FilterForm";
 import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, StatGrid, StatTile } from "@/components/ui/primitives";
-import { NETWORKS, NETWORK_KEYS, REGIONS, TRACKED_CHANNELS, channelSlugsFor, parseNetworkKey, parseRegionKey, type RegionKey } from "@/domain/coverage";
+import { NETWORKS, NETWORK_KEYS, REGIONS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, TRACKED_CHANNELS, channelSlugsFor, parseNetworkKey, parseRegionKey, type RegionKey } from "@/domain/coverage";
 import { currentSeason, formatSeason, parseSeasonId, seasonDateRange, seasonFromOrdinal, seasonId, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
 import { DELAY_BUCKETS, type CountUnit } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
@@ -135,6 +135,9 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
   );
   const lateTitles = stats.heatmap.cells.reduce((sum, row) => sum + row.slice(24 - 5).reduce((a, b) => a + b, 0), 0);
   const trendRow = trend.find((row) => row.seasonOrdinal === seasonOrdinal(season));
+  // Takeaways use seasons from SOURCE_COMPLETE_FROM_YEAR when there are any; sparse early seasons are still drawn.
+  const completeTrend = trend.filter((row) => Math.floor(row.seasonOrdinal / 10) >= SOURCE_COMPLETE_FROM_YEAR).length > 1 ? trend.filter((row) => Math.floor(row.seasonOrdinal / 10) >= SOURCE_COMPLETE_FROM_YEAR) : trend;
+  const sparseNote = trend.length > 0 && Math.floor(trend[0]!.seasonOrdinal / 10) < SOURCE_COMPLETE_FROM_YEAR ? SPARSE_SOURCE_NOTE : "";
   const compareRow = compare ? trend.find((row) => row.seasonOrdinal === seasonOrdinal(compare)) : undefined;
   const lateShareOf = (row: (typeof trend)[number]) => (row.titles === 0 ? 0 : ((row.bandTitles.late ?? 0) + (row.bandTitles.latelate ?? 0)) / row.titles);
   const topChannel = stats.byChannel[0];
@@ -303,11 +306,11 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         <ChartFrame
           title="クール別の作品本数"
           takeaway={
-            trend.length > 1
-              ? `取得済みの${trend.length}クールでは、最多が${formatSeasonOrdinal(trend.reduce((a, b) => (b.titles > a.titles ? b : a)).seasonOrdinal)}（${Math.max(...trend.map((row) => row.titles))}作品）、最少が${formatSeasonOrdinal(trend.reduce((a, b) => (b.titles < a.titles ? b : a)).seasonOrdinal)}（${Math.min(...trend.map((row) => row.titles))}作品）。`
+            completeTrend.length > 1
+              ? `${completeTrend.length < trend.length ? `${SOURCE_COMPLETE_FROM_YEAR}年以降の` : "取得済みの"}${completeTrend.length}クールでは、最多が${formatSeasonOrdinal(completeTrend.reduce((a, b) => (b.titles > a.titles ? b : a)).seasonOrdinal)}（${Math.max(...completeTrend.map((row) => row.titles))}作品）、最少が${formatSeasonOrdinal(completeTrend.reduce((a, b) => (b.titles < a.titles ? b : a)).seasonOrdinal)}（${Math.min(...completeTrend.map((row) => row.titles))}作品）。`
               : undefined
           }
-          scope={`単位: 作品本数（そのクールに1回以上放送された作品）。新規作品は取得期間内で初めて放送されたクールに数えます。対象期間は取得済みのクールのみで、${formatSeasonOrdinal(trend[0]?.seasonOrdinal ?? seasonOrdinal(season))}より前は未取得です。${rerunLabel(rerun)}。`}
+          scope={`単位: 作品本数（そのクールに1回以上放送された作品）。新規作品は取得期間内で初めて放送されたクールに数えます。対象期間は取得済みのクールのみで、${formatSeasonOrdinal(trend[0]?.seasonOrdinal ?? seasonOrdinal(season))}より前は未取得です。${sparseNote}${rerunLabel(rerun)}。`}
           table={
             <div className={styles.tableWrap}>
               <table className={styles.table}>
@@ -355,11 +358,11 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         <ChartFrame
           title="時間帯別の作品本数（クール別）"
           takeaway={
-            trend.length > 1
-              ? `23時以降に始まる作品の割合は、${formatSeasonOrdinal(trend[0]!.seasonOrdinal)}の${formatPercent(lateShareOf(trend[0]!))}から${formatSeasonOrdinal(trend.at(-1)!.seasonOrdinal)}の${formatPercent(lateShareOf(trend.at(-1)!))}になりました。`
+            completeTrend.length > 1
+              ? `23時以降に始まる作品の割合は、${formatSeasonOrdinal(completeTrend[0]!.seasonOrdinal)}の${formatPercent(lateShareOf(completeTrend[0]!))}から${formatSeasonOrdinal(completeTrend.at(-1)!.seasonOrdinal)}の${formatPercent(lateShareOf(completeTrend.at(-1)!))}になりました。`
               : undefined
           }
-          scope={`単位: 作品本数。各作品はクールごとに、最も多かった開始時刻（同数なら早い時刻）の時間帯に1回だけ数えます。朝と昼は本数が少ないため「5–17時」にまとめています。${band ? `時間帯の条件（${TIME_BANDS[band].label}）で放送を絞り込んでいるため、帯の外の時間帯は0になります。` : ""}`}
+          scope={`単位: 作品本数。各作品はクールごとに、最も多かった開始時刻（同数なら早い時刻）の時間帯に1回だけ数えます。朝と昼は本数が少ないため「5–17時」にまとめています。${sparseNote}${band ? `時間帯の条件（${TIME_BANDS[band].label}）で放送を絞り込んでいるため、帯の外の時間帯は0になります。` : ""}`}
           table={
             <div className={styles.tableWrap}>
               <table className={styles.table}>

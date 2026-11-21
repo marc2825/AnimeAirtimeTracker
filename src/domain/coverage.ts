@@ -80,6 +80,13 @@ export function parseRegionKey(value: string | undefined | null): RegionKey | nu
 }
 
 /**
+ * Syoboi Calendar's records thin out before this year: 2002 and earlier cover only three or four of the tracked
+ * channels and 2003–2005 are partial. Counts for earlier seasons understate real programming.
+ */
+export const SOURCE_COMPLETE_FROM_YEAR = 2006;
+export const SPARSE_SOURCE_NOTE = `${SOURCE_COMPLETE_FROM_YEAR - 1}年以前は出典の登録が少なく、本数は実際より少なく出ます（2002年以前は数局分のみ）。`;
+
+/**
  * Network (系列) filters. A network spans regions and media: 日本テレビ系 is 日本テレビ, 読売テレビ and BS日テレ.
  * Combined with a region, the filter is the intersection (BS + 日テレ系 = BS日テレ).
  */

@@ -4,6 +4,7 @@ import { io } from "next/cache";
 import { Suspense } from "react";
 
 import { EmptyState, Notice, PageHeader, SkeletonBlock } from "@/components/ui/primitives";
+import { SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE } from "@/domain/coverage";
 import { QUARTER_LABELS, currentSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { getPremiereCounts } from "@/server/queries/seasons";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
@@ -43,6 +44,7 @@ async function SeasonsContent() {
 
   return (
     <div className={styles.years}>
+      {years.some((year) => year < SOURCE_COMPLETE_FROM_YEAR) ? <p className={styles.footnote}>{SPARSE_SOURCE_NOTE}</p> : null}
       {years.map((year) => (
         <section key={year} className={styles.year} aria-labelledby={`year-${year}`}>
           <h2 id={`year-${year}`} className={styles.yearHeading}>
