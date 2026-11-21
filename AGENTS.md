@@ -49,6 +49,10 @@ npm run ingest -- <cmd>   # live ingestion — contacts a third party, read docs
 - Add/adjust tests with every behavior change (unit for domain/ingest, DB tests for persistence, E2E for user flows). Never delete a correct test to get green.
 - Commits: small, imperative subject (`feat(ui): …`, `fix(ingest): …`), body explains why. PR template: what changed, data/coverage impact, migrations, screenshots for UI, commands actually run.
 - Report honestly: what ran, what failed, what was not verified.
+- Roles: `CHANGELOG.md` = past changes, `docs/roadmap.md` = plans, Issues = concrete work, PRs = implementation and review. Do not use one as another.
+- User-facing feature, behavior change or bug fix → add a short Japanese line under `未リリース` in `CHANGELOG.md`, written for users (not a commit log). Internal refactors and doc-only edits need no entry. Never present unreleased changes as released; versions/dates are added only at a real release.
+- Work on a roadmap item → update its status in `docs/roadmap.md` (done → 実装済み; dropped → 保留・見送り with the reason). Never leave implemented features listed as planned.
+- Keep README and `docs/` consistent with behavior; prefer editing an existing doc over adding a new one.
 
 ## Definition of done
 

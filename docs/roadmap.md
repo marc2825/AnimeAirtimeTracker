@@ -1,39 +1,54 @@
-# Roadmap
+# ロードマップ
 
-Status as of 2026-11-21: live at <https://anime-airtime-tracker.vercel.app> (Vercel Hobby + Neon Free + GitHub Actions, see [operations.md](operations.md)).
+今後の開発の方針と優先度です。完了した変更は [CHANGELOG](../CHANGELOG.md)、個々の作業は Issue と Pull Request で扱います。
 
-## Done in v1
+最終更新: 2026-11-21（公開サイト: <https://anime-airtime-tracker.vercel.app>）
 
-- Toolchain on current majors; CI (lint, typecheck, unit, build without DB; DB integration + Playwright E2E with PostgreSQL 18)
-- Syoboi ingestion with source-rule compliance, raw payload retention, revisions, coverage windows, overrides
-- 20 channels, 2024 winter – 2026 autumn ingested locally (≈ 51,000 airings, 1,700 titles, 19 source-labelled + 281 inferred slots)
-- Pages: home, schedule, search, title, slots, slot chronicle, stats, about, status; light/dark; mobile layouts
-- Harness: AGENTS.md / CLAUDE.md / `.claude` rules, skill and permissions; docs reorganized
+## 実装済み
 
-## P0 — launch
+主な機能だけを挙げます。
 
-- [x] Hosting + DB chosen and production resources created (option A in operations.md)
-- [x] Production env/secrets set; migrations applied; current season + 2024 winter – 2026 summer backfill ingested in production
-- [x] Scheduled ingestion enabled (`INGEST_ENABLED=true`); `update` and `recent` verified in production
-- [x] sitemap/robots and security headers verified on the live URL (`*.vercel.app`; a custom domain + `SITE_URL` is optional)
-- [ ] Backup: one logical dump and one restore test (Neon Free keeps only a 6-hour restore window)
-- [ ] Review `/about` copy and the info page linked from `SYOBOI_USER_AGENT` (contact path)
-- [ ] Choose a LICENSE for the source code (owner decision)
+- 週間番組表、検索（作品・放送・放送枠）、作品ページ、放送枠の年表、編成統計、データ更新状況。スマートフォンとダークモードに対応
+- しょぼいカレンダーからの自動取得（6時間ごとの差分と毎日の直近の再取得）と、取得状況の公開
+- 放送開始時刻による時間帯の絞り込み。番組表と検索で使え、「深夜アニメ」（23–29時）と「24時以降」を含む
+- 放送枠の開始時刻の変化、年別の作品数、関連する枠の表示
 
-## P1 — shortly after launch
+## 開発予定
 
-- [ ] Curated OFFICIAL slots in `data/slots.json` with broadcaster evidence URLs (ノイタミナ, +Ultra, …)
-- [ ] Season landing pages (`/seasons/2026-autumn`: new series by weekday) for SEO and browsing
-- [ ] Channel pages (`/channels/[slug]`: slots and season counts per channel)
-- [ ] `pg_trgm` index for title search once data grows; query timing review
-- [ ] Persisted cache (`use cache: remote` or provider cache) if traffic warrants
-- [ ] Lighthouse/axe pass in CI; visual regression snapshots for key pages
-- [ ] Extend backfill to 2020+ (≈ 15 requests per season), with coverage shown per season
+優先度は利用者への価値と、規模・保守の負担から決めています。規模は S（数時間）/ M（数日）/ L（それ以上）の目安です。
 
-## P2 — later
+| 項目 | 優先度 | 規模 | 内容 |
+| --- | --- | --- | --- |
+| 統計の時間帯フィルター | High | M | 統計ページで時間帯を選べるようにする。作品本数・放送件数・曜日×時間帯・放送局別・クール別は、開始時刻が帯に入る放送を母集団にする。同時放送数は帯の中で始まった放送だけを数え、帯の外にはみ出す時間も含めて描く。関東と関西の時差は関東での開始時刻で判定し、その旨を図に書く。 |
+| バックアップと復元の確認 | High | S | 論理ダンプを取り、別のデータベースへの復元を一度試す。Neon Free で戻せるのは直近6時間だけ。手順は [operations.md](operations.md)。 |
+| 取得停止の通知 | Medium | S | 外部の死活監視で `/status` を確認し、48時間以上更新がなければ通知する。公開リポジトリでは60日間動きがないと定期実行が止まるため、その備えにもなる。 |
+| クール別の新作一覧 | Medium | M | `/seasons/2026-autumn` のように、クールの新作を曜日別に一覧する。検索エンジンからの入口にもなる。 |
+| 放送局ページ | Medium | M | 局ごとの放送枠とクール別の本数をまとめる。放送枠ページと同じデータで作れる。 |
+| 公式枠の登録 | Medium | M | ノイタミナなど放送局が公表している枠を、出典URL付きで `data/slots.json` に登録する。 |
+| 表示とアクセシビリティの自動確認 | Low | M | Lighthouse と axe、主要ページの画像比較を CI で実行する。 |
 
-- [ ] Additional regions (Chukyo) and channels with regional comparison beyond Kanto/Kansai
-- [ ] Slot time-move detection across positions (link inferred positions into one moving slot)
-- [ ] CSV export of statistics tables
-- [ ] Planned-vs-observed analysis using revisions (how often schedules change)
-- [ ] English UI if there is demand
+所有者の判断が必要なもの: ソースコードのライセンス、`/about` の文面と取得用 User-Agent に載せる連絡先。
+
+## 検討中
+
+- 放送時刻の変更の見せ方。作品ページは変更回数だけを表示している。変更前後の時刻を示すか、番組表で直近に変わった放送を目立たせる。
+- スマートフォンでの検索条件の簡素化。詳細条件の7項目が縦に並ぶため、よく使う条件だけを先に出す。
+- 時間帯ごとの作品数の推移（深夜帯の比率がクールごとにどう変わったか）。統計の時間帯フィルターの後に検討する。
+- クール間の比較（同じ局や枠の2クールを並べる）。
+- JavaScript が無効なときの表示。今はデータを読むページが「読み込み中」のまま本文を表示できない（ストリーミングの差し替えに JavaScript が必要）。
+- 2020年以降への過去データの拡張（1クールあたり約15リクエスト）。
+- データ量やアクセスが増えたときの作品検索の高速化（`pg_trgm`）と永続キャッシュ。
+- 中京圏など対象地域の追加、推定枠の時刻移動の追跡、統計表のCSV出力、予定と実績の比較。
+
+## 保留・見送り
+
+- 英語UI: 需要が確認できるまで保留する。
+- 認証付きの管理画面: 運用はCLIとGitHub Actionsで行う方針のため作らない（[architecture.md](architecture.md)）。
+- 時間帯を「放送中」で判定する方式（帯の前に始まり帯にかかる放送も含める）: 開始時刻で判定するほうが検索・統計と一致し、説明もしやすいため採用しない。
+
+## 更新のしかた
+
+- 機能が完成したら「実装済み」に移し、変更点は CHANGELOG に書く。
+- 新しい機能に着手する前に、この文書の計画との関係を確認する。
+- 取りやめた項目は理由を添えて「保留・見送り」に移す。優先度が変わったら書き換える。
+- 作業の細目は Issue と Pull Request に書き、ここには載せない。
