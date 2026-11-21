@@ -1,0 +1,100 @@
+.banner {
+  border-bottom: var(--border);
+  background: var(--color-accent-soft);
+  font-size: var(--text-sm);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.5rem;
+}
+
+.label {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
+.list {
+  display: flex;
+  flex: 1 1 auto;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.list li {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+  white-space: nowrap;
+}
+
+/* Small screens: the first programme only, with an ellipsis. */
+.list li:nth-child(n + 2) {
+  display: none;
+}
+
+.channel {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+.rerun {
+  flex: none;
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+}
+
+.more {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--color-accent-strong);
+  font-weight: 700;
+}
+
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-2);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--color-surface-3);
+}
+
+@media (min-width: 48rem) {
+  .list li:nth-child(n + 2) {
+    display: flex;
+  }
+}

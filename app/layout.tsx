@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 
+import { NowAiring } from "@/components/layout/NowAiring";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
@@ -49,6 +50,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           本文へスキップ
         </a>
         <SiteHeader />
+        <Suspense fallback={null}>
+          <NowAiring />
+        </Suspense>
         <main id="main" className={styles.main}>
           {children}
         </main>
