@@ -10,7 +10,7 @@ Schema: `prisma/schema.prisma`. This document explains the concepts and invarian
 | `Title` | a Syoboi title (TID) — usually one season/installment of a work | (`source`, `externalId` = TID) | `seriesKey` = normalized reading, a *derived* grouping (not verified series identity); `detailsFetchedAt = null` marks a stub |
 | `Broadcast` | one airing of one episode on one channel | (`source`, `externalId` = PID) | JST instant (`startAt`, `endAt`) **and** anime-time fields (`animeDate`, `animeWeekday`, `animeStartMinute`) |
 | `BroadcastRevision` | an observed change of a broadcast | — | `CREATED`, `RESCHEDULED`, `FLAGS_CHANGED`, `DELETED`, `RESTORED`, `UPDATED` with before/after snapshots |
-| `Slot` / `SlotMembership` / `SlotSeason` | derived slot, title membership with method/confidence/evidence, per-season position | `slug` | Fully rebuilt by `ingest derive`; never edited by hand (use `data/` files) |
+| `Slot` / `SlotMembership` / `SlotSeason` | derived slot, title membership with method/confidence/evidence, per-season position and the titles behind it (`titleIds`, in airing order) | `slug` | Fully rebuilt by `ingest derive`; never edited by hand (use `data/` files) |
 | `ImportRun` / `FetchLog` / `RawPayload` | one CLI run / one HTTP attempt / one distinct response body | `RawPayload.hash` = sha256 | Audit trail and replay source |
 | `CoverageWindow` | a time range fetched completely for the tracked channels | — | Basis for "対象期間" and absence inference |
 | `SyncCursor` | incremental sync position | key | e.g. `syoboi:programs:lastUpdate` |

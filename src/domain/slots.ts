@@ -96,6 +96,8 @@ export interface DerivedSlotSeason {
   animeStartMinute: number;
   durationMinutes: number;
   titleCount: number;
+  /** Distinct titles in the season, ordered by their first airing at the position (then by id). */
+  titleIds: number[];
 }
 
 export interface DerivedSlot {
@@ -200,13 +202,17 @@ function seasonsFromPositions(positions: TitlePosition[], channelId: number): De
       const sameDay = list.filter((p) => p.weekday === weekday);
       const start = Math.min(...sameDay.map((p) => p.startMinute));
       const end = Math.max(...sameDay.map((p) => p.startMinute + p.durationMinutes));
+      const firstAiring = new Map<number, number>();
+      for (const p of list) firstAiring.set(p.titleId, Math.min(firstAiring.get(p.titleId) ?? Infinity, p.firstStartAt.getTime()));
+      const titleIds = [...firstAiring.entries()].sort(([a, at], [b, bt]) => at - bt || a - b).map(([id]) => id);
       return {
         seasonOrdinal: ordinal,
         channelId,
         animeWeekday: weekday,
         animeStartMinute: start,
         durationMinutes: end - start,
-        titleCount: new Set(list.map((p) => p.titleId)).size
+        titleCount: titleIds.length,
+        titleIds
       };
     });
 }
