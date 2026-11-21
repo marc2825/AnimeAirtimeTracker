@@ -168,8 +168,15 @@ export default function AboutPage() {
               <ExternalLink href={ISSUES_URL}>GitHub Issues</ExternalLink>
               でお知らせください。訂正は根拠と理由を添えてリポジトリの補正ファイルに記録し、履歴を公開します。
             </p>
+            <p id="contact">
+              運営者への連絡（データ取得についての連絡を含む）も
+              <ExternalLink href={ISSUES_URL}>GitHub Issues</ExternalLink>
+              で受け付けます。公開したくない内容やセキュリティ上の問題は、
+              <ExternalLink href={`${REPOSITORY_URL}/security/advisories/new`}>GitHub の非公開の報告</ExternalLink>
+              を使ってください。本サイトの取得プログラムは、User-Agent でこのページを連絡先として示しています。
+            </p>
             <p>
-              ソースコード: <ExternalLink href={REPOSITORY_URL}>{REPOSITORY_URL.replace("https://", "")}</ExternalLink>
+              ソースコード: <ExternalLink href={REPOSITORY_URL}>{REPOSITORY_URL.replace("https://", "")}</ExternalLink>（MIT License。番組データには適用されません）
             </p>
           </section>
         </div>
