@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { io } from "next/cache";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -43,6 +44,7 @@ export default function ChannelPage({ params }: PageProps<"/channels/[slug]">) {
 async function ChannelContent({ params }: { params: Promise<{ slug: string }> }) {
   const channel = findChannel((await params).slug);
   if (!channel) notFound();
+  await io(); // "this season" depends on today's date: request time only
   const filter = statsFilter({ region: null, channelSlug: channel.slug });
 
   let covered: number[];
