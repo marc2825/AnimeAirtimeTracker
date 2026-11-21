@@ -9,6 +9,8 @@
  */
 import pg from "pg";
 
+import { normalizeSslMode } from "@/server/prisma";
+
 // Parent tables before children (foreign keys).
 const TABLES = [
   "Channel",
@@ -39,8 +41,8 @@ async function main() {
   const targetUrl = process.env.TARGET_DATABASE_URL;
   if (!sourceUrl || !targetUrl) throw new Error("Set SOURCE_DATABASE_URL and TARGET_DATABASE_URL");
   if (sourceUrl === targetUrl) throw new Error("Source and target are the same database");
-  const source = new pg.Client({ connectionString: sourceUrl });
-  const target = new pg.Client({ connectionString: targetUrl });
+  const source = new pg.Client({ connectionString: normalizeSslMode(sourceUrl) });
+  const target = new pg.Client({ connectionString: normalizeSslMode(targetUrl) });
   await source.connect();
   await target.connect();
   try {
