@@ -19,6 +19,8 @@ export default defineConfig({
     baseURL: `http://localhost:${PORT}`,
     locale: "ja-JP",
     timezoneId: "Asia/Tokyo",
+    // Figures count up when they come into view; tests read final values unless a test opts back in.
+    contextOptions: { reducedMotion: "reduce" },
     trace: "retain-on-failure"
   },
   projects: [
