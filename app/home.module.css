@@ -2,26 +2,26 @@
 .hero {
   display: grid;
   gap: var(--space-10);
-  padding-block: var(--space-10) var(--space-4);
+  padding-block: var(--space-8) var(--space-4);
 }
 
 .heroText {
   display: grid;
   align-content: start;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-width: 0;
 }
 
-.heroTitle {
-  font-size: clamp(2rem, 6vw, 3.5rem);
-  line-height: 1.25;
-  letter-spacing: 0.02em;
+/* Entry points: stacked on small screens, one ruled bar on wide ones. */
+.heroBar {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-2);
 }
 
-.heroLead {
-  max-width: 34rem;
-  color: var(--color-ink-2);
-  line-height: 1.9;
+.heroTitle {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-tight);
 }
 
 .heroActions {
@@ -274,19 +274,42 @@
   color: var(--color-ink-2);
 }
 
-.siteNote {
-  margin-top: var(--space-8);
-  max-width: 44rem;
-  font-size: var(--text-sm);
-  color: var(--color-ink-3);
-  line-height: 1.7;
-}
-
 @media (min-width: 64rem) {
   .hero {
-    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-    gap: var(--space-16);
-    padding-block: var(--space-16) var(--space-8);
+    gap: var(--space-12);
+    padding-block: var(--space-12) var(--space-4);
+  }
+
+  .heroBar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3) var(--space-8);
+    padding-block: var(--space-2);
+    border-top: var(--border-strong);
+    border-bottom: var(--border);
+  }
+
+  .index {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-6);
+    max-width: none;
+    border-top: 0;
+  }
+
+  .indexRow {
+    border-bottom: 0;
+  }
+
+  /* Today's list in two newspaper columns, read top to bottom. */
+  .onAirList {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(var(--rows, 4), auto);
+    column-gap: var(--space-12);
   }
 
   .statsGrid {

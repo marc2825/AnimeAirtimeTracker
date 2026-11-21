@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<string, string> = { SUCCEEDED: "成功", FAILED: "失
 export default function StatusPage() {
   return (
     <div className="container">
-      <PageHeader title="データ更新状況" lead="本サイトのデータベースに記録された実際の取得履歴です。取得が止まっている場合や失敗した場合もそのまま表示します。" />
+      <PageHeader title="データ更新状況" lead="実際の取得履歴。止まっている場合や失敗した場合もそのまま表示します。" />
       <Suspense fallback={<SkeletonBlock rows={6} label="更新状況を読み込み中" />}>
         <StatusContent />
       </Suspense>
@@ -59,7 +59,8 @@ async function StatusContent() {
         <StatTile label="放送枠" value={status.totals.slots} unit="枠" hint="出典記載枠と推定枠の合計" />
       </StatGrid>
 
-      <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件。リクエスト数は出典への実際のアクセス回数です。失敗時の備考は原因の概要のみを表示します。">
+      <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件。"
+        details="リクエスト数は出典への実際のアクセス回数です。失敗時の備考は原因の概要のみを表示します。">
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>

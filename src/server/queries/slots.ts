@@ -8,6 +8,8 @@ import { db } from "../db";
 
 export type SlotKind = "OFFICIAL" | "SOURCE_LABEL" | "INFERRED";
 
+const SEASON_POSITION = { seasonOrdinal: true, animeWeekday: true, animeStartMinute: true, durationMinutes: true } as const;
+
 export interface SlotSummary {
   slug: string;
   name: string;
@@ -31,7 +33,11 @@ export async function listSlots(): Promise<SlotListItem[]> {
   "use cache";
   datasetCacheProfile();
   const rows = await db().slot.findMany({
-    include: { homeChannel: true, seasons: { orderBy: { seasonOrdinal: "desc" }, include: { channel: { select: { slug: true } } } } },
+    include: {
+      homeChannel: true,
+      // Explicit columns: pages keep working while a newer column is still being migrated (expand → deploy).
+      seasons: { orderBy: { seasonOrdinal: "desc" }, select: { ...SEASON_POSITION, channel: { select: { slug: true } } } }
+    },
     orderBy: [{ seasonCount: "desc" }, { titleCount: "desc" }, { slug: "asc" }]
   });
   return rows.map((row) => ({
@@ -49,6 +55,32 @@ export async function listSlots(): Promise<SlotListItem[]> {
     seasonOrdinals: row.seasons.map((season) => season.seasonOrdinal).reverse(),
     positions: row.seasons.map((season) => ({ seasonOrdinal: season.seasonOrdinal, weekday: season.animeWeekday, minute: season.animeStartMinute, channelSlug: season.channel.slug }))
   }));
+}
+
+/** Title names per slot and season ordinal, for the season strips ({ [slotSlug]: { [ordinal]: names } }). */
+export type StripTitles = Record<string, Record<number, string[]>>;
+
+/**
+ * Names of the titles behind each strip tick, from `fromOrdinal` on. Reads the per-season title ids stored
+ * by derive; seasons derived before that column existed have none, and the strip then shows no names.
+ */
+export async function getSlotStripTitles(fromOrdinal: number, slugs?: string[]): Promise<StripTitles> {
+  "use cache";
+  datasetCacheProfile();
+  const seasons = await db().slotSeason.findMany({
+    where: { seasonOrdinal: { gte: fromOrdinal }, ...(slugs ? { slot: { slug: { in: slugs } } } : {}) },
+    select: { seasonOrdinal: true, titleIds: true, slot: { select: { slug: true } } }
+  });
+  const ids = [...new Set(seasons.flatMap((season) => season.titleIds))];
+  const names = new Map(
+    ids.length === 0 ? [] : (await db().title.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })).map((title) => [title.id, title.name])
+  );
+  const result: StripTitles = {};
+  for (const season of seasons) {
+    const list = season.titleIds.map((id) => names.get(id)).filter((name): name is string => name !== undefined);
+    if (list.length > 0) (result[season.slot.slug] ??= {})[season.seasonOrdinal] = list;
+  }
+  return result;
 }
 
 export interface TimelineTitle {
@@ -99,7 +131,7 @@ export async function getSlotDetail(slug: string): Promise<SlotDetail | null> {
     where: { slug },
     include: {
       homeChannel: true,
-      seasons: { orderBy: { seasonOrdinal: "asc" } },
+      seasons: { orderBy: { seasonOrdinal: "asc" }, select: SEASON_POSITION },
       memberships: { include: { title: true, channel: true } }
     }
   });

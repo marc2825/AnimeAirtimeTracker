@@ -173,6 +173,7 @@ describe("slots", () => {
     expect(labelled.slug).toBe("テスト枠");
     expect(labelled.homeChannelId).toBe(10);
     expect(labelled.seasons.map((s) => s.seasonOrdinal)).toEqual([20262, 20263]);
+    expect(labelled.seasons.map((s) => s.titleIds)).toEqual([[1], [2]]);
     expect(labelled.memberships.find((m) => m.titleId === 1)?.evidence).toContain("テスト枠");
 
     const inferred = slots.find((slot) => slot.kind === "INFERRED")!;
@@ -188,8 +189,8 @@ describe("slots", () => {
     const broadcasts: SlotInputBroadcast[] = [
       ...weekly(1, "2026-07-06", 1380, { channelId: 10 }),
       ...weekly(2, "2026-07-06", 1410, { channelId: 10 }),
-      ...weekly(3, "2026-10-05", 1380, { channelId: 10 }),
-      ...weekly(4, "2026-10-05", 1410, { channelId: 10 })
+      ...weekly(3, "2026-10-05", 1410, { channelId: 10 }),
+      ...weekly(4, "2026-10-05", 1380, { channelId: 10 })
     ].map((a) => toSlotInput(a));
     const titles = [1, 2, 3, 4].map((id) => ({ id, externalId: String(id), slotLabels: ["ブロック"], evidence: {} }));
     const [slot] = deriveSlots({ titles, channels: [{ id: 10, slug: "ntv", shortName: "日テレ", sortOrder: 1 }], broadcasts, registry: [], membershipOverrides: [] });
@@ -197,6 +198,12 @@ describe("slots", () => {
       [1380, 60],
       [1380, 60]
     ]);
+    // Titles are listed in the order they first aired, not by id.
+    expect(slot!.seasons.map((s) => s.titleIds)).toEqual([
+      [1, 2],
+      [4, 3]
+    ]);
+    expect(slot!.seasons.every((s) => s.titleCount === s.titleIds.length)).toBe(true);
   });
 
   it("skips labels with a single member unless curated", () => {

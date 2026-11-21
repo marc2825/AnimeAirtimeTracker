@@ -9,7 +9,7 @@ import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { PrismaClient } from "@/generated/prisma/client";
-import { parseJstDateTime } from "@/domain/time";
+import { fromAnimeTime, isoDateToDbDate, parseJstDateTime, toAnimeTime } from "@/domain/time";
 import { createPrismaClient } from "@/server/prisma";
 
 import { rebuildSlots, reclassifyReruns } from "./derive";
@@ -178,5 +178,40 @@ describe("importer (PostgreSQL)", () => {
     // One season of fixtures cannot satisfy the inferred-slot rule and only one title carries a label.
     expect(result.byKind.INFERRED ?? 0).toBe(0);
     expect(await prisma.broadcast.count()).toBe(before);
+  });
+
+  it("stores the titles behind each derived slot season in airing order", async () => {
+    await importFixtures(prisma);
+    const channel = await prisma.channel.findFirstOrThrow({ where: { isTracked: true } });
+    const titles = await Promise.all(
+      ["遅い", "早い"].map((name, index) =>
+        prisma.title.create({ data: { source: "test", externalId: `slot-${index}`, slug: `slot-test-${index}`, name, slotLabels: ["テスト枠"] } })
+      )
+    );
+    // Same labelled slot, same autumn season: the second title (higher id) starts a week earlier at 23:30.
+    const weekly = (titleId: number, firstDate: `${number}-${number}-${number}`, minute: number) =>
+      Array.from({ length: 4 }, (_, week) => {
+        const startAt = new Date(fromAnimeTime(firstDate, minute).getTime() + week * 7 * 86_400_000);
+        const anime = toAnimeTime(startAt);
+        return {
+          source: "test",
+          externalId: `slot-${titleId}-${week}`,
+          titleId,
+          channelId: channel.id,
+          startAt,
+          endAt: new Date(startAt.getTime() + 30 * 60_000),
+          animeDate: isoDateToDbDate(anime.animeDate),
+          animeWeekday: anime.weekday,
+          animeStartMinute: anime.animeMinute,
+          durationMinutes: 30,
+          contentHash: "test"
+        };
+      });
+    await prisma.broadcast.createMany({ data: [...weekly(titles[0]!.id, "2026-10-12", 1380), ...weekly(titles[1]!.id, "2026-10-05", 1410)] });
+
+    await rebuildSlots(prisma);
+    const slot = await prisma.slot.findUniqueOrThrow({ where: { slug: "テスト枠" }, include: { seasons: true } });
+    expect(slot.seasons).toHaveLength(1);
+    expect(slot.seasons[0]).toMatchObject({ seasonOrdinal: 20264, titleCount: 2, titleIds: [titles[1]!.id, titles[0]!.id] });
   });
 });

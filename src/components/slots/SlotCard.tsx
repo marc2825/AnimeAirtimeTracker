@@ -4,25 +4,42 @@ import { SlotKindBadge } from "@/components/ui/primitives";
 import { seasonFromOrdinal, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { formatSeasonOrdinal } from "@/lib/format";
+import { stripTickLabel, stripTicks } from "@/lib/season-strip";
 import type { SlotSummary } from "@/server/queries/slots";
 
 import styles from "./SlotCard.module.css";
 
-/** Mini strip: one tick per season across a fixed window, filled when the slot had a regular title. */
-export function SeasonStrip({ ordinals, end, count = 12 }: { ordinals: number[]; end: Season; count?: number }) {
-  const set = new Set(ordinals);
-  const seasons = Array.from({ length: count }, (_, index) => shiftSeason(end, index - count + 1));
-  const filled = seasons.filter((season) => set.has(seasonOrdinal(season))).length;
+/**
+ * Mini strip: one tick per season across a fixed window, filled when the slot had a regular title. Filled
+ * ticks name their season and titles in aria-label; StripTooltip shows the same on hover, focus or tap.
+ * The strip is one tab stop (the latest filled season); arrow keys move between filled seasons. Empty
+ * ticks carry no text so that /slots, with hundreds of strips, stays light.
+ */
+export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: number[]; end: Season; count?: number; titles?: Record<number, string[]> }) {
+  const ticks = stripTicks(ordinals, end, count, titles);
+  const filled = ticks.filter((tick) => tick.on);
+  const focusable = filled.at(-1)?.ordinal;
   return (
-    <span className={styles.strip} role="img" aria-label={`直近${count}クール中${filled}クールで放送`}>
-      {seasons.map((season) => (
-        <span key={seasonOrdinal(season)} className={`${styles.tick} ${set.has(seasonOrdinal(season)) ? styles.tickOn : ""} ${season.quarter === 1 ? styles.tickYear : ""}`} />
-      ))}
+    <span className={styles.strip} role="group" aria-label={`直近${count}クール（${filled.length}クールで放送）`} data-end={seasonOrdinal(end)}>
+      {ticks.map((tick) =>
+        tick.on ? (
+          <span
+            key={tick.ordinal}
+            role="img"
+            tabIndex={tick.ordinal === focusable ? 0 : -1}
+            aria-label={stripTickLabel(tick)}
+            data-t={tick.lines.length > 1 ? tick.lines.join("\n") : undefined}
+            className={`${styles.tick} ${styles.tickOn} ${tick.season.quarter === 1 ? styles.tickYear : ""}`}
+          />
+        ) : (
+          <span key={tick.ordinal} className={`${styles.tick} ${tick.season.quarter === 1 ? styles.tickYear : ""}`} />
+        )
+      )}
     </span>
   );
 }
 
-export function SlotCard({ slot, stripEnd }: { slot: SlotSummary; stripEnd: Season }) {
+export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; stripEnd: Season; stripTitles?: Record<number, string[]> }) {
   return (
     <li className={styles.card}>
       <div className={styles.head}>
@@ -43,7 +60,7 @@ export function SlotCard({ slot, stripEnd }: { slot: SlotSummary; stripEnd: Seas
           <span className="muted">対象局での定時放送なし</span>
         )}
       </p>
-      <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} />
+      <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} titles={stripTitles} />
       <dl className={styles.stats}>
         <div>
           <dt>作品</dt>
@@ -60,6 +77,11 @@ export function SlotCard({ slot, stripEnd }: { slot: SlotSummary; stripEnd: Seas
       </dl>
     </li>
   );
+}
+
+/** First season ordinal of a strip window ending at `end` (the range `getSlotStripTitles` reads). */
+export function stripStartOrdinal(end: Season, count = 12): number {
+  return seasonOrdinal(shiftSeason(end, 1 - count));
 }
 
 export function latestOrdinal(slots: SlotSummary[]): Season {

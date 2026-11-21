@@ -12,6 +12,7 @@ What this system deliberately avoids (they read as template output):
 - Drop shadows, gradients, one-sided colour stripes, large radii.
 - Mono type as decoration. Mono is for times and numbers only.
 - Motion without a job. The only authored motion is the count-up of key figures.
+- Taglines and explanatory paragraphs above the content. A page states what it is in one line; anything longer sits behind a collapsed 「詳しく」 (`MoreInfo`). Scope and unit lines are not explanation: they stay visible.
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -39,16 +40,16 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 | Component | File | Notes |
 | --- | --- | --- |
 | Header / desktop nav / mobile tab bar / theme toggle | `src/components/layout/*` | bottom tab bar < 768 px; `aria-current` on active item |
-| PageHeader, Section, Card, Badge/FlagBadges/SlotKindBadge, EmptyState, Notice, Skeleton, StatTile, KeyValue, ExternalLink | `src/components/ui/primitives.tsx` | Section opens with the section rule; StatGrid is a ruled strip; a numeric StatTile value counts up (`CountUp.tsx`) |
+| PageHeader, Section, MoreInfo, Card, Badge/FlagBadges/SlotKindBadge, EmptyState, Notice, Skeleton, StatTile, KeyValue, ExternalLink | `src/components/ui/primitives.tsx` | Section opens with the section rule; `lead`/`description` are one line, longer text goes in `details` (a collapsed MoreInfo); StatGrid is a ruled strip; a numeric StatTile value counts up (`CountUp.tsx`) |
 | SegmentedLinks, SelectField, FilterChips, Pagination, Disclosure, ButtonLink | `src/components/ui/controls.tsx` | link-based controls keep state in the URL; SegmentedLinks are underline tabs (current = ink underline + bold, never colour alone) |
 | FilterForm | `src/components/ui/FilterForm.tsx` | GET form; works without JS; with JS: client navigation, empty params dropped, auto-submit, pending text |
 | ScheduleGrid / NowLine / ScheduleDayList / WeekNav / DayTabs / Legend | `src/components/schedule/*` | layout math in `layout.ts` (tested) |
-| SlotTimeline / SlotCard / SeasonStrip | `src/components/slots/*` | timeline scrolls to the latest season |
+| SlotTimeline / SlotCard / SeasonStrip / StripTooltip | `src/components/slots/*` | timeline scrolls to the latest season; strip ticks name their season and titles on hover, focus or tap (one delegated tooltip per page; the strip is one tab stop, arrows move between filled seasons; empty ticks carry no text to keep `/slots` light) |
 | ChartFrame, WeekdayHourHeatmap, ConcurrencyStrip, BarList, ColumnChart, HeatmapTable | `src/components/stats/Charts.tsx` | every chart: computed takeaway, scope line, table view |
 
 ## Page patterns
 
-- **Header → controls → content → footnote.** H1 (mincho) + one-sentence lead; no eyebrow label, never marketing copy.
+- **Header → controls → content → footnote.** H1 (mincho) + a one-line lead saying what the page is; details collapsed under 「詳しく」; no eyebrow label, no tagline. The home page opens with a plain description, the entry points in one ruled bar, and today's first-run airings in two columns.
 - **Data sections** stream under `<Suspense>` with skeletons sized like the content; errors render a `Notice`, empty results an `EmptyState` with a next step.
 - **Schedule grid**: channel columns × time; empty hours collapse to a hatched "放送なし" band; 24:00 is highlighted as "日付変更"; overlapping items share lanes; phones get the day list.
 - **Slot chronicle**: season columns on a rail; filled node = titles present, hollow = none, coral = time moved; title cards show continuation from the previous season.

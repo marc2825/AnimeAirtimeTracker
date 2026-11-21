@@ -256,6 +256,9 @@ model SlotSeason {
   animeStartMinute Int
   durationMinutes  Int
   titleCount       Int
+  /// Titles with a regular position in the slot that season, in order of first airing (lets list pages
+  /// name the titles behind each season without reading broadcasts). Empty until the next derive.
+  titleIds         Int[] @default([])
 
   slot    Slot    @relation(fields: [slotId], references: [id], onDelete: Cascade)
   channel Channel @relation(fields: [channelId], references: [id])

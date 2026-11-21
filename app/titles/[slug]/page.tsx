@@ -98,7 +98,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
           </Section>
 
           {title.slots.length > 0 ? (
-            <Section id="slots" title="関連する放送枠" description="出典の記載、または同じ位置に新作が続いたことによる判定です。判定根拠は各枠のページで確認できます。">
+            <Section id="slots" title="関連する放送枠" description="出典の記載、または同じ位置に新作が続いたことによる判定。">
               <ul role="list" className={styles.slotList}>
                 {title.slots.map((slot) => (
                   <li key={slot.slug} className={styles.slotItem}>
@@ -121,7 +121,8 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
             </Section>
           ) : null}
 
-          <Section id="history" title="放送履歴" description="出典に登録された各回の放送。時刻はアニメ時刻（5時切替）。変更回数は本サイトが取得後に観測した変更です。">
+          <Section id="history" title="放送履歴" description="出典に登録された各回の放送。時刻はアニメ時刻（5時切替）。"
+            details="変更回数は本サイトが取得後に観測した変更です。">
             <div className={styles.histories}>
               {title.groups.map((group, index) => (
                 <Disclosure

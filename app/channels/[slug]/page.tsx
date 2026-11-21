@@ -95,7 +95,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         <StatTile label="放送があったクール" value={active.length} unit="クール" hint={`取得済み${covered.length}クール中`} />
       </StatGrid>
 
-      <Section id="trend" title="クール別の作品本数" description="この局で放送された作品を、クールごとに最も多かった開始時刻の時間帯に分けて積み上げています。">
+      <Section id="trend" title="クール別の作品本数" description="クールごとの作品本数（最も多かった開始時刻の時間帯別）。">
         <ChartFrame
           title="クール別・時間帯別の作品本数"
           takeaway={peak ? `最も多かったのは${formatSeasonOrdinal(peak.seasonOrdinal)}の${peak.titles}作品です。` : "放送の記録がありません。"}
