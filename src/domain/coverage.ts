@@ -105,6 +105,12 @@ export function parseNetworkKey(value: string | undefined | null): NetworkKey | 
   return value && (NETWORK_KEYS as string[]).includes(value) ? (value as NetworkKey) : null;
 }
 
+/** "日本テレビ系", "独立局", … for a channel. */
+export function networkLabelOf(channel: TrackedChannel): string {
+  const key = NETWORK_KEYS.find((candidate) => (NETWORKS[candidate].networks as readonly Network[]).includes(channel.network));
+  return key === "independent" ? "独立局" : key ? NETWORKS[key].label : "";
+}
+
 /** Channel slugs selected by region and network filters (null = no restriction). */
 export function channelSlugsFor(region: RegionKey | null, network: NetworkKey | null): Set<string> | null {
   if (!region && !network) return null;

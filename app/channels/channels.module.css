@@ -1,0 +1,93 @@
+.layout {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.breadcrumb {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+.breadcrumb a {
+  color: var(--color-ink-2);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  font-size: var(--text-sm);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  font-size: var(--text-sm);
+}
+
+.slotList {
+  margin: 0;
+  padding: 0;
+}
+
+.slotRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0;
+  border-top: var(--border);
+}
+
+.slotName {
+  font-weight: 600;
+}
+
+/* Index */
+.groups {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.groupHeading {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+.card {
+  display: grid;
+  gap: var(--space-0-5);
+  height: 100%;
+  padding: var(--space-3);
+  border: var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  color: var(--color-ink);
+}
+
+.card:hover {
+  border-color: var(--color-accent-line);
+}
+
+.cardName {
+  font-weight: 700;
+}
+
+.cardMeta {
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
