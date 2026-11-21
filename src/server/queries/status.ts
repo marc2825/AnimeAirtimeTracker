@@ -2,13 +2,14 @@ import { seasonInstantRange, type Season } from "@/domain/season";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
+import { summarizeRunError } from "../run-error";
 
 export interface DatasetStatus {
   lastSuccessAt: Date | null;
-  lastRun: { command: string; status: string; startedAt: Date; finishedAt: Date | null; error: string | null } | null;
   coverage: { start: Date; end: Date } | null;
   totals: { broadcasts: number; titles: number; channels: number; slots: number };
-  recentRuns: { id: number; command: string; status: string; startedAt: Date; finishedAt: Date | null; requestCount: number; error: string | null; stats: unknown }[];
+  /** Public view of recent runs: the raw `ImportRun.error` stays in the database for operators. */
+  recentRuns: { id: number; command: string; status: string; startedAt: Date; finishedAt: Date | null; requestCount: number; errorSummary: string | null }[];
 }
 
 const DATA_COMMANDS = ["season", "backfill", "recent", "update", "channels", "fixtures"];
@@ -17,19 +18,21 @@ export async function getDatasetStatus(): Promise<DatasetStatus> {
   "use cache";
   datasetCacheProfile();
   const prisma = db();
-  const [lastSuccess, lastRun, coverage, broadcasts, titles, channels, slots, recentRuns] = await Promise.all([
+  const [lastSuccess, coverage, broadcasts, titles, channels, slots, recentRuns] = await Promise.all([
     prisma.importRun.findFirst({ where: { status: "SUCCEEDED", command: { in: DATA_COMMANDS } }, orderBy: { finishedAt: "desc" } }),
-    prisma.importRun.findFirst({ where: { command: { in: DATA_COMMANDS } }, orderBy: { startedAt: "desc" } }),
     prisma.coverageWindow.aggregate({ _min: { rangeStart: true }, _max: { rangeEnd: true } }),
     prisma.broadcast.count({ where: { deleted: false, missingSince: null } }),
     prisma.title.count(),
     prisma.channel.count({ where: { isTracked: true } }),
     prisma.slot.count(),
-    prisma.importRun.findMany({ orderBy: { startedAt: "desc" }, take: 12 })
+    prisma.importRun.findMany({
+      orderBy: { startedAt: "desc" },
+      take: 12,
+      select: { id: true, command: true, status: true, startedAt: true, finishedAt: true, requestCount: true, error: true }
+    })
   ]);
   return {
     lastSuccessAt: lastSuccess?.finishedAt ?? null,
-    lastRun: lastRun ? { command: lastRun.command, status: lastRun.status, startedAt: lastRun.startedAt, finishedAt: lastRun.finishedAt, error: lastRun.error } : null,
     coverage: coverage._min.rangeStart && coverage._max.rangeEnd ? { start: coverage._min.rangeStart, end: coverage._max.rangeEnd } : null,
     totals: { broadcasts, titles, channels, slots },
     recentRuns: recentRuns.map((run) => ({
@@ -39,8 +42,7 @@ export async function getDatasetStatus(): Promise<DatasetStatus> {
       startedAt: run.startedAt,
       finishedAt: run.finishedAt,
       requestCount: run.requestCount,
-      error: run.error ? run.error.slice(0, 200) : null,
-      stats: run.stats
+      errorSummary: summarizeRunError(run.error)
     }))
   };
 }
