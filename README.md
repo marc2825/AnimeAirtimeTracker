@@ -1,8 +1,10 @@
 # アニメ放送枠観測所 — Anime Airtime Tracker
 
+[![CI](https://github.com/marc2825/AnimeAirtimeTracker/actions/workflows/ci.yml/badge.svg)](https://github.com/marc2825/AnimeAirtimeTracker/actions/workflows/ci.yml)
+
 日本のアニメ放送編成を、**今週の番組表**から**放送枠の年表**、**編成統計**まで横断して調べられるWebサイトです。番組データは[しょぼいカレンダー](https://cal.syoboi.jp/)の公式の非HTMLインターフェースから取得し、放送枠と統計は本サイトが算出します。
 
-> **状態 (2026-11-18)**: 公開準備中（未デプロイ）。実データの取得・保存・表示、主要画面、テストとCIは実装済みです。公開前の残作業は [docs/roadmap.md](docs/roadmap.md) を参照してください。
+**公開サイト: <https://anime-airtime-tracker.vercel.app>** — 2024年冬クール以降のデータを掲載し、6時間ごとに更新しています（[データ更新状況](https://anime-airtime-tracker.vercel.app/status)）。
 
 ## できること
 
@@ -15,7 +17,9 @@
 
 Next.js 16 (App Router, Cache Components) · React 19 · TypeScript 6 · PostgreSQL 18 · Prisma 7 · Vitest 5 · Playwright · Node.js 24
 
-## セットアップ
+本番環境: Vercel（Web）· Neon（PostgreSQL）· GitHub Actions（定期データ取得・マイグレーション）。構成と運用手順は [docs/operations.md](docs/operations.md)。
+
+## 開発環境のセットアップ
 
 ```bash
 nvm use                 # Node 24
@@ -27,13 +31,13 @@ npm run db:fixtures     # オフラインのサンプル（記録済みの実デ
 npm run dev             # http://localhost:3000
 ```
 
-実データを取得する場合は `.env` の `SYOBOI_USER_AGENT` を設定してから `npm run ingest -- season`（今期、約20リクエスト）。詳細は [docs/data-pipeline.md](docs/data-pipeline.md)。
+実データを取得する場合は `.env` の `SYOBOI_USER_AGENT` を設定してから `npm run ingest -- season`（今期、約20リクエスト）。取得元のルールと手順は [docs/data-pipeline.md](docs/data-pipeline.md)。
 
-## 検証
+## テスト・ビルド
 
 ```bash
 npm run lint && npm run typecheck && npm test && npm run build
-npm run test:db         # DB統合テスト（TEST_DATABASE_URL）
+npm run test:db         # DB統合テスト（TEST_DATABASE_URL、DB名に "test" を含むこと）
 npm run build && npm run test:e2e
 npm run screenshots     # 画面確認（PC/タブレット/スマホ × ライト/ダーク）
 ```
@@ -50,8 +54,10 @@ npm run screenshots     # 画面確認（PC/タブレット/スマホ × ライ�
 
 ## 訂正・問い合わせ
 
-本サイトの判定や表示の誤りは [GitHub Issues](https://github.com/marc2825/AnimeAirtimeTracker/issues) へ。放送データ自体の誤りはしょぼいカレンダーで修正されると次回取得で反映されます。
+- 本サイトの判定・表示の誤りや不具合: [GitHub Issues](https://github.com/marc2825/AnimeAirtimeTracker/issues/new/choose)
+- 放送データ自体の誤り: しょぼいカレンダーで修正されると、次回の取得で反映されます。
+- セキュリティ上の問題: 公開Issueにせず [SECURITY.md](SECURITY.md) の方法で連絡してください。
 
 ## ライセンス
 
-未設定です（リポジトリ所有者が決定予定）。ソースコードのライセンスは番組データには及びません。
+未設定です（リポジトリ所有者が決定予定）。ライセンスが決まるまでは、ソースコードの利用・改変・再配布は許諾されていません。ソースコードのライセンスは番組データには及びません。

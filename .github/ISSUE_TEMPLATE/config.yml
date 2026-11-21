@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 放送データ自体の誤り（しょぼいカレンダー）
+    url: https://cal.syoboi.jp/
+    about: 放送日時・話数・タイトルの誤りは出典で修正されると次回の取得で反映されます。
+  - name: セキュリティ上の問題
+    url: https://github.com/marc2825/AnimeAirtimeTracker/security/advisories/new
+    about: 公開Issueにせず、非公開で報告してください。

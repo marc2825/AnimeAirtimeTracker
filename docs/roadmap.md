@@ -1,6 +1,6 @@
 # Roadmap
 
-Status as of 2026-11-18 (branch `feat/v1-public-redesign`).
+Status as of 2026-11-21: live at <https://anime-airtime-tracker.vercel.app> (Vercel Hobby + Neon Free + GitHub Actions, see [operations.md](operations.md)).
 
 ## Done in v1
 
@@ -10,13 +10,13 @@ Status as of 2026-11-18 (branch `feat/v1-public-redesign`).
 - Pages: home, schedule, search, title, slots, slot chronicle, stats, about, status; light/dark; mobile layouts
 - Harness: AGENTS.md / CLAUDE.md / `.claude` rules, skill and permissions; docs reorganized
 
-## P0 — before public launch
+## P0 — launch
 
-- [ ] Choose hosting + DB and create production resources (owner decision; see operations.md)
-- [ ] Set production env/secrets; run migrations; ingest current season + backfill in production
-- [ ] Enable scheduled ingestion (`INGEST_ENABLED=true`) and confirm two successful runs
-- [ ] Domain + `SITE_URL`; verify sitemap/robots/OG and security headers on the live URL
-- [ ] Backup policy and one restore test
+- [x] Hosting + DB chosen and production resources created (option A in operations.md)
+- [x] Production env/secrets set; migrations applied; current season + 2024 winter – 2026 summer backfill ingested in production
+- [x] Scheduled ingestion enabled (`INGEST_ENABLED=true`); `update` and `recent` verified in production
+- [x] sitemap/robots and security headers verified on the live URL (`*.vercel.app`; a custom domain + `SITE_URL` is optional)
+- [ ] Backup: one logical dump and one restore test (Neon Free keeps only a 6-hour restore window)
 - [ ] Review `/about` copy and the info page linked from `SYOBOI_USER_AGENT` (contact path)
 - [ ] Choose a LICENSE for the source code (owner decision)
 

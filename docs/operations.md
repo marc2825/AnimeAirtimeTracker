@@ -1,6 +1,6 @@
 # Operations
 
-Nothing is deployed yet. This document is the runbook for doing so; production actions need the owner's approval.
+Production runs on option A below (Vercel Hobby + Neon Free + GitHub Actions) since 2026-11-21: <https://anime-airtime-tracker.vercel.app>. This document is the runbook; production actions need the owner's approval.
 
 ## Environment variables
 
@@ -13,6 +13,7 @@ Nothing is deployed yet. This document is the runbook for doing so; production a
 | `SYOBOI_MIN_INTERVAL_MS` | ingest job | default 3000, minimum 1000 |
 | `TEST_DATABASE_URL` | dev/CI | disposable DB for `test:db` and E2E (name must contain `test`) |
 | `APP_ENV` | optional | set `production` in production; fixture import refuses to run |
+| `GOOGLE_SITE_VERIFICATION` | web (optional) | Search Console HTML-tag token; rendered as `<meta name="google-site-verification">` |
 
 Secrets are configured in the hosting provider / GitHub Actions secrets, never in the repository.
 
@@ -50,24 +51,27 @@ Prices and limits change; confirm on the providers' pricing pages before signing
 Region: Neon does not list Tokyo, so use **AWS Asia Pacific (Singapore) `aws-ap-southeast-1`** and run Vercel functions in **`sin1`** (`vercel.json`) next to it. Static shells are still served from Vercel's CDN close to users.
 
 1. **Neon project** in `aws-ap-southeast-1`. The default owner role (e.g. `neondb_owner`) is used only for migrations and ingestion (direct URL).
-2. **Read-only web role**: create a role `web_readonly` (Neon console → Roles, or `neonctl roles create`), then grant it read access to current and future tables:
-   `DIRECT_DATABASE_URL=<owner direct> npx tsx scripts/grant-readonly.ts web_readonly`
+2. **Read-only web role**: `neon roles create --name web_readonly --access read_only`. The default `--access admin` (also what the console creates) joins `neon_superuser` and **can write**. Then grant and verify:
+   `DIRECT_DATABASE_URL=<owner direct> npx tsx scripts/grant-readonly.ts web_readonly` — fails if the role can still write to any table. If a role with the same name was recreated, restart the compute so the pooler drops connections of the old role.
 3. **Migrations**: `DIRECT_DATABASE_URL=<owner direct> npm run db:deploy`
 4. **Initial data** — either copy what was already fetched locally (no new requests to the source):
    `SOURCE_DATABASE_URL=<local> TARGET_DATABASE_URL=<owner direct> npx tsx scripts/copy-db.ts` (refuses non-empty targets)
    or run the `Ingest` workflow manually: `season`, then `backfill` with `from`/`to` (~15 requests per season).
-5. **Vercel project** from the GitHub repository (Git integration: `main` → production, PRs → previews). Environment variables for Production and Preview: `DATABASE_URL` = `web_readonly` **pooled** URL, `APP_ENV=production`, optionally `SITE_URL` (defaults to the Vercel production domain). The web app never writes, so previews can safely share the read-only role.
-6. **GitHub** secrets `DIRECT_DATABASE_URL`, `SYOBOI_USER_AGENT`; variables `INGEST_ENABLED=true` (scheduled ingestion) and `MIGRATE_ON_PUSH=true` (`migrate.yml` applies migrations when they change on `main`; keep them additive because Vercel deploys in parallel).
+5. **Vercel project** from the GitHub repository (Git integration: `main` → production, PRs → previews). Environment variables for Production and Preview: `DATABASE_URL` = `web_readonly` **pooled** URL, `APP_ENV=production`, optionally `SITE_URL` (defaults to the Vercel production domain). The web app never writes, so previews can safely share the read-only role. Keep **Git Fork Protection** on (default): the repository is public, and a fork PR must not build with these variables unreviewed.
+6. **GitHub** secrets `DIRECT_DATABASE_URL`, `SYOBOI_USER_AGENT`; variables `INGEST_ENABLED=true` (scheduled ingestion) and `MIGRATE_ON_PUSH=true` (`migrate.yml` applies migrations when they change on `main`; keep them additive because Vercel deploys in parallel). `migrate.yml` is the only workflow that applies migrations: on push when `MIGRATE_ON_PUSH=true`, or by a manual run (Actions → Migrate → Run workflow) regardless of the variable. `ingest.yml` only checks `prisma migrate status` and fails while migrations are pending. Workflows that receive these secrets run only on `main`/manual dispatch, never on `pull_request`.
 7. **Verify** `/status`, `/sitemap.xml`, `/robots.txt`, security headers (`curl -I`), both themes on a phone, and the first scheduled `update` run.
+8. **Search Console** (optional): add a URL-prefix property for the production URL, choose the HTML-tag method, set `GOOGLE_SITE_VERIFICATION` on Vercel (Production), redeploy, verify, then submit `/sitemap.xml`.
 
 ## Scheduled ingestion
 
-`ingest.yml` runs `update` at :23 every 6 hours and `recent` daily at 19:41 UTC, after a random 0–4 min delay; concurrency group prevents overlap (the advisory lock is a second guard). It can also be run manually (Actions → Ingest → Run workflow) with `season`, `backfill` (seasons validated before use), `derive` or `channels`. Failures appear in the Actions tab and as `FAILED` runs on `/status`; the site keeps serving the last good data. To pause ingestion, set `INGEST_ENABLED` to anything else.
+`ingest.yml` runs `update` at :23 every 6 hours and `recent` daily at 19:41 UTC, after a random 0–4 min delay; concurrency group prevents overlap (the advisory lock is a second guard). It can also be run manually (Actions → Ingest → Run workflow) with `season`, `backfill` (seasons validated before use), `derive` or `channels`. Failures appear in the Actions tab and as `FAILED` runs on `/status` (a fixed summary only; the full error stays in `ImportRun.error`, readable with `npm run ingest -- status`); the site keeps serving the last good data. To pause ingestion, set `INGEST_ENABLED` to anything else.
+
+Actions logs of a public repository are public: the workflows mask the database host before any step runs, and secrets are masked by GitHub. GitHub also **disables scheduled workflows after 60 days without repository activity** in public repositories (it emails a warning first); re-enable `Ingest` in the Actions tab or push a commit before then. `/status` warns when data is older than 48 h.
 
 ## Backup and restore
 
-- Managed (Neon): enable point-in-time restore; additionally keep a weekly logical dump:
-  `pg_dump --format=custom --no-owner "$DATABASE_URL" > backup-$(date +%F).dump`
+- Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan. Additionally keep a logical dump from a trusted machine (not as an Actions artifact: artifacts of a public repository are downloadable):
+  `pg_dump --format=custom --no-owner "$DIRECT_DATABASE_URL" > backup-$(date +%F).dump`
 - Restore into a **new** database, verify, then switch `DATABASE_URL`:
   `createdb restore_test && pg_restore --no-owner -d restore_test backup.dump`
 - Test a restore at least once per quarter. Derived tables can be rebuilt with `npm run ingest -- derive`; source tables can be re-fetched from the API if ever lost (respecting the request budget).
@@ -76,15 +80,20 @@ Region: Neon does not list Tokyo, so use **AWS Asia Pacific (Singapore) `aws-ap-
 ## Monitoring
 
 - `/status`: last success, coverage window, last 12 runs, staleness warning after 48 h.
-- GitHub Actions failure notifications for `ingest.yml`.
+- GitHub Actions failure notifications for `ingest.yml` (sent to the account that last changed its `schedule`; enable "Actions" notifications in GitHub settings).
 - Hosting provider logs for 5xx; add an uptime check on `/about` (static) and `/status` (DB-backed).
 
-## Pre-launch checklist
+## Launch checklist
 
-- [ ] Hosting/DB chosen and costs accepted by the owner
-- [ ] `SITE_URL`, `DATABASE_URL`, `APP_ENV` set; `SYOBOI_USER_AGENT` points to a page with contact info
-- [ ] Migrations applied; initial season + backfill ingested; `/status` shows success
-- [ ] Security headers verified; `npm audit --omit=dev` clean; Dependabot enabled
-- [ ] Backup schedule + one restore test done
-- [ ] Domain, TLS, `robots.txt`/`sitemap.xml` reachable; Open Graph preview checked
-- [ ] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first
+Status 2026-11-21.
+
+- [x] Hosting/DB chosen (option A, free plans)
+- [x] `DATABASE_URL` (read-only role, pooled) and `APP_ENV` set on Vercel; `SITE_URL` unset (defaults to the Vercel production domain)
+- [ ] `SYOBOI_USER_AGENT` points to a page with contact info (owner to confirm)
+- [x] Migrations applied; initial season + backfill ingested; `/status` shows success
+- [x] Security headers verified; `npm audit` clean; Dependabot version updates configured
+- [ ] Dependabot security updates, secret scanning and push protection enabled (repository settings)
+- [ ] Backup: one logical dump + one restore test done
+- [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
+- [ ] Open Graph preview checked; Search Console verified (optional)
+- [x] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first
