@@ -295,3 +295,14 @@ test("data pages carry a noscript notice instead of loading forever without Java
   const html = await (await request.get("/search")).text();
   expect(html).toMatch(/<noscript><p[^>]*>このページのデータを表示するには、JavaScriptを有効にしてください。<\/p><\/noscript>/);
 });
+
+test.describe("with motion allowed", () => {
+  test.use({ contextOptions: { reducedMotion: "no-preference" } });
+
+  test("key figures count up and settle on the final value", async ({ page }) => {
+    await page.goto("/stats?season=2026-autumn&time=latenight");
+    // Kanto late night in the fixture: 3 titles (see the stats filter test).
+    await expect(tileValue(page, "作品本数")).toHaveText(/^3\s*作品$/);
+    await expect(tileValue(page, "放送件数")).toHaveText(/^3\s*件$/);
+  });
+});

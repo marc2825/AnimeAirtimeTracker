@@ -21,11 +21,9 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--space-2) var(--space-4);
-  padding: var(--space-4) var(--space-5);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
-  border: var(--border);
-  border-left: 3px solid var(--color-accent);
+  padding: var(--space-4) 0;
+  border-top: var(--rule);
+  border-bottom: var(--border-strong);
 }
 
 .headlineChannel {
@@ -60,10 +58,8 @@
 }
 
 .sideCard {
-  padding: var(--space-4) var(--space-5);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
+  padding-top: var(--space-3);
+  border-top: var(--rule);
 }
 
 .sideTitle {
@@ -100,10 +96,8 @@
 .channelCard {
   display: grid;
   gap: var(--space-2);
-  padding: var(--space-4);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: var(--border-strong);
 }
 
 .channelCardHead {
@@ -142,10 +136,8 @@
 .slotItem {
   display: grid;
   gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border: var(--border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
+  padding: var(--space-3) 0;
+  border-top: var(--border);
 }
 
 .slotHead {

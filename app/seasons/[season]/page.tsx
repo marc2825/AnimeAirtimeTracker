@@ -67,7 +67,6 @@ async function SeasonContent({ params, searchParams }: { params: Promise<{ seaso
         <span>{formatSeason(season)}</span>
       </nav>
       <PageHeader
-        kicker="New series"
         title={`${formatSeason(season)}の新作アニメ`}
         lead={`第1話の放送があった作品を、最初の放送の曜日・時刻順に並べています。${region ? REGIONS[region].label : "全対象局"}で${premieres.length}作品。`}
       />

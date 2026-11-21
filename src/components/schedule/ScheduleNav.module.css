@@ -4,8 +4,7 @@
   gap: var(--space-1);
   padding: 3px;
   border-radius: var(--radius-sm);
-  border: var(--border);
-  background: var(--color-surface-1);
+  border: var(--border-strong);
 }
 
 .weekArrow {

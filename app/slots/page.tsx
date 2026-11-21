@@ -22,7 +22,6 @@ export default function SlotsPage({ searchParams }: PageProps<"/slots">) {
   return (
     <div className="container">
       <PageHeader
-        kicker="Programming slots"
         title="放送枠"
         lead="「どの局の、どの曜日・時刻に、どの作品が続いてきたか」を枠ごとに追えます。枠には判定の根拠に応じた種別があります。"
       />

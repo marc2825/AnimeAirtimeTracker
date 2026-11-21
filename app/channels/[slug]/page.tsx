@@ -10,7 +10,7 @@ import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, 
 import { AREA_LABELS, MEDIUM_LABELS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, TRACKED_CHANNELS, networkLabelOf } from "@/domain/coverage";
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
-import { formatPercent, formatSeasonOrdinal } from "@/lib/format";
+import { formatSeasonOrdinal } from "@/lib/format";
 import { listSlots } from "@/server/queries/slots";
 import { getSeasonStats, getSeasonTrend, statsFilter, TREND_BANDS } from "@/server/queries/stats";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
@@ -73,7 +73,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         <span aria-hidden="true">/</span>
         <span>{channel.name}</span>
       </nav>
-      <PageHeader kicker="Channel" title={channel.name} lead={`${MEDIUM_LABELS[channel.medium]}・${AREA_LABELS[channel.area]}・${networkLabelOf(channel)}`} />
+      <PageHeader title={channel.name} lead={`${MEDIUM_LABELS[channel.medium]}・${AREA_LABELS[channel.area]}・${networkLabelOf(channel)}`} />
 
       <ul role="list" className={styles.links}>
         <li>
@@ -89,7 +89,8 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
 
       <StatGrid>
         <StatTile label={`${formatSeason(latest)}の作品本数`} value={stats.titleCount} unit="作品" hint="新作・継続を含み、再放送を除く" />
-        <StatTile label="23時以降の割合" value={latestRow && latestRow.titles > 0 ? formatPercent(lateShare(latestRow)) : "—"} hint={`${formatSeason(latest)}・作品ごとの最頻の開始時刻`} />
+        <StatTile label="23時以降の割合" value={latestRow && latestRow.titles > 0 ? Math.round(lateShare(latestRow) * 100) : "—"}
+          unit={latestRow && latestRow.titles > 0 ? "%" : undefined} hint={`${formatSeason(latest)}・作品ごとの最頻の開始時刻`} />
         <StatTile label="放送枠" value={ownSlots.length} unit="枠" hint="この局を基準局とする出典記載枠と推定枠" />
         <StatTile label="放送があったクール" value={active.length} unit="クール" hint={`取得済み${covered.length}クール中`} />
       </StatGrid>
