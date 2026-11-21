@@ -1,6 +1,49 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHref, parseCommonFilters, parseIsoDateParam, parsePage, parseQuery, parseSlug } from "./search-params";
+import { buildHref, inTimeBand, parseCommonFilters, parseIsoDateParam, parsePage, parseQuery, parseSlug, parseTimeBand, TIME_BANDS, type TimeBand } from "./search-params";
+
+const at = (hour: number, minute = 0) => hour * 60 + minute;
+const bandsOf = (minute: number) => (Object.keys(TIME_BANDS) as TimeBand[]).filter((band) => inTimeBand(minute, band));
+
+describe("time bands (anime clock, start minute, half-open)", () => {
+  it.each([
+    ["05:00", at(5), ["morning"]],
+    ["11:59", at(11, 59), ["morning"]],
+    ["12:00", at(12), ["daytime"]],
+    ["16:59", at(16, 59), ["daytime"]],
+    ["17:00", at(17), ["evening"]],
+    ["18:59", at(18, 59), ["evening"]],
+    ["19:00", at(19), ["prime"]],
+    ["22:59", at(22, 59), ["prime"]],
+    ["23:00", at(23), ["latenight", "late"]],
+    ["23:59", at(23, 59), ["latenight", "late"]],
+    ["24:00", at(24), ["latenight", "late", "aftermidnight"]],
+    ["24:59", at(24, 59), ["latenight", "late", "aftermidnight"]],
+    ["25:00", at(25), ["latenight", "aftermidnight", "latelate"]],
+    ["28:59", at(28, 59), ["latenight", "aftermidnight", "latelate"]],
+    ["29:00 (= next day 05:00)", at(29), []]
+  ])("%s starts in %j", (_, minute, expected) => {
+    expect(bandsOf(minute)).toEqual(expected);
+  });
+
+  it("keeps the original six bands a partition of the anime day; latenight is late + latelate", () => {
+    const original: TimeBand[] = ["morning", "daytime", "evening", "prime", "late", "latelate"];
+    for (let minute = at(5); minute < at(29); minute += 1) {
+      expect(original.filter((band) => inTimeBand(minute, band))).toHaveLength(1);
+      expect(inTimeBand(minute, "latenight")).toBe(inTimeBand(minute, "late") || inTimeBand(minute, "latelate"));
+      if (inTimeBand(minute, "aftermidnight")) expect(inTimeBand(minute, "latenight")).toBe(true);
+    }
+  });
+
+  it("accepts only its own keys from the URL", () => {
+    expect(parseTimeBand("latenight")).toBe("latenight");
+    expect(parseTimeBand("aftermidnight")).toBe("aftermidnight");
+    expect(parseTimeBand("late")).toBe("late");
+    for (const bogus of ["constructor", "toString", "__proto__", "hasOwnProperty", "LATENIGHT", "", undefined]) {
+      expect(parseTimeBand(bogus)).toBeNull();
+    }
+  });
+});
 
 describe("URL state", () => {
   it("whitelists filter values and falls back to defaults", () => {
