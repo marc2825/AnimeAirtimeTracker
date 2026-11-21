@@ -18,7 +18,23 @@ async function main() {
     await client.query(`GRANT USAGE ON SCHEMA public TO "${role}"`);
     await client.query(`GRANT SELECT ON ALL TABLES IN SCHEMA public TO "${role}"`);
     await client.query(`ALTER DEFAULT PRIVILEGES FOR ROLE "${owner}" IN SCHEMA public GRANT SELECT ON TABLES TO "${role}"`);
-    console.log(`Granted read-only access on schema public to ${role} (and to future tables created by ${owner}).`);
+    // Granting SELECT does not take anything away. On Neon, a role created with the default `--access admin`
+    // joins neon_superuser and can still write, so verify the result instead of assuming it.
+    const writable = await client.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+          AND (has_table_privilege($1, format('%I.%I', table_schema, table_name), 'INSERT')
+            OR has_table_privilege($1, format('%I.%I', table_schema, table_name), 'UPDATE')
+            OR has_table_privilege($1, format('%I.%I', table_schema, table_name), 'DELETE'))`,
+      [role]
+    );
+    if (writable.rowCount) {
+      throw new Error(
+        `${role} can still write to ${writable.rowCount} table(s) (e.g. ${writable.rows[0]!.table_name}). ` +
+          "Recreate it without write access (Neon: `neon roles create --name <role> --access read_only`)."
+      );
+    }
+    console.log(`Granted read-only access on schema public to ${role} (and to future tables created by ${owner}); verified it cannot write.`);
   } finally {
     await client.end();
   }

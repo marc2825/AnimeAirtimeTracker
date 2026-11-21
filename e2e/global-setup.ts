@@ -5,6 +5,8 @@ import { deriveAll } from "../src/ingest/derive";
 import { importFixtures } from "../src/ingest/fixtures";
 import { createPrismaClient } from "../src/server/prisma";
 
+import { LEAKY_RUN_ERROR } from "./status-fixture";
+
 export default async function globalSetup() {
   if (existsSync(".env")) process.loadEnvFile(".env");
   const url = process.env.E2E_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
@@ -19,6 +21,10 @@ export default async function globalSetup() {
     );
     await importFixtures(prisma);
     await deriveAll(prisma, { log: () => {} });
+    // An older failed run whose stored error carries internal detail (test database only).
+    await prisma.importRun.create({
+      data: { command: "update", status: "FAILED", startedAt: new Date("2026-01-01T00:00:00Z"), finishedAt: new Date("2026-01-01T00:00:05Z"), error: LEAKY_RUN_ERROR }
+    });
   } finally {
     await prisma.$disconnect();
   }

@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { LEAKY_FRAGMENTS } from "./status-fixture";
+
 // Fixtures: one recorded anime day (Mon 2026-11-16) for TOKYO MX, BS11 and Fuji TV, plus 11 titles.
 const FIXTURE_WEEK = "/schedule?week=2026-11-16&day=mon";
 
@@ -67,6 +69,14 @@ test("slots, about and status pages render honestly with limited data", async ({
   await expect(page.getByRole("heading", { name: "データの出典と利用条件" })).toBeVisible();
   await page.goto("/status");
   await expect(page.getByRole("cell", { name: "テスト用データ" })).toBeVisible();
+});
+
+test("status shows only a summary for failed runs, never the stored exception", async ({ page, request }) => {
+  await page.goto("/status");
+  await expect(page.getByRole("cell", { name: "データベースの処理でエラーが発生しました" })).toBeVisible();
+  // The full response (HTML + streamed RSC payload) must not carry any part of the stored message.
+  const html = await (await request.get("/status")).text();
+  for (const fragment of LEAKY_FRAGMENTS) expect(html).not.toContain(fragment);
 });
 
 test("admin and unknown routes are not exposed", async ({ page, request }) => {

@@ -1,0 +1,26 @@
+name: 判定・表示の誤り
+description: 放送枠の判定、再放送の推定、統計、番組表の表示などの誤り
+body:
+  - type: markdown
+    attributes:
+      value: 放送データ（放送日時・話数・タイトル）自体の誤りは、しょぼいカレンダーで修正されると次回の取得で反映されます。
+  - type: input
+    id: url
+    attributes:
+      label: ページのURL
+      placeholder: https://anime-airtime-tracker.vercel.app/slots/...
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: 誤っている内容
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 正しい内容と根拠
+      description: 放送局の公式ページなど、確認できる出典があれば書いてください。
+    validations:
+      required: true

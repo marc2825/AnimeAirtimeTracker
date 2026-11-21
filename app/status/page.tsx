@@ -59,7 +59,7 @@ async function StatusContent() {
         <StatTile label="放送枠" value={formatNumber(status.totals.slots)} unit="枠" hint="出典記載枠と推定枠の合計" />
       </StatGrid>
 
-      <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件。リクエスト数は出典への実際のアクセス回数です。">
+      <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件。リクエスト数は出典への実際のアクセス回数です。失敗時の備考は原因の概要のみを表示します。">
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -80,7 +80,7 @@ async function StatusContent() {
                     <Badge tone={STATUS_TONE[run.status] ?? "neutral"}>{STATUS_LABEL[run.status] ?? run.status}</Badge>
                   </td>
                   <td className="mono">{run.requestCount}</td>
-                  <td className={styles.note}>{run.error ?? ""}</td>
+                  <td className={styles.note}>{run.errorSummary ?? ""}</td>
                 </tr>
               ))}
             </tbody>
