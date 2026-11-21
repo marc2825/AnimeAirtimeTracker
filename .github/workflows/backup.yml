@@ -12,8 +12,10 @@ on:
 permissions:
   contents: read
 
+# Shares the ingest group: an import committing between the dump and the count check would make the row counts
+# differ, so backup and ingest never run at the same time.
 concurrency:
-  group: backup
+  group: ingest
   cancel-in-progress: false
 
 jobs:

@@ -97,7 +97,9 @@ async function main() {
       if (from !== to) mismatches += 1;
       console.log(`verify ${table}: source ${from}, target ${to}${from === to ? "" : "  MISMATCH"}`);
     }
-    if (mismatches > 0) throw new Error(`${mismatches} table(s) differ after the copy`);
+    if (mismatches > 0) {
+      throw new Error(`${mismatches} table(s) differ after the copy. If an ingest run wrote to the source meanwhile, re-run when none is running.`);
+    }
   } catch (error) {
     await target.query("ROLLBACK").catch(() => undefined);
     throw error;
