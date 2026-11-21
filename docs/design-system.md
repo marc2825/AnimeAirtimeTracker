@@ -1,8 +1,17 @@
 # Design system
 
-## Concept: 深夜の編成表 (the late-night programming grid)
+## Concept: 深夜の編成表 (the late-night programming grid), set like print
 
-Modern Japanese anime × editorial data visualization × premium web app. The motifs are the ones the subject already owns — the programming grid, the clock past midnight (25:30), the 24:00 date-change line, the "on air" signal, the season timeline — rendered quietly so dense data stays readable. No decorative gradients, no generic card soup: cards appear only where an item is a unit of navigation.
+The site reads like a printed programme guide or broadcasting almanac: structure comes from rules, space and type, not from boxes. The motifs are the ones the subject already owns — the programming grid, the clock past midnight (25:30), the 24:00 date-change line, the season timeline — rendered quietly so dense data stays readable.
+
+What this system deliberately avoids (they read as template output):
+
+- A caps/mono eyebrow label above headings. The heading speaks for itself.
+- Boxes around everything: a 1px border + radius + tinted surface. Lists, figures, charts and filter rows sit on the page between rules. A frame is kept only where the content is a canvas (the schedule grid, the slot timeline) or a control (inputs, the week switcher, day tabs).
+- Grids of identical cards and the big-number tile. Entries are ledger rows under a rule; key figures are a ruled strip.
+- Drop shadows, gradients, one-sided colour stripes, large radii.
+- Mono type as decoration. Mono is for times and numbers only.
+- Motion without a job. The only authored motion is the count-up of key figures.
 
 ## Tokens (`src/styles/tokens.css`)
 
@@ -15,10 +24,11 @@ Modern Japanese anime × editorial data visualization × premium web app. The mo
 | Slot kinds | 公式 solid · 出典記載 outline · 推定 dashed | | |
 | Calendar | 土 `#1f5fb0`, 日 `#c0392b` | `#7fb2ff`, `#ff8f84` | Japanese calendar convention; weekdays stay ink. (A 7-hue weekday palette failed the CVD/normal-vision validator, so it was dropped.) |
 | Data viz | sequential blue ramp `--viz-1…7`, zero `--viz-zero`, bars `--viz-bar` / `--viz-bar-muted` | dark-mode steps run dim → bright | single hue; validated reference ramp |
-| Type | Noto Sans JP (400/500/700) + Geist for Latin; Geist Mono for times/numbers | | scale 11–38 px; body line-height 1.75 for Japanese; `word-break: auto-phrase` |
+| Type | Headings (h1, h2, site name, slot names): Noto Serif JP 700 (mincho). Body/UI: Noto Sans JP (400/500/700) + Geist for Latin. Times/numbers: Geist Mono; key figures: Geist, tabular | | scale 11–56 px; body 16 px, line-height 1.75 for Japanese; `word-break: auto-phrase` |
 | Space | 4 px base (`--space-1` … `--space-16`), gutter 16/24 px | | |
-| Radius | 3 / 6 / 10 / 14 / pill | | |
-| Motion | 120 / 200 / 320 ms, `--ease-out` | | all durations 0 under `prefers-reduced-motion` |
+| Radius | 2 / 3 / 4 / 6 / pill (chips only) | | |
+| Rules | hairline `--border`, strong `--border-strong`, section rule `--rule` (2 px ink) | | no shadows (`--shadow-1/2` are `none`) |
+| Motion | 120 / 200 / 320 ms, `--ease-out` (exponential); key figures count up in 800 ms when they come into view (`CountUp`) | | all durations 0 and no count-up under `prefers-reduced-motion`; the server always renders the final value |
 | Breakpoints | sm 640 · md 768 · lg 1024 · xl 1280 | | mobile nav switches at md |
 | States | hover wash, pressed wash, selected = accent-soft, focus ring 2 px accent + 2 px offset, disabled 45% | | |
 
@@ -29,8 +39,8 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 | Component | File | Notes |
 | --- | --- | --- |
 | Header / desktop nav / mobile tab bar / theme toggle | `src/components/layout/*` | bottom tab bar < 768 px; `aria-current` on active item |
-| PageHeader, Section, Card, Badge/FlagBadges/SlotKindBadge, EmptyState, Notice, Skeleton, StatTile, KeyValue, ExternalLink | `src/components/ui/primitives.tsx` | |
-| SegmentedLinks, SelectField, FilterChips, Pagination, Disclosure, ButtonLink | `src/components/ui/controls.tsx` | link-based controls keep state in the URL |
+| PageHeader, Section, Card, Badge/FlagBadges/SlotKindBadge, EmptyState, Notice, Skeleton, StatTile, KeyValue, ExternalLink | `src/components/ui/primitives.tsx` | Section opens with the section rule; StatGrid is a ruled strip; a numeric StatTile value counts up (`CountUp.tsx`) |
+| SegmentedLinks, SelectField, FilterChips, Pagination, Disclosure, ButtonLink | `src/components/ui/controls.tsx` | link-based controls keep state in the URL; SegmentedLinks are underline tabs (current = ink underline + bold, never colour alone) |
 | FilterForm | `src/components/ui/FilterForm.tsx` | GET form; works without JS; with JS: client navigation, empty params dropped, auto-submit, pending text |
 | ScheduleGrid / NowLine / ScheduleDayList / WeekNav / DayTabs / Legend | `src/components/schedule/*` | layout math in `layout.ts` (tested) |
 | SlotTimeline / SlotCard / SeasonStrip | `src/components/slots/*` | timeline scrolls to the latest season |
@@ -38,11 +48,11 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 
 ## Page patterns
 
-- **Header → controls → content → footnote.** Kicker (mono caps) + H1 + one-sentence lead; never marketing copy.
+- **Header → controls → content → footnote.** H1 (mincho) + one-sentence lead; no eyebrow label, never marketing copy.
 - **Data sections** stream under `<Suspense>` with skeletons sized like the content; errors render a `Notice`, empty results an `EmptyState` with a next step.
 - **Schedule grid**: channel columns × time; empty hours collapse to a hatched "放送なし" band; 24:00 is highlighted as "日付変更"; overlapping items share lanes; phones get the day list.
 - **Slot chronicle**: season columns on a rail; filled node = titles present, hollow = none, coral = time moved; title cards show continuation from the previous season.
-- **Charts vs tables**: charts for patterns, tables for exact comparison (always available).
+- **Charts vs tables**: charts for patterns, tables for exact comparison (always available). A figure reads finding → chart → scope footnote, without a frame; long season charts open scrolled to the latest season.
 
 ## Accessibility
 
