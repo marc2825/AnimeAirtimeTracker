@@ -97,7 +97,7 @@ test("schedule: an empty band explains itself, and unknown band values fall back
   await page.goto(`${FIXTURE_WEEK}&time=morning`);
   await expect(page.getByText("この週に該当する番組はありません")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "時間帯" }).getByRole("link", { name: "朝 5–12時" })).toHaveAttribute("aria-current", "true");
-  await page.getByRole("link", { name: "全時間帯を表示" }).click();
+  await page.getByRole("link", { name: "条件を外す" }).click();
   await expect(page).not.toHaveURL(/time=/);
   await expect(page.getByRole("link", { name: "ふんばるず" }).first()).toBeVisible();
 
@@ -129,15 +129,61 @@ test("search: the slot tab states how time conditions are judged", async ({ page
   await expect(page.getByText("各枠の最新クールの放送位置で判定しています")).toBeVisible();
   await page.goto("/search?view=slots&season=all&time=latenight&rerun=include");
   await expect(page.getByText(/いずれかのクールで条件に一致した枠です/)).toBeVisible();
-  await expect(page.getByText(/再放送・番組の種類の条件は放送枠には適用されません/)).toBeVisible();
+  await expect(page.getByText(/再放送・番組の種類・放送時間の条件は放送枠には適用されません/)).toBeVisible();
 });
 
 test("stats always state scope and units", async ({ page }) => {
   await page.goto("/stats?season=2026-autumn");
-  await expect(page.getByText("集計対象")).toBeVisible();
+  await expect(page.getByText("集計対象", { exact: true })).toBeVisible();
   await expect(page.getByText(/単位: 作品本数/).first()).toBeVisible();
   await page.getByRole("link", { name: "放送件数" }).click();
   await expect(page).toHaveURL(/unit=broadcasts/);
+});
+
+const tileValue = (page: import("@playwright/test").Page, label: string) =>
+  page.locator("dt", { hasText: new RegExp(`^${label}$`) }).locator("xpath=following-sibling::dd[1]");
+
+test("stats: time band, network and length narrow the figures and are stated in the scope", async ({ page }) => {
+  await page.goto("/stats?season=2026-autumn");
+  const all = Number((await tileValue(page, "作品本数").innerText()).replace(/\D/g, ""));
+  await page.goto("/stats?season=2026-autumn&time=latenight");
+  await expect(page.getByText(/深夜アニメ 23–29時に始まる放送/).first()).toBeVisible();
+  // Kanto, reruns excluded: PSYREN 23:00, ロメリア戦記 23:30 and 信者ゼロ 24:00 on MX.
+  await expect(tileValue(page, "作品本数")).toHaveText(/^3\s*作品$/);
+  expect(all).toBeGreaterThan(3);
+  const bands = page.locator("#bands");
+  await expect(bands.getByRole("heading", { name: "時間帯別の推移" })).toBeVisible();
+  await bands.getByText("表で見る").click();
+  await expect(bands.getByRole("row", { name: /2026年秋/ })).toContainText("100%");
+
+  await page.goto("/stats?season=2026-autumn&region=all&network=independent&length=standard");
+  const scope = page.getByText("集計対象", { exact: true }).locator("..");
+  await expect(scope).toContainText("全対象局の独立局（MX・BS11・AT-X）");
+  await expect(scope).toContainText("30分前後（16〜45分）");
+});
+
+test("network (系列) and length filters on the schedule and search", async ({ page, isMobile }) => {
+  await page.goto(`${FIXTURE_WEEK}&region=all&network=independent`);
+  await expect(page.getByRole("link", { name: /PSYREN/ }).first()).toBeVisible();
+  if (!isMobile) {
+    const grid = page.getByRole("region", { name: "番組表（局×時刻）" });
+    await expect(grid).toContainText("AT-X");
+    await expect(grid).not.toContainText("日テレ");
+  }
+  // The fixture has no Fuji TV airing that week: a filtered-empty week is not reported as missing data.
+  await page.goto(`${FIXTURE_WEEK}&region=all&network=cx`);
+  await expect(page.getByText("この週に該当する番組はありません")).toBeVisible();
+  await expect(page.getByText(/フジテレビ系に該当する放送がありません/)).toBeVisible();
+
+  await page.goto("/search?season=all&network=independent&time=latenight");
+  await expect(page.getByRole("heading", { name: /4\s*作品/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "独立局（MX・BS11・AT-X） を解除" })).toBeVisible();
+  // ふんばるず is the only 5-minute short in the fixture.
+  await page.goto("/search?season=all&length=short");
+  await expect(page.getByRole("heading", { name: /1\s*作品/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: "ふんばるず" })).toBeVisible();
+  await page.goto("/search?season=all&length=long");
+  await expect(page.getByText("該当する作品はありません")).toBeVisible();
 });
 
 test("slots, about and status pages render honestly with limited data", async ({ page }) => {
