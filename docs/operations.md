@@ -91,7 +91,7 @@ Actions logs of a public repository are public: the workflows mask the database 
 - `/status`: last success, coverage window, last 12 runs, staleness warning after 48 h.
 - `/api/health`: `200` while the last successful import is at most 48 h old, `503` when older or when the database cannot be read (JSON: `ok`, `lastSuccessAt`, `ageHours`; no internal detail).
 - `monitor.yml` (daily 03:17 UTC): fails when `/api/health` is not `200`, and keeps the scheduled workflows enabled. Set the repository variable `SITE_URL` if the site moves off the Vercel domain.
-- GitHub Actions failure notifications for `ingest.yml` and `monitor.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings).
+- GitHub Actions failure notifications for `ingest.yml`, `monitor.yml` and `backup.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings). All three are kept enabled by the `monitor.yml` keepalive.
 - Optional: an external uptime monitor on `/api/health` notifies even if GitHub Actions itself stops. Hosting provider logs for 5xx.
 
 ## Launch checklist
@@ -105,7 +105,7 @@ Status 2026-11-21.
 - [x] Security headers verified; `npm audit` clean; Dependabot version updates configured
 - [ ] Dependabot security updates, secret scanning and push protection enabled (repository settings)
 - [x] Restore test done (2026-11-21, copy into a separate database; see Backup and restore)
-- [x] Monthly encrypted backup with restore check (`backup.yml`)
+- [x] Monthly encrypted backup with restore check (`backup.yml`; first successful run 2026-11-21: 9 tables matched after restore, artifact decrypted with the owner's key)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
 - [ ] Open Graph preview checked; Search Console verified (optional)
 - [x] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first
