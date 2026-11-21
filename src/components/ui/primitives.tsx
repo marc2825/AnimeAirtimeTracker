@@ -153,6 +153,10 @@ export function SkeletonBlock({ rows = 6, label = "読み込み中" }: { rows?: 
   return (
     <div className={styles.skeletonBlock} role="status" aria-live="polite">
       <span className="visually-hidden">{label}</span>
+      {/* Streamed content replaces this fallback with JavaScript; without it the data never appears. */}
+      <noscript>
+        <p className={styles.noscript}>このページのデータを表示するには、JavaScriptを有効にしてください。</p>
+      </noscript>
       {Array.from({ length: rows }, (_, index) => (
         <Skeleton key={index} height="2.75rem" width={`${100 - ((index * 13) % 30)}%`} />
       ))}

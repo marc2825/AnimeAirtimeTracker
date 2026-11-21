@@ -1,0 +1,44 @@
+# Daily checks for the production site. A failed run sends GitHub's failure notification.
+# - freshness: /api/health answers 503 when the last successful import is older than 48 h or the DB is unreadable.
+# - keepalive: GitHub disables scheduled workflows of a public repository after 60 days without activity;
+#   re-enabling them through the API resets that timer (ingestion writes to the database, not to the repository).
+name: Monitor
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: monitor
+  cancel-in-progress: true
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check data freshness
+        env:
+          SITE: ${{ vars.SITE_URL || 'https://anime-airtime-tracker.vercel.app' }}
+        run: |
+          code=$(curl -sS -o body.json -w '%{http_code}' --retry 3 --retry-delay 30 --retry-all-errors "$SITE/api/health" || true)
+          cat body.json 2>/dev/null; echo
+          if [ "$code" != "200" ]; then echo "::error::/api/health returned $code"; exit 1; fi
+
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Keep scheduled workflows enabled
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for workflow in ingest.yml monitor.yml; do
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/enable"
+            echo "enabled $workflow"
+          done

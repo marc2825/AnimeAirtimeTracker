@@ -6,12 +6,14 @@
  */
 import pg from "pg";
 
+import { normalizeSslMode } from "@/server/prisma";
+
 async function main() {
   const role = process.argv[2];
   if (!role || !/^[a-z_][a-z0-9_]{0,62}$/.test(role)) throw new Error("Usage: grant-readonly.ts <role_name>");
   const url = process.env.DIRECT_DATABASE_URL;
   if (!url) throw new Error("Set DIRECT_DATABASE_URL (owner, non-pooled)");
-  const client = new pg.Client({ connectionString: url });
+  const client = new pg.Client({ connectionString: normalizeSslMode(url) });
   await client.connect();
   try {
     const owner = (await client.query<{ current_user: string }>("SELECT current_user")).rows[0]!.current_user;

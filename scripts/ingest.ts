@@ -33,7 +33,7 @@ import {
   writeCursor,
   type IngestContext
 } from "@/ingest/sync";
-import { createPrismaClient } from "@/server/prisma";
+import { createPrismaClient, normalizeSslMode } from "@/server/prisma";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 
@@ -76,7 +76,7 @@ function printPlan(ranges: TimeWindow[], windowDays: number) {
 }
 
 async function withLock<T>(work: () => Promise<T>): Promise<T> {
-  const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  const client = new pg.Client({ connectionString: normalizeSslMode(process.env.DATABASE_URL ?? "") });
   await client.connect();
   try {
     const result = await client.query<{ locked: boolean }>("SELECT pg_try_advisory_lock($1) AS locked", [LOCK_KEY]);
