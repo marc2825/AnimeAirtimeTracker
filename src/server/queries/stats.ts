@@ -1,6 +1,6 @@
 import { channelSlugsFor, TRACKED_CHANNELS, type NetworkKey, type RegionKey } from "@/domain/coverage";
 import { computeTitlePositions } from "@/domain/slots";
-import { seasonInstantRange, seasonOrdinal, type Season } from "@/domain/season";
+import { seasonInstantRange, seasonOrdinal, seasonsBetween, type Season } from "@/domain/season";
 import { channelBreakdown, concurrencyProfile, regionalDelay, seasonTrend, weekdayHourMatrix, type CountUnit, type StatAiring } from "@/domain/stats";
 import { dbDateToIsoDate } from "@/domain/time";
 import { inTimeBand, TIME_BANDS, type LengthKey, type RerunMode, type TimeBand } from "@/lib/search-params";
@@ -8,6 +8,7 @@ import { inTimeBand, TIME_BANDS, type LengthKey, type RerunMode, type TimeBand }
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
 import { airingWhere, getTrackedChannels, type AiringFilter, type ChannelInfo } from "./common";
+import { getCoveredSeasonOrdinals } from "./status";
 
 /** Conditions shared by every figure on /stats. The time band is judged on the start time (see /about). */
 export interface StatsFilter {
@@ -118,9 +119,25 @@ export async function getSeasonTrend(filter: StatsFilter, from: Season, to: Seas
     where: airingWhere(toAiringFilter(filter, { range }), channels),
     select: { titleId: true, animeDate: true, animeStartMinute: true }
   });
-  return seasonTrend(
+  const trend = seasonTrend(
     rows.map((row) => ({ ...row, animeDate: dbDateToIsoDate(row.animeDate) })),
     TREND_BANDS
+  );
+  // Covered seasons without matching airings are zero rows (a real zero); seasons not fetched yet are left out.
+  const covered = new Set(await getCoveredSeasonOrdinals());
+  const byOrdinal = new Map(trend.map((row) => [row.seasonOrdinal, row]));
+  return seasonsBetween(from, to)
+    .filter((season) => covered.has(seasonOrdinal(season)))
+    .map(
+    (season) =>
+      byOrdinal.get(seasonOrdinal(season)) ?? {
+        seasonOrdinal: seasonOrdinal(season),
+        titles: 0,
+        broadcasts: 0,
+        newTitles: 0,
+        lateNightShare: 0,
+        bandTitles: Object.fromEntries(TREND_BANDS.map((group) => [group.key, 0]))
+      }
   );
 }
 

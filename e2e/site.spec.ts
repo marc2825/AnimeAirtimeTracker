@@ -186,6 +186,39 @@ test("network (系列) and length filters on the schedule and search", async ({ 
   await expect(page.getByText("該当する作品はありません")).toBeVisible();
 });
 
+test("season pages list covered seasons and are honest about missing data", async ({ page }) => {
+  await page.goto("/seasons");
+  await expect(page.getByRole("heading", { level: 1, name: "クール別の新作" })).toBeVisible();
+  await page.getByRole("link", { name: /秋\s*0\s*作品/ }).click();
+  await expect(page).toHaveURL(/\/seasons\/2026-autumn/);
+  await expect(page.getByRole("heading", { level: 1, name: "2026年秋の新作アニメ" })).toBeVisible();
+  // The fixture day has no first-episode airing.
+  await expect(page.getByText("新作の記録がありません")).toBeVisible();
+  await page.goto("/seasons/2030-winter");
+  await expect(page.getByText("このクールのデータはまだありません")).toBeVisible();
+  await page.goto("/seasons/not-a-season");
+  await expect(page.getByText("ページが見つかりません")).toBeVisible();
+});
+
+test("channel pages summarise a channel and link to filtered views", async ({ page }) => {
+  await page.goto("/channels");
+  await expect(page.getByRole("heading", { level: 2, name: "関東地上波" })).toBeVisible();
+  await page.getByRole("link", { name: /TOKYO MX/ }).click();
+  await expect(page).toHaveURL(/\/channels\/mx$/);
+  await expect(page.getByRole("heading", { level: 1, name: "TOKYO MX" })).toBeVisible();
+  await expect(page.getByText("地上波・関東・独立局")).toBeVisible();
+  await expect(page.getByRole("link", { name: "この局の番組表" })).toHaveAttribute("href", "/schedule?region=all&channel=mx");
+  await expect(page.getByRole("heading", { name: "クール別の作品本数" })).toBeVisible();
+  await page.goto("/channels/no-such-channel");
+  await expect(page.getByText("ページが見つかりません")).toBeVisible();
+});
+
+test("sitemap lists the season and channel pages", async ({ request }) => {
+  const xml = await (await request.get("/sitemap.xml")).text();
+  expect(xml).toContain("/seasons/2026-autumn");
+  expect(xml).toContain("/channels/mx");
+});
+
 test("slots, about and status pages render honestly with limited data", async ({ page }) => {
   await page.goto("/slots");
   await expect(page.getByRole("heading", { level: 1, name: "放送枠" })).toBeVisible();

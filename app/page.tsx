@@ -36,6 +36,7 @@ export default function HomePage() {
             <ButtonLink href="/schedule" variant="primary" icon="arrowRight">
               今週の番組表
             </ButtonLink>
+            <ButtonLink href="/seasons">クール別の新作</ButtonLink>
             <ButtonLink href="/slots">放送枠の年表を見る</ButtonLink>
           </div>
           <nav className={styles.quick} aria-label="曜日から探す">

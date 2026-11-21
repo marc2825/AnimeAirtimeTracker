@@ -36,12 +36,15 @@ Out (not blocking launch): accounts, watch lists, notifications, streaming catal
 
 | Route | Purpose |
 | --- | --- |
+| (all pages) | Dismissible now-airing strip under the header (client clock; hidden until 05:00 once closed) |
 | `/` | Today's upcoming new episodes, quick filters, featured slot chronicles, season heatmap, data freshness |
-| `/schedule` | Day grid / week list; `week`, `day`, `region`, `channel`, `view`, `rerun`, `kind`, `clock` in the URL |
+| `/schedule` | Day grid / week list; `week`, `day`, `region`, `network`, `channel`, `time`, `length`, `view`, `rerun`, `kind`, `clock` in the URL |
 | `/search` | Titles / broadcasts / slots with basic + advanced filters, chips, sorting, paging |
 | `/titles/[tid]` | Per-channel positions, slot memberships with evidence, airing history with observed changes, related candidates |
 | `/slots`, `/slots/[slug]` | Slot index (labelled cards, inferred positions per channel) and chronicle pages |
-| `/stats` | Season statistics with scope selector and table views |
+| `/seasons`, `/seasons/[season]` | Season index and the season's new series (first-episode airings) by weekday |
+| `/channels`, `/channels/[slug]` | Channel index and per-channel trend, weekday × hour, slots |
+| `/stats` | Season statistics with scope selector (region, network, channel, time band, length), band trend, season comparison, table views |
 | `/about` | Sources, terms, coverage, time conventions, definitions, slot rules, limits, corrections |
 | `/status` | Real import history, coverage window, staleness warning |
 
