@@ -41,6 +41,8 @@ export function SiteFooter() {
           </Suspense>
         </div>
         <nav className={styles.links} aria-label="フッター">
+          <Link href="/seasons">クール別の新作</Link>
+          <Link href="/channels">放送局</Link>
           <Link href="/about">このサイトについて</Link>
           <Link href="/about#method">方法論と定義</Link>
           <Link href="/about#limits">データの限界</Link>
