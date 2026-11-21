@@ -28,7 +28,7 @@ Syoboi Calendar already provides an excellent, detailed program guide, title pag
 
 ## Scope (v1)
 
-In: 20 tracked channels (Kanto terrestrial 8, Kansai terrestrial 5, BS 6, CS 1 — list in `src/domain/coverage.ts`), seasons from 2024 winter onward, anime categories by default.
+In: 20 tracked channels (Kanto terrestrial 8, Kansai terrestrial 5, BS 6, CS 1 — list in `src/domain/coverage.ts`), seasons from 2000 winter onward (source records are sparse before 2006, see `SOURCE_COMPLETE_FROM_YEAR`), anime categories by default.
 
 Out (not blocking launch): accounts, watch lists, notifications, streaming catalogues, images, genre/staff enrichment, nationwide channel completeness, public editing, an admin web UI.
 
