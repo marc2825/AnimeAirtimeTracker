@@ -62,47 +62,48 @@ export async function rebuildSlots(prisma: PrismaClient): Promise<{ slots: numbe
   });
 
   const computedAt = new Date();
-  let memberships = 0;
   const byKind: Record<string, number> = {};
+  for (const slot of slots) byKind[slot.kind] = (byKind[slot.kind] ?? 0) + 1;
+  const slotRows = slots.map((slot) => {
+    const starts = slot.memberships.flatMap((m) => [m.firstStartAt, m.lastStartAt]).filter((d): d is Date => d !== null);
+    const first = starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null;
+    const last = starts.length > 0 ? new Date(Math.max(...starts.map((d) => d.getTime()))) : null;
+    return {
+      slug: slot.slug,
+      name: slot.name,
+      kind: slot.kind,
+      description: slot.description,
+      evidenceUrl: slot.evidenceUrl,
+      ruleVersion: SLOT_RULE_VERSION,
+      homeChannelId: slot.homeChannelId,
+      firstAnimeDate: first ? isoDateToDbDate(toAnimeTime(first).animeDate) : null,
+      lastAnimeDate: last ? isoDateToDbDate(toAnimeTime(last).animeDate) : null,
+      titleCount: new Set(slot.memberships.map((m) => m.titleId)).size,
+      seasonCount: slot.seasons.length,
+      computedAt
+    };
+  });
+  const memberships = slots.reduce((sum, slot) => sum + slot.memberships.length, 0);
+  // A handful of bulk statements instead of three round trips per slot: the ingest job runs far from the
+  // database, and per-slot writes outgrew the transaction timeout once the dataset reached 2016.
   await prisma.$transaction(
     async (tx) => {
       await tx.slotSeason.deleteMany({});
       await tx.slotMembership.deleteMany({});
       await tx.slot.deleteMany({});
-      for (const slot of slots) {
-        const starts = slot.memberships.flatMap((m) => [m.firstStartAt, m.lastStartAt]).filter((d): d is Date => d !== null);
-        const first = starts.length > 0 ? new Date(Math.min(...starts.map((d) => d.getTime()))) : null;
-        const last = starts.length > 0 ? new Date(Math.max(...starts.map((d) => d.getTime()))) : null;
-        const created = await tx.slot.create({
-          data: {
-            slug: slot.slug,
-            name: slot.name,
-            kind: slot.kind,
-            description: slot.description,
-            evidenceUrl: slot.evidenceUrl,
-            ruleVersion: SLOT_RULE_VERSION,
-            homeChannelId: slot.homeChannelId,
-            firstAnimeDate: first ? isoDateToDbDate(toAnimeTime(first).animeDate) : null,
-            lastAnimeDate: last ? isoDateToDbDate(toAnimeTime(last).animeDate) : null,
-            titleCount: new Set(slot.memberships.map((m) => m.titleId)).size,
-            seasonCount: slot.seasons.length,
-            computedAt
-          }
-        });
-        if (slot.memberships.length > 0) {
-          await tx.slotMembership.createMany({ data: slot.memberships.map((m) => ({ ...m, slotId: created.id })) });
-        }
-        if (slot.seasons.length > 0) {
-          await tx.slotSeason.createMany({ data: slot.seasons.map((s) => ({ ...s, slotId: created.id })) });
-        }
-        memberships += slot.memberships.length;
-        byKind[slot.kind] = (byKind[slot.kind] ?? 0) + 1;
-      }
+      const created = await tx.slot.createManyAndReturn({ data: slotRows, select: { id: true, slug: true } });
+      const idBySlug = new Map(created.map((row) => [row.slug, row.id]));
+      const membershipRows = slots.flatMap((slot) => slot.memberships.map((m) => ({ ...m, slotId: idBySlug.get(slot.slug)! })));
+      const seasonRows = slots.flatMap((slot) => slot.seasons.map((season) => ({ ...season, slotId: idBySlug.get(slot.slug)! })));
+      for (const batch of chunk(membershipRows, BULK_ROWS)) await tx.slotMembership.createMany({ data: batch });
+      for (const batch of chunk(seasonRows, BULK_ROWS)) await tx.slotSeason.createMany({ data: batch });
     },
     { timeout: 300_000, maxWait: 20_000 }
   );
   return { slots: slots.length, memberships, byKind };
 }
+
+const BULK_ROWS = 2000;
 
 export async function deriveAll(prisma: PrismaClient, options: { log: (message: string) => void }) {
   const reruns = await reclassifyReruns(prisma);
