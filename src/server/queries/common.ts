@@ -1,8 +1,8 @@
 import { Prisma } from "@/generated/prisma/client";
-import { ANIME_CATEGORIES, channelsInRegion, type RegionKey } from "@/domain/coverage";
+import { ANIME_CATEGORIES, channelSlugsFor, type NetworkKey, type RegionKey } from "@/domain/coverage";
 import { seasonInstantRange, type Season } from "@/domain/season";
 import type { Weekday } from "@/domain/time";
-import { TIME_BANDS, type RerunMode, type TimeBand } from "@/lib/search-params";
+import { LENGTHS, TIME_BANDS, type LengthKey, type RerunMode, type TimeBand } from "@/lib/search-params";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
@@ -38,25 +38,24 @@ export interface AiringFilter {
   season?: Season | null;
   range?: { start: Date; end: Date };
   region?: RegionKey | null;
+  network?: NetworkKey | null;
   channelSlug?: string | null;
   weekday?: Weekday | null;
   band?: TimeBand | null;
+  length?: LengthKey | null;
   rerun: RerunMode;
   allKinds: boolean;
   titleIds?: number[];
 }
 
-/** Resolve region/channel filters to channel ids (null = all tracked channels). */
-export function resolveChannelIds(channels: ChannelInfo[], filter: Pick<AiringFilter, "region" | "channelSlug">): number[] | null {
+/** Resolve channel, or region ∩ network, to channel ids (null = all tracked channels). A channel wins. */
+export function resolveChannelIds(channels: ChannelInfo[], filter: Pick<AiringFilter, "region" | "network" | "channelSlug">): number[] | null {
   if (filter.channelSlug) {
     const channel = channels.find((c) => c.slug === filter.channelSlug);
     return channel ? [channel.id] : [];
   }
-  if (filter.region) {
-    const slugs = new Set(channelsInRegion(filter.region).map((c) => c.slug));
-    return channels.filter((c) => slugs.has(c.slug)).map((c) => c.id);
-  }
-  return null;
+  const slugs = channelSlugsFor(filter.region ?? null, filter.network ?? null);
+  return slugs ? channels.filter((c) => slugs.has(c.slug)).map((c) => c.id) : null;
 }
 
 /** Prisma where-clause for public airing queries. Deleted and vanished airings are always excluded. */
@@ -68,6 +67,10 @@ export function airingWhere(filter: AiringFilter, channels: ChannelInfo[]): Pris
   if (channelIds) where.channelId = { in: channelIds };
   if (filter.weekday !== null && filter.weekday !== undefined) where.animeWeekday = filter.weekday;
   if (filter.band) where.animeStartMinute = { gte: TIME_BANDS[filter.band].from, lt: TIME_BANDS[filter.band].to };
+  if (filter.length) {
+    const { min, max } = LENGTHS[filter.length];
+    where.durationMinutes = max === null ? { gte: min } : { gte: min, lt: max };
+  }
   if (filter.rerun === "exclude") where.isRerun = false;
   if (filter.rerun === "only") where.isRerun = true;
   if (!filter.allKinds) where.title = { OR: [{ sourceCategory: null }, { sourceCategory: { in: [...ANIME_CATEGORIES] } }] };
@@ -84,6 +87,10 @@ export function airingSqlWhere(filter: AiringFilter, channels: ChannelInfo[]): P
   if (channelIds) parts.push(channelIds.length > 0 ? Prisma.sql`b."channelId" IN (${Prisma.join(channelIds)})` : Prisma.sql`false`);
   if (filter.weekday !== null && filter.weekday !== undefined) parts.push(Prisma.sql`b."animeWeekday" = ${filter.weekday}`);
   if (filter.band) parts.push(Prisma.sql`b."animeStartMinute" >= ${TIME_BANDS[filter.band].from} AND b."animeStartMinute" < ${TIME_BANDS[filter.band].to}`);
+  if (filter.length) {
+    const { min, max } = LENGTHS[filter.length];
+    parts.push(max === null ? Prisma.sql`b."durationMinutes" >= ${min}` : Prisma.sql`b."durationMinutes" >= ${min} AND b."durationMinutes" < ${max}`);
+  }
   if (filter.rerun === "exclude") parts.push(Prisma.sql`b."isRerun" = false`);
   if (filter.rerun === "only") parts.push(Prisma.sql`b."isRerun" = true`);
   if (!filter.allKinds) parts.push(Prisma.sql`(t."sourceCategory" IS NULL OR t."sourceCategory" IN (${Prisma.join([...ANIME_CATEGORIES])}))`);

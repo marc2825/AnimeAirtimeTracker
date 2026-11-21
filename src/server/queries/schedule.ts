@@ -1,5 +1,5 @@
 import { addDays, animeDayRange, dbDateToIsoDate, type IsoDate } from "@/domain/time";
-import type { RegionKey } from "@/domain/coverage";
+import type { NetworkKey, RegionKey } from "@/domain/coverage";
 import type { RerunMode } from "@/lib/search-params";
 
 import { datasetCacheProfile } from "../cache";
@@ -34,6 +34,7 @@ export interface ScheduleQuery {
   from: IsoDate;
   days: number;
   region: RegionKey | null;
+  network?: NetworkKey | null;
   channelSlug: string | null;
   rerun: RerunMode;
   allKinds: boolean;
@@ -45,7 +46,7 @@ export async function getSchedule(query: ScheduleQuery): Promise<{ items: Schedu
   const channels = await getTrackedChannels();
   const range = { start: animeDayRange(query.from).start, end: animeDayRange(addDays(query.from, query.days - 1)).end };
   const rows = await db().broadcast.findMany({
-    where: airingWhere({ range, region: query.region, channelSlug: query.channelSlug, rerun: query.rerun, allKinds: query.allKinds }, channels),
+    where: airingWhere({ range, region: query.region, network: query.network, channelSlug: query.channelSlug, rerun: query.rerun, allKinds: query.allKinds }, channels),
     orderBy: [{ startAt: "asc" }, { channelId: "asc" }],
     select: {
       id: true,
