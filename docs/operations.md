@@ -66,7 +66,7 @@ Region: Neon does not list Tokyo, so use **AWS Asia Pacific (Singapore) `aws-ap-
 
 `ingest.yml` runs `update` at :23 every 6 hours and `recent` daily at 19:41 UTC, after a random 0–4 min delay; concurrency group prevents overlap (the advisory lock is a second guard). It can also be run manually (Actions → Ingest → Run workflow) with `season`, `backfill` (seasons validated before use), `derive` or `channels`. Failures appear in the Actions tab and as `FAILED` runs on `/status` (a fixed summary only; the full error stays in `ImportRun.error`, readable with `npm run ingest -- status`); the site keeps serving the last good data. To pause ingestion, set `INGEST_ENABLED` to anything else.
 
-Actions logs of a public repository are public: the workflows mask the database host before any step runs, and secrets are masked by GitHub. GitHub also **disables scheduled workflows after 60 days without repository activity** in public repositories (it emails a warning first); re-enable `Ingest` in the Actions tab or push a commit before then. `/status` warns when data is older than 48 h.
+Actions logs of a public repository are public: the workflows mask the database host before any step runs, and secrets are masked by GitHub. GitHub also **disables scheduled workflows after 60 days without repository activity** in public repositories; `monitor.yml` re-enables `ingest.yml` and itself through the API every day, which resets that timer. `/status` warns when data is older than 48 h.
 
 ## Backup and restore
 
@@ -80,8 +80,10 @@ Actions logs of a public repository are public: the workflows mask the database 
 ## Monitoring
 
 - `/status`: last success, coverage window, last 12 runs, staleness warning after 48 h.
-- GitHub Actions failure notifications for `ingest.yml` (sent to the account that last changed its `schedule`; enable "Actions" notifications in GitHub settings).
-- Hosting provider logs for 5xx; add an uptime check on `/about` (static) and `/status` (DB-backed).
+- `/api/health`: `200` while the last successful import is at most 48 h old, `503` when older or when the database cannot be read (JSON: `ok`, `lastSuccessAt`, `ageHours`; no internal detail).
+- `monitor.yml` (daily 03:17 UTC): fails when `/api/health` is not `200`, and keeps the scheduled workflows enabled. Set the repository variable `SITE_URL` if the site moves off the Vercel domain.
+- GitHub Actions failure notifications for `ingest.yml` and `monitor.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings).
+- Optional: an external uptime monitor on `/api/health` notifies even if GitHub Actions itself stops. Hosting provider logs for 5xx.
 
 ## Launch checklist
 
