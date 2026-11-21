@@ -1,7 +1,8 @@
 /**
- * Copies all rows from one database to another with the same schema (e.g. local → Neon), preserving ids,
- * then advances sequences. Lets a new environment start from data already fetched instead of re-requesting
- * it from the source. Non-destructive: refuses to write into a target that already has rows.
+ * Copies all rows from one database to another with the same schema (local → Neon, or Neon → a local restore
+ * check), preserving ids, then advances sequences and verifies row counts per table. Lets a new environment start
+ * from data already fetched instead of re-requesting it from the source. Non-destructive: refuses to write into a
+ * target that already has rows.
  *
  *   SOURCE_DATABASE_URL=… TARGET_DATABASE_URL=… npx tsx scripts/copy-db.ts
  *
@@ -56,9 +57,18 @@ async function main() {
       const names = columns.map((c) => `"${c.column_name}"`).join(", ");
       const jsonColumns = new Set(columns.filter((c) => c.data_type === "json" || c.data_type === "jsonb").map((c) => c.column_name));
       let copied = 0;
-      for (let offset = 0; ; offset += BATCH) {
-        const rows = (await source.query(`SELECT ${names} FROM "${table}" ORDER BY 1 LIMIT ${BATCH} OFFSET ${offset}`)).rows as Record<string, unknown>[];
+      // Keyset pagination on the primary key (the first column of every app table): OFFSET re-scans every
+      // earlier row and made large tables quadratic.
+      const key = columns[0]!.column_name;
+      let last: unknown = undefined;
+      for (;;) {
+        const rows = (
+          last === undefined
+            ? await source.query(`SELECT ${names} FROM "${table}" ORDER BY "${key}" LIMIT ${BATCH}`)
+            : await source.query(`SELECT ${names} FROM "${table}" WHERE "${key}" > $1 ORDER BY "${key}" LIMIT ${BATCH}`, [last])
+        ).rows as Record<string, unknown>[];
         if (rows.length === 0) break;
+        last = rows.at(-1)![key];
         const values: unknown[] = [];
         const tuples = rows.map((row) => {
           const placeholders = columns.map((column) => {
@@ -79,6 +89,15 @@ async function main() {
       console.log(`${table}: ${copied} rows`);
     }
     await target.query("COMMIT");
+    // Verify the copy: every table must have the same number of rows on both sides.
+    let mismatches = 0;
+    for (const table of TABLES) {
+      const count = async (client: pg.Client) => Number((await client.query(`SELECT count(*) AS n FROM "${table}"`)).rows[0].n);
+      const [from, to] = await Promise.all([count(source), count(target)]);
+      if (from !== to) mismatches += 1;
+      console.log(`verify ${table}: source ${from}, target ${to}${from === to ? "" : "  MISMATCH"}`);
+    }
+    if (mismatches > 0) throw new Error(`${mismatches} table(s) differ after the copy`);
   } catch (error) {
     await target.query("ROLLBACK").catch(() => undefined);
     throw error;
