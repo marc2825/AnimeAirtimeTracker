@@ -272,3 +272,26 @@ test("security headers are sent", async ({ request }) => {
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["x-powered-by"]).toBeUndefined();
 });
+
+test("search past the last page says where the results are", async ({ page }) => {
+  await page.goto("/search?season=all&page=9");
+  await expect(page.getByText("このページには結果がありません")).toBeVisible();
+  await expect(page.getByText(/結果は1ページまでです/)).toBeVisible();
+  await page.getByRole("link", { name: "1ページ目へ" }).click();
+  await expect(page).not.toHaveURL(/page=/);
+});
+
+test("health endpoint reports fresh data without internal detail", async ({ request }) => {
+  const response = await request.get("/api/health");
+  expect(response.status()).toBe(200);
+  expect(response.headers()["cache-control"]).toContain("no-store");
+  const body = await response.json();
+  expect(body).toMatchObject({ ok: true, staleAfterHours: 48 });
+  expect(Object.keys(body).sort()).toEqual(["ageHours", "lastSuccessAt", "ok", "staleAfterHours"]);
+});
+
+// Playwright's javaScriptEnabled: false still parses <noscript> as raw text, so check the served HTML instead.
+test("data pages carry a noscript notice instead of loading forever without JavaScript", async ({ request }) => {
+  const html = await (await request.get("/search")).text();
+  expect(html).toMatch(/<noscript><p[^>]*>このページのデータを表示するには、JavaScriptを有効にしてください。<\/p><\/noscript>/);
+});
