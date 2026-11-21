@@ -9,7 +9,7 @@ Production runs on option A below (Vercel Hobby + Neon Free + GitHub Actions) si
 | `DATABASE_URL` | web runtime | PostgreSQL connection string. On Neon: the **pooled** URL of the read-only `web_readonly` role. Not needed at build time. |
 | `DIRECT_DATABASE_URL` | migrations, ingest job | Owner role, **non-pooled** URL. Used by `prisma migrate` and ingestion (its advisory lock is session-scoped and breaks behind a transaction pooler). Falls back to `DATABASE_URL` locally. |
 | `SITE_URL` | web runtime | Public origin for canonical URLs, sitemap, Open Graph (e.g. `https://example.jp`) |
-| `SYOBOI_USER_AGENT` | ingest job only | `AnimeAirtimeTracker/<version> (+<info page with contact>)` — required, validated |
+| `SYOBOI_USER_AGENT` | ingest job only | `AnimeAirtimeTracker/<version> (+<info page with contact>)` — required, validated. Production: `…/about#contact` (contact via GitHub Issues / private advisory) |
 | `SYOBOI_MIN_INTERVAL_MS` | ingest job | default 3000, minimum 1000 |
 | `TEST_DATABASE_URL` | dev/CI | disposable DB for `test:db` and E2E (name must contain `test`) |
 | `APP_ENV` | optional | set `production` in production; fixture import refuses to run |
@@ -70,7 +70,12 @@ Actions logs of a public repository are public: the workflows mask the database 
 
 ## Backup and restore
 
-- Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan. Keep a copy outside Neon from a trusted machine, at least monthly (not as an Actions artifact: artifacts of a public repository are downloadable). Either:
+- Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan.
+- `backup.yml` (1st of each month, 04:47 UTC, or Actions → Backup → Run workflow) dumps production with a PostgreSQL 18 client, restores the dump into a throwaway PostgreSQL 18 and compares row counts, then uploads it **encrypted** to `.github/backup/backup-cert.pem` as an artifact kept 90 days (artifacts of a public repository are downloadable, so never upload it unencrypted). The private key is only on the owner's machine (`~/.config/anime-airtime-tracker/backup-key.pem`); keep a second copy of it elsewhere (password manager). To restore:
+  `gh run download <run id> --name <artifact>` →
+  `openssl cms -decrypt -binary -inform DER -in anime-airtime-tracker-<date>.dump.cms -inkey ~/.config/anime-airtime-tracker/backup-key.pem -out backup.dump` →
+  `pg_restore --no-owner --no-privileges -d <new database> backup.dump` (PostgreSQL 18 client, e.g. `docker run postgres:18 pg_restore …`).
+- Manual copies from a trusted machine, when needed:
   - copy into a local PostgreSQL 18 with the read-only role (no PostgreSQL client needed; verifies row counts per table):
     `DIRECT_DATABASE_URL=<local db> npm run db:deploy && SOURCE_DATABASE_URL=<web_readonly url> TARGET_DATABASE_URL=<local db> npx tsx scripts/copy-db.ts`
   - or a logical dump with a **PostgreSQL 18** client (older `pg_dump` refuses an 18 server):
@@ -95,12 +100,12 @@ Status 2026-11-21.
 
 - [x] Hosting/DB chosen (option A, free plans)
 - [x] `DATABASE_URL` (read-only role, pooled) and `APP_ENV` set on Vercel; `SITE_URL` unset (defaults to the Vercel production domain)
-- [ ] `SYOBOI_USER_AGENT` points to a page with contact info (owner to confirm)
+- [x] `SYOBOI_USER_AGENT` points to `/about#contact`
 - [x] Migrations applied; initial season + backfill ingested; `/status` shows success
 - [x] Security headers verified; `npm audit` clean; Dependabot version updates configured
 - [ ] Dependabot security updates, secret scanning and push protection enabled (repository settings)
 - [x] Restore test done (2026-11-21, copy into a separate database; see Backup and restore)
-- [ ] Monthly copy or dump kept outside Neon (owner)
+- [x] Monthly encrypted backup with restore check (`backup.yml`)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
 - [ ] Open Graph preview checked; Search Console verified (optional)
 - [x] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first
