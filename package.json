@@ -29,6 +29,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@vercel/analytics": "2.0.1",
     "fast-xml-parser": "^5.12.1",
     "next": "16.4.6",
     "pg": "^8.16.3",

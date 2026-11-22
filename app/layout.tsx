@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { Suspense, type ReactNode } from "react";
@@ -62,6 +63,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {children}
         </main>
         <SiteFooter />
+        {/* Vercel Web Analytics: page views only, no cookies. Counts client-side navigations too. See docs/operations.md. */}
+        <Analytics />
       </body>
     </html>
   );

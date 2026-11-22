@@ -366,6 +366,32 @@ test("privacy policy and terms are linked from every page and state how the site
   await expect(page.getByRole("heading", { name: "非公式のサイトです" })).toBeVisible();
 });
 
+test("web analytics: one same-origin script and one page view per page, without CSP errors", async ({ page }) => {
+  const cspErrors: string[] = [];
+  page.on("console", (message) => {
+    if (/content[- ]security[- ]policy/i.test(message.text())) cspErrors.push(message.text());
+  });
+  // There is no Vercel endpoint locally: stand in for the script and record the page views the page reports.
+  await page.route("**/_vercel/insights/script.js", (route) =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: 'window.__views=[];window.va=function(n,d){if(n==="pageview")window.__views.push(d.path)};(window.vaq||[]).forEach(function(c){window.va(c[0],c[1])});'
+    })
+  );
+  const views = () => page.evaluate(() => (window as unknown as { __views?: string[] }).__views);
+  await page.goto("/");
+  await expect.poll(views).toEqual(["/"]);
+  // A client-side navigation adds exactly one page view.
+  await page.getByRole("contentinfo").getByRole("link", { name: "プライバシーポリシー" }).click();
+  await expect(page.getByRole("heading", { name: "アクセス解析（Vercel Web Analytics）" })).toBeVisible();
+  await expect.poll(views).toEqual(["/", "/privacy"]);
+  await expect(page.locator('script[src*="/_vercel/insights/"]')).toHaveCount(1);
+  // Every script, the analytics one included, comes from this site.
+  const origins = await page.locator("script[src]").evaluateAll((scripts) => scripts.map((script) => new URL((script as HTMLScriptElement).src).origin));
+  expect(new Set(origins)).toEqual(new Set([new URL(page.url()).origin]));
+  expect(cspErrors).toEqual([]);
+});
+
 test("analysis pages state their scope and are reachable from the index", async ({ page, request }) => {
   await page.goto("/analysis");
   await page.getByRole("link", { name: "深夜アニメの長期的な変遷" }).click();
