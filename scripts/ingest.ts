@@ -151,7 +151,9 @@ async function main() {
     const minIntervalMs = Number(process.env.SYOBOI_MIN_INTERVAL_MS ?? 3000);
     const overrides = await loadOverrides();
 
-    const subtitleLimit = Number(process.env.SUBTITLE_BACKFILL_PER_RUN ?? SUBTITLE_BACKFILL_PER_RUN);
+    // An unset repository variable arrives as an empty string: that means the default, not 0.
+    const subtitleSetting = process.env.SUBTITLE_BACKFILL_PER_RUN?.trim();
+    const subtitleLimit = subtitleSetting ? Number(subtitleSetting) : SUBTITLE_BACKFILL_PER_RUN;
     /** One backfill step as its own import run (its requests are counted and shown on /status). */
     const runSubtitles = async () => {
       if (!Number.isInteger(subtitleLimit) || subtitleLimit <= 0) return;
