@@ -22,7 +22,7 @@ const themeScript = `(function(){var d=document.documentElement,m=window.matchMe
 
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
-  title: { default: `${SITE_NAME} — アニメ放送編成を、今週から過去まで`, template: `%s | ${SITE_NAME}` },
+  title: { default: `${SITE_NAME} — テレビアニメの放送枠と編成のデータベース`, template: `%s | ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   openGraph: { type: "website", siteName: SITE_NAME, locale: "ja_JP" },

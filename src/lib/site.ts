@@ -1,7 +1,7 @@
 export const SITE_NAME = "アニメ放送枠観測所";
 export const SITE_NAME_EN = "Anime Airtime Tracker";
 export const SITE_DESCRIPTION =
-  "日本のアニメ放送編成を、今週の番組表から過去の放送枠の変遷・編成統計まで横断して調べられるサイト。番組データはしょぼいカレンダーに基づきます。";
+  "日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を横断的に調べられるデータベース。今週の番組表から放送枠の年表、編成統計、分析まで。番組データはしょぼいカレンダーに基づきます。";
 export const REPOSITORY_URL = "https://github.com/marc2825/AnimeAirtimeTracker";
 export const ISSUES_URL = `${REPOSITORY_URL}/issues`;
 /** GitHub's private report form: the non-public channel for security issues and anything not to be posted in public. */
