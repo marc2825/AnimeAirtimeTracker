@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { currentSeason, seasonId, shiftSeason } from "../src/domain/season";
+
 import { LEAKY_FRAGMENTS } from "./status-fixture";
 
 // Fixtures: one recorded anime day (Mon 2026-11-16) for TOKYO MX, BS11 and Fuji TV, plus 11 titles.
@@ -194,7 +196,8 @@ test("season pages list covered seasons and are honest about missing data", asyn
   await expect(page.getByRole("heading", { level: 1, name: "2026年秋の新作アニメ" })).toBeVisible();
   // The fixture day has no first-episode airing.
   await expect(page.getByText("新作の記録がありません")).toBeVisible();
-  await page.goto("/seasons/2030-winter");
+  // The next season is in scope (schedules are published ahead) but not fetched in the fixtures.
+  await page.goto(`/seasons/${seasonId(shiftSeason(currentSeason(), 1))}`);
   await expect(page.getByText("このクールのデータはまだありません")).toBeVisible();
   await page.goto("/seasons/not-a-season");
   await expect(page.getByText("ページが見つかりません")).toBeVisible();
@@ -238,11 +241,22 @@ test("status shows only a summary for failed runs, never the stored exception", 
 
 test("admin and unknown routes are not exposed", async ({ page, request }) => {
   expect((await request.get("/admin")).status()).toBe(404);
-  // Detail pages stream inside Suspense, so an unknown slug cannot change the already-sent status code;
-  // Next marks the streamed not-found page noindex instead (soft 404).
-  await page.goto("/titles/0");
+  // URLs that cannot exist are answered with a real 404 before the page streams (proxy.ts).
+  for (const path of ["/titles/abc", "/titles/0", "/channels/no-such-channel", "/seasons/1999-autumn", `/seasons/${seasonId(shiftSeason(currentSeason(), 2))}`, "/seasons/not-a-season"]) {
+    expect((await request.get(path)).status(), path).toBe(404);
+  }
+  await page.goto("/titles/abc");
+  await expect(page.getByText("ページが見つかりません")).toBeVisible();
+  // A well-formed ID that is not in the database streams the not-found UI after the 200 shell, marked noindex.
+  const missing = await request.get("/titles/9999999");
+  expect(missing.status()).toBe(200);
+  await page.goto("/titles/9999999");
   await expect(page.getByText("ページが見つかりません")).toBeVisible();
   await expect(page.locator('meta[name="robots"][content="noindex"]').first()).toBeAttached();
+  // The sitemap is XML and lists the tracked channel pages.
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.status()).toBe(200);
+  expect(sitemap.headers()["content-type"]).toContain("application/xml");
 });
 
 test("keyboard: skip link moves focus to the main content", async ({ page, isMobile }) => {

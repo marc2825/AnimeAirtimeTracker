@@ -14,7 +14,13 @@ import styles from "./slot.module.css";
 
 export async function generateMetadata({ params }: PageProps<"/slots/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const slot = await getSlotDetail(decodeURIComponent(slug)).catch(() => null);
+  let slot: Awaited<ReturnType<typeof getSlotDetail>>;
+  try {
+    slot = await getSlotDetail(decodeURIComponent(slug));
+  } catch {
+    // A database failure is not a missing slot: keep the metadata neutral (the page shows the error).
+    return { title: "放送枠", robots: { index: false } };
+  }
   if (!slot) return { title: "放送枠が見つかりません" };
   const kind = SLOT_KIND_LABELS[slot.kind]?.label ?? "";
   return {
