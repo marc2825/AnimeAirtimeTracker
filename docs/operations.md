@@ -92,7 +92,43 @@ Actions logs of a public repository are public: the workflows mask the database 
 - `/api/health`: `200` while the last successful import is at most 48 h old, `503` when older or when the database cannot be read (JSON: `ok`, `lastSuccessAt`, `ageHours`; no internal detail).
 - `monitor.yml` (daily 03:17 UTC): fails when `/api/health` is not `200`, and keeps the scheduled workflows enabled. Set the repository variable `SITE_URL` if the site moves off the Vercel domain.
 - GitHub Actions failure notifications for `ingest.yml`, `monitor.yml` and `backup.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings). All three are kept enabled by the `monitor.yml` keepalive.
-- Optional: an external uptime monitor on `/api/health` notifies even if GitHub Actions itself stops. Hosting provider logs for 5xx.
+- Every page shows a notice under the header when the data is older than 48 h (same threshold as `/status` and `/api/health`).
+- Hosting provider logs for 5xx: Vercel → project → Logs (runtime logs are kept only briefly on Hobby; check the current retention on Vercel's pricing page).
+
+### Independent uptime monitor (owner task)
+
+`monitor.yml` runs on GitHub Actions, so it cannot report that GitHub Actions itself has stopped (scheduled runs disabled, an Actions outage, a billing or account problem). An external monitor closes that gap, and because `/api/health` turns `503` when the data is older than 48 h, the same check also catches stopped ingestion. It needs an account with an uptime service, so the owner sets it up:
+
+1. Create a free account with an uptime service (for example UptimeRobot or Better Stack; compare their current free-plan limits and notification channels).
+2. Add an HTTP(S) monitor: URL `https://anime-airtime-tracker.vercel.app/api/health`, method GET, interval 5–15 min, alert when the status is not `200` (optionally: response body contains `"ok":true`).
+3. Notification: the owner's e-mail (or a push app). Do not use a public channel; do not put the address in the repository.
+4. Test it once: the monitor should show the current `200`. A real alert arrives when the site is down or the data is older than 48 h.
+5. Record in this file that it is configured (service name and check interval, not the account details).
+
+Until then, failures are noticed through GitHub's Actions notifications and the stale-data notice on the site.
+
+## Incident response
+
+The site is read-only and serves the last good data, so most incidents are about freshness, not data loss. Production changes (settings, secrets, plans, destructive database operations) need the owner.
+
+| Symptom | Check | Action |
+| --- | --- | --- |
+| Whole site down (5xx, timeouts) | Vercel dashboard → Deployments / status page; `curl -I` the site | Redeploy the last good deployment (Vercel → Deployments → Promote). If Vercel itself is down, wait. |
+| Pages say "読み込めませんでした", `/api/health` → `503` with `database unavailable` | Neon console: compute state, Free-plan usage (CU-hours, storage), status page | Quota exhausted: wait for the monthly reset or ask the owner about a paid plan. Endpoint suspended/outage: wait; the data cache keeps recently viewed pages for up to a day. |
+| Stale-data notice on every page, `/api/health` → `503` with an old `lastSuccessAt` | Actions → Ingest: last runs; `/status` | A failed run: open its log (the DB host is masked). Source API change or rate limiting: see docs/data-pipeline.md, pause with `INGEST_ENABLED`. Scheduled workflows disabled: run `monitor.yml` manually (it re-enables them). Once fixed, run Ingest → `update` manually. |
+| Ingest fails with pending migrations | Actions → Migrate | Run Migrate manually (owner approval for production schema changes). |
+| Wrong or missing airings reported | The source page (しょぼいカレンダー) | Source error: the source is edited there; site error: `data/overrides.json` with evidence, then `derive`. |
+| Data loss in the database | Neon restore window (6 h on Free), `backup.yml` artifacts (monthly) | Restore into a new database (Backup and restore), verify counts, then switch `DATABASE_URL`. |
+
+After an incident, note what happened and the fix in the PR or Issue that resolves it.
+
+## Capacity and limits
+
+Measured 2026-11-22 against a full local copy (production build, PostgreSQL 18 on the same machine, 326,151 airings): uncached renders of the heaviest pages (`/`, `/stats` for all channels, `/slots`, `/sitemap.xml`) took ≤ 0.5 s, others ≤ 0.15 s; cached repeats 0.01–0.04 s, except `/slots` (0.16 s, a 4.7 MB page). Production runs further from the database (Vercel `sin1` ↔ Neon Singapore, Free compute), so expect a few times more on a cold cache.
+
+Safeguards in code (docs/architecture.md → Rendering and caching): input bounds (search text 80 characters, page ≤ 10,000, validated slugs), 15 s statement timeout on web queries, a 15-minute data cache per instance, `/slots` rendered once per filter, real 404s for impossible URLs before any rendering.
+
+Not measured: concurrent load against production (it would use up the shared Free-plan resources; do not run load tests against production). If abusive traffic appears, the owner can add a rate-limiting rule in Vercel's Firewall for `/search` and `/stats`.
 
 ## Launch checklist
 

@@ -5,6 +5,7 @@ import { Suspense, type ReactNode } from "react";
 import { NowAiring } from "@/components/layout/NowAiring";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { StaleNotice } from "@/components/layout/StaleNotice";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site";
 
 import "@/styles/tokens.css";
@@ -51,6 +52,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           本文へスキップ
         </a>
         <SiteHeader />
+        <Suspense fallback={null}>
+          <StaleNotice />
+        </Suspense>
         <Suspense fallback={null}>
           <NowAiring />
         </Suspense>

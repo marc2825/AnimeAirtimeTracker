@@ -76,7 +76,3 @@ export function formatCoverage(range: { start: Date; end: Date }): string {
   return `${first.replaceAll("-", "/")} 〜 ${last.replaceAll("-", "/")}`;
 }
 
-/** Request-time freshness check (callers must already be outside any prerender, e.g. after `io()`). */
-export function isOlderThan(value: Date | null, ms: number): boolean {
-  return value === null || Date.now() - value.getTime() > ms;
-}

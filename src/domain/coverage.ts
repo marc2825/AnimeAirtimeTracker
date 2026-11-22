@@ -83,6 +83,9 @@ export function parseRegionKey(value: string | undefined | null): RegionKey | nu
  * Syoboi Calendar's records thin out before this year: 2002 and earlier cover only three or four of the tracked
  * channels and 2003–2005 are partial. Counts for earlier seasons understate real programming.
  */
+/** The earliest season the site holds (backfilled history starts here). Earlier seasons are out of scope. */
+export const FIRST_SEASON = { year: 2000, quarter: 1 } as const;
+
 export const SOURCE_COMPLETE_FROM_YEAR = 2006;
 export const SPARSE_SOURCE_NOTE = `${SOURCE_COMPLETE_FROM_YEAR - 1}年以前は出典の登録が少なく、本数は実際より少なく出ます（2002年以前は数局分のみ）。`;
 

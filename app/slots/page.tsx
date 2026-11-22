@@ -6,9 +6,10 @@ import Link from "next/link";
 import { latestOrdinal, SeasonStrip, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
 import { StripTooltip } from "@/components/slots/StripTooltip";
 import { Disclosure, SegmentedLinks } from "@/components/ui/controls";
-import { EmptyState, MoreInfo, Notice, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
+import { EmptyState, MoreInfo, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
-import { buildHref, flattenParams, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
+import { datasetCacheProfile } from "@/server/cache";
 import { getSlotStripTitles, listSlots, type SlotSummary, type StripTitles } from "@/server/queries/slots";
 
 import styles from "./slots.module.css";
@@ -35,16 +36,22 @@ export default function SlotsPage({ searchParams }: PageProps<"/slots">) {
 
 async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchParams> }) {
   const params = await searchParams;
-  const current = flattenParams(params);
   const kindParam = single(params, "kind");
   const kind = kindParam === "source" ? "SOURCE_LABEL" : kindParam === "inferred" ? "INFERRED" : kindParam === "official" ? "OFFICIAL" : null;
   const channel = parseSlug(single(params, "channel"));
-  let slots;
-  try {
-    slots = await listSlots();
-  } catch {
-    return <Notice tone="danger" title="放送枠を読み込めませんでした">時間をおいて再読み込みしてください。</Notice>;
-  }
+  return <SlotsList kind={kind} channel={channel} />;
+}
+
+/**
+ * The rendered list is cached per (kind, channel): with 866 slots, rendering cost more than the cached data
+ * reads (0.23 s per request, measured 2026-11-22). A database failure throws out of the cache to the route's
+ * error page, so an outage is never cached as content.
+ */
+async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; channel: string | null }) {
+  "use cache";
+  datasetCacheProfile();
+  const current = { kind: kind === "SOURCE_LABEL" ? "source" : kind === "INFERRED" ? "inferred" : kind === "OFFICIAL" ? "official" : undefined, channel: channel ?? undefined };
+  const slots = await listSlots();
   const filtered = slots.filter((slot) => (!kind || slot.kind === kind) && (!channel || slot.channel?.slug === channel));
   const channels = [...new Map(slots.filter((s) => s.channel).map((s) => [s.channel!.slug, s.channel!])).values()];
   const stripEnd = latestOrdinal(slots);

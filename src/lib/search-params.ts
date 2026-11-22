@@ -86,6 +86,11 @@ export function parseQuery(value: string | undefined): string {
   return (value ?? "").normalize("NFKC").trim().slice(0, 80);
 }
 
+/** `%query%` for ILIKE with the query's own `%`, `_` and `\` taken literally (PostgreSQL's default escape is `\`). */
+export function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+}
+
 export interface CommonFilters {
   season: Season | null;
   region: RegionKey | null;

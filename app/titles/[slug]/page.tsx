@@ -15,7 +15,13 @@ import styles from "./title.module.css";
 
 export async function generateMetadata({ params }: PageProps<"/titles/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const title = await getTitleDetail(decodeURIComponent(slug)).catch(() => null);
+  let title: Awaited<ReturnType<typeof getTitleDetail>>;
+  try {
+    title = await getTitleDetail(decodeURIComponent(slug));
+  } catch {
+    // A database failure is not a missing title: keep the metadata neutral (the page shows the error).
+    return { title: "作品", robots: { index: false } };
+  }
   if (!title) return { title: "作品が見つかりません" };
   const firstGroup = title.groups[0];
   const where = firstGroup?.regular ? `${firstGroup.channel.shortName} ${formatAnimeSlot(firstGroup.regular.weekday as 0, firstGroup.regular.minute)}` : "";

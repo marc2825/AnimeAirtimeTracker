@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { SYOBOI_CATEGORY_LABELS } from "@/domain/coverage";
 import { seasonOfInstant, type Season } from "@/domain/season";
 import { dbDateToIsoDate, type IsoDate } from "@/domain/time";
+import { likePattern } from "@/lib/search-params";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
@@ -221,7 +222,7 @@ export async function searchTitles(filter: AiringFilter, query: string, sort: Ti
   const channels = await getTrackedChannels();
   const where = airingSqlWhere(filter, channels);
   const textFilter = query
-    ? Prisma.sql`AND (t.name ILIKE ${`%${query}%`} OR t."shortName" ILIKE ${`%${query}%`} OR t.yomi ILIKE ${`%${query}%`} OR t."nameEn" ILIKE ${`%${query}%`})`
+    ? Prisma.sql`AND (t.name ILIKE ${likePattern(query)} OR t."shortName" ILIKE ${likePattern(query)} OR t.yomi ILIKE ${likePattern(query)} OR t."nameEn" ILIKE ${likePattern(query)})`
     : Prisma.empty;
   const rows = await db().$queryRaw<
     (Omit<TitleSearchRow, "modalWeekday" | "modalMinute"> & { modal_position: number; total: number; first_at: Date; last_at: Date; channel_ids: number[]; modal_channel_id: number; has_new: boolean })[]
@@ -288,7 +289,7 @@ export async function searchBroadcasts(filter: AiringFilter, query: string, orde
   datasetCacheProfile();
   const channels = await getTrackedChannels();
   const where = airingSqlWhere(filter, channels);
-  const textFilter = query ? Prisma.sql`AND (t.name ILIKE ${`%${query}%`} OR t.yomi ILIKE ${`%${query}%`} OR t."shortName" ILIKE ${`%${query}%`})` : Prisma.empty;
+  const textFilter = query ? Prisma.sql`AND (t.name ILIKE ${likePattern(query)} OR t.yomi ILIKE ${likePattern(query)} OR t."shortName" ILIKE ${likePattern(query)})` : Prisma.empty;
   const direction = order === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
   const rows = await db().$queryRaw<
     { id: number; startAt: Date; animeDate: Date; animeWeekday: number; animeStartMinute: number; durationMinutes: number; episodeNumber: number | null; episodeLabel: string | null; subtitle: string | null; flagNew: boolean; flagFinal: boolean; isRerun: boolean; slug: string; name: string; channelId: number; total: number }[]

@@ -1,0 +1,15 @@
+.notice {
+  border-bottom: var(--border-strong);
+  background: var(--color-note-soft);
+  color: var(--color-ink);
+  font-size: var(--text-sm);
+}
+
+.inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding-block: var(--space-2);
+  line-height: var(--leading-snug);
+}

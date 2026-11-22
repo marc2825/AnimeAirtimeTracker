@@ -181,7 +181,13 @@ async function FeaturedSlots() {
   try {
     slots = await listSlots();
   } catch {
-    return null;
+    return (
+      <section className={styles.block}>
+        <Notice tone="danger" title="放送枠を読み込めませんでした">
+          時間をおいて再読み込みしてください。
+        </Notice>
+      </section>
+    );
   }
   const featured = slots.filter((slot) => slot.kind !== "INFERRED" && slot.seasonCount > 0).slice(0, 4);
   if (featured.length === 0) return null;
@@ -222,7 +228,13 @@ async function StatsPreview() {
   try {
     [stats, status] = await Promise.all([getSeasonStats(season, "titles", statsFilter()), getDatasetStatus()]);
   } catch {
-    return null;
+    return (
+      <section className={styles.block}>
+        <Notice tone="danger" title="統計を読み込めませんでした">
+          時間をおいて再読み込みしてください。
+        </Notice>
+      </section>
+    );
   }
   const hours = Array.from({ length: 12 }, (_, index) => index + 17);
   return (

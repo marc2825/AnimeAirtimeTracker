@@ -11,6 +11,8 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
 
   return (
     <div className="container-narrow">
+      {/* A failed render is not content: keep it out of search results (the status is already 200 once streaming). */}
+      <meta name="robots" content="noindex" />
       <EmptyState
         title="ページを表示できませんでした"
         icon="alert"
