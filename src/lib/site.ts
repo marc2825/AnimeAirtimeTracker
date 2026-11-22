@@ -12,6 +12,11 @@ export const POLICIES_UPDATED = "2026年11月22日";
 export const SOURCE_NAME = "しょぼいカレンダー";
 export const SOURCE_URL = "https://cal.syoboi.jp/";
 
+/** Absolute URL on this site for a path with query and hash (share links, exports). */
+export function absoluteUrl(pathAndQuery: string): string {
+  return new URL(pathAndQuery, siteUrl()).toString();
+}
+
 export function siteUrl(): URL {
   // SITE_URL wins; on Vercel fall back to the production domain it injects.
   const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined;

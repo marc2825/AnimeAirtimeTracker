@@ -545,3 +545,46 @@
 .seriesSwatch[data-step="7"] {
   background: var(--viz-7);
 }
+
+/* Export menu under a figure. */
+.export {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5) var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.exportLabel {
+  color: var(--color-ink-3);
+  margin-right: var(--space-1);
+}
+
+.exportButton {
+  min-height: 1.75rem;
+  padding: 0 var(--space-2-5, 0.625rem);
+  border: var(--border-strong);
+  background: var(--color-surface-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+}
+
+.exportButton:hover {
+  background: var(--state-hover);
+}
+
+.exportStatus {
+  color: var(--color-ink-2);
+}
+
+.exportUrl {
+  flex: 1 1 18rem;
+  min-width: 0;
+  height: 1.75rem;
+  padding: 0 var(--space-2);
+  border: var(--border-strong);
+  border-radius: 0;
+  background: var(--color-surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}

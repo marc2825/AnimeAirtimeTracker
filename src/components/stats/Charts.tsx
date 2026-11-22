@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 
 import { ScrollToEnd } from "@/components/slots/ScrollToEnd";
 import { Disclosure } from "@/components/ui/controls";
+import type { ChartSpec, ExportMeta } from "@/lib/chart-export";
 import { ANIME_HOURS, rampStep } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 
+import { ChartExport } from "./ChartExport";
 import styles from "./Charts.module.css";
 
 export { WeekdayHourHeatmap } from "./Heatmap";
@@ -25,7 +27,22 @@ function RampLegend({ max, unit }: { max: number; unit: string }) {
   );
 }
 
-export function ChartFrame({ title, takeaway, scope, children, table }: { title: string; takeaway?: ReactNode; scope?: ReactNode; children: ReactNode; table?: ReactNode }) {
+export function ChartFrame({
+  title,
+  takeaway,
+  scope,
+  children,
+  table,
+  exportData
+}: {
+  title: string;
+  takeaway?: ReactNode;
+  scope?: ReactNode;
+  children: ReactNode;
+  table?: ReactNode;
+  /** Figures and context for CSV/SVG/PNG export and the share link (aggregates only). */
+  exportData?: { spec: ChartSpec; meta: ExportMeta };
+}) {
   return (
     <figure className={styles.frame}>
       <figcaption className={styles.caption}>
@@ -34,6 +51,7 @@ export function ChartFrame({ title, takeaway, scope, children, table }: { title:
       </figcaption>
       <div className={styles.plot}>{children}</div>
       {scope ? <p className={styles.scope}>{scope}</p> : null}
+      {exportData ? <ChartExport spec={exportData.spec} meta={exportData.meta} /> : null}
       {table ? <Disclosure summary="表で見る">{table}</Disclosure> : null}
     </figure>
   );
