@@ -3,7 +3,8 @@ import { io } from "next/cache";
 import { Suspense } from "react";
 
 import { Badge, Notice, PageHeader, Section, SkeletonBlock, StatGrid, StatTile } from "@/components/ui/primitives";
-import { formatCoverage, formatDateTime, formatNumber, isOlderThan } from "@/lib/format";
+import { isDataStale } from "@/domain/freshness";
+import { formatCoverage, formatDateTime, formatNumber } from "@/lib/format";
 import { getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./status.module.css";
@@ -42,7 +43,7 @@ async function StatusContent() {
   await io();
   const status = await getDatasetStatus().catch(() => null);
   if (!status) return <Notice tone="danger" title="更新状況を取得できませんでした">データベースに接続できません。</Notice>;
-  const stale = isOlderThan(status.lastSuccessAt, 2 * 24 * 60 * 60 * 1000);
+  const stale = isDataStale(status.lastSuccessAt);
   return (
     <>
       {stale ? (
