@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildHref, inLength, inTimeBand, parseCommonFilters, parseIsoDateParam, parseLength, parsePage, parseQuery, parseSlug, parseTimeBand, TIME_BANDS, type TimeBand } from "./search-params";
+import { buildHref, inLength, inTimeBand, likePattern, parseCommonFilters, parseIsoDateParam, parseLength, parsePage, parseQuery, parseSlug, parseTimeBand, TIME_BANDS, type TimeBand } from "./search-params";
 
 const at = (hour: number, minute = 0) => hour * 60 + minute;
 const bandsOf = (minute: number) => (Object.keys(TIME_BANDS) as TimeBand[]).filter((band) => inTimeBand(minute, band));
@@ -92,5 +92,13 @@ describe("airing length presets", () => {
     expect(parseCommonFilters({ network: "ntv", length: "short" }, { rerun: "exclude", season: null })).toMatchObject({ network: "ntv", length: "short" });
     expect(parseCommonFilters({ network: "toString", length: "constructor" }, { rerun: "exclude", season: null })).toMatchObject({ network: null, length: null });
     expect(parseLength("long")).toBe("long");
+  });
+});
+
+describe("likePattern", () => {
+  it("wraps the query and escapes LIKE wildcards so they match literally", () => {
+    expect(likePattern("進撃")).toBe("%進撃%");
+    expect(likePattern("100%")).toBe("%100\\%%");
+    expect(likePattern("a_b\\c")).toBe("%a\\_b\\\\c%");
   });
 });
