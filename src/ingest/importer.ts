@@ -6,7 +6,7 @@
  * - every semantic change is recorded as a BroadcastRevision
  * - manual overrides win over source values and survive re-imports
  */
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { TRACKED_CHANNELS } from "@/domain/coverage";
 import { classifyRerun } from "@/domain/flags";
 import { isoDateToDbDate } from "@/domain/time";
@@ -118,6 +118,8 @@ export async function upsertTitles(
           seriesKey: "seriesKey" in override ? (override.seriesKey as string | null) : title.seriesKey,
           sourceUpdatedAt: title.sourceUpdatedAt,
           detailsFetchedAt: now,
+          // Every title detail request asks for the SubTitles list (TITLE_FIELDS), so details imply subtitles.
+          subtitlesFetchedAt: now,
           contentHash: title.contentHash
         };
         if (!existingHash.has(title.externalId)) {
@@ -127,16 +129,32 @@ export async function upsertTitles(
         } else {
           stats.unchanged += 1;
         }
-        await tx.title.upsert({
+        const row = await tx.title.upsert({
           where: { source_externalId: { source: SOURCE_SYOBOI, externalId: title.externalId } },
           create: { source: SOURCE_SYOBOI, externalId: title.externalId, slug: title.externalId, ...data },
-          update: data
+          update: data,
+          select: { id: true }
         });
+        await upsertEpisodeSubtitles(tx, row.id, title.episodeSubtitles);
       }
     },
     { timeout: 120_000 }
   );
   return stats;
+}
+
+/**
+ * Insert or update a title's episode subtitles in one statement. Never deletes: an episode that disappears
+ * from the source list keeps its last known subtitle (non-destructive source data, docs/data-model.md).
+ */
+async function upsertEpisodeSubtitles(tx: Prisma.TransactionClient, titleId: number, subtitles: { episodeNumber: number; subtitle: string }[]): Promise<void> {
+  if (subtitles.length === 0) return;
+  const values = Prisma.join(subtitles.map((s) => Prisma.sql`(${titleId}, ${s.episodeNumber}, ${s.subtitle})`));
+  await tx.$executeRaw`
+    INSERT INTO "TitleSubtitle" ("titleId", "episodeNumber", "subtitle") VALUES ${values}
+    ON CONFLICT ("titleId", "episodeNumber") DO UPDATE SET "subtitle" = EXCLUDED."subtitle"
+    WHERE "TitleSubtitle"."subtitle" IS DISTINCT FROM EXCLUDED."subtitle"
+  `;
 }
 
 /** Placeholder title rows for TIDs whose details could not be fetched yet (shown as 「タイトル情報未取得」). */

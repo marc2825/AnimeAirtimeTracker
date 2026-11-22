@@ -9,6 +9,8 @@ export interface DatasetStatus {
   lastSuccessAt: Date | null;
   coverage: { start: Date; end: Date } | null;
   totals: { broadcasts: number; titles: number; channels: number; slots: number };
+  /** Titles with airings whose episode subtitle list has been read, of all titles with airings. */
+  subtitles: { done: number; total: number };
   /** Public view of recent runs: the raw `ImportRun.error` stays in the database for operators. */
   recentRuns: { id: number; command: string; status: string; startedAt: Date; finishedAt: Date | null; requestCount: number; errorSummary: string | null }[];
 }
@@ -19,7 +21,7 @@ export async function getDatasetStatus(): Promise<DatasetStatus> {
   "use cache";
   datasetCacheProfile();
   const prisma = db();
-  const [lastSuccess, coverage, broadcasts, titles, channels, slots, recentRuns] = await Promise.all([
+  const [lastSuccess, coverage, broadcasts, titles, channels, slots, recentRuns, aired, subtitled] = await Promise.all([
     prisma.importRun.findFirst({ where: { status: "SUCCEEDED", command: { in: DATA_COMMANDS } }, orderBy: { finishedAt: "desc" } }),
     prisma.coverageWindow.aggregate({ _min: { rangeStart: true }, _max: { rangeEnd: true } }),
     prisma.broadcast.count({ where: { deleted: false, missingSince: null } }),
@@ -30,12 +32,15 @@ export async function getDatasetStatus(): Promise<DatasetStatus> {
       orderBy: { startedAt: "desc" },
       take: 12,
       select: { id: true, command: true, status: true, startedAt: true, finishedAt: true, requestCount: true, error: true }
-    })
+    }),
+    prisma.title.count({ where: { broadcasts: { some: {} } } }),
+    prisma.title.count({ where: { broadcasts: { some: {} }, subtitlesFetchedAt: { not: null } } })
   ]);
   return {
     lastSuccessAt: lastSuccess?.finishedAt ?? null,
     coverage: coverage._min.rangeStart && coverage._max.rangeEnd ? { start: coverage._min.rangeStart, end: coverage._max.rangeEnd } : null,
     totals: { broadcasts, titles, channels, slots },
+    subtitles: { done: subtitled, total: aired },
     recentRuns: recentRuns.map((run) => ({
       id: run.id,
       command: run.command,

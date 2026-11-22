@@ -13,6 +13,7 @@ import { fromAnimeTime, isoDateToDbDate, parseJstDateTime, toAnimeTime } from "@
 import { createPrismaClient } from "@/server/prisma";
 
 import { rebuildSlots, reclassifyReruns } from "./derive";
+import { titlesNeedingSubtitles } from "./sync";
 import { FIXTURE_CHANNEL_IDS, FIXTURE_WINDOW, importFixtures } from "./fixtures";
 import { importBroadcasts, upsertTitles } from "./importer";
 import type { OverridesFile } from "./overrides";
@@ -213,5 +214,35 @@ describe("importer (PostgreSQL)", () => {
     const slot = await prisma.slot.findUniqueOrThrow({ where: { slug: "テスト枠" }, include: { seasons: true } });
     expect(slot.seasons).toHaveLength(1);
     expect(slot.seasons[0]).toMatchObject({ seasonOrdinal: 20264, titleCount: 2, titleIds: [titles[1]!.id, titles[0]!.id] });
+  });
+
+  it("stores episode subtitles from the title list and never deletes them", async () => {
+    const raw = parseTitleLookup(fixture("titles-sample.xml")).items[0]!;
+    const withList = (list: string) => normalizeTitle({ ...raw, SubTitles: list });
+    await upsertTitles(prisma, [withList("*01*はじまり\r\n*02*つづき")], NO_OVERRIDES, new Date());
+    const title = await prisma.title.findFirstOrThrow({ where: { externalId: raw.TID } });
+    expect(title.subtitlesFetchedAt).not.toBeNull();
+    // A corrected subtitle is updated; an episode missing from the new list keeps its last subtitle.
+    await upsertTitles(prisma, [withList("*01*はじまりの日")], NO_OVERRIDES, new Date());
+    const rows = await prisma.titleSubtitle.findMany({ where: { titleId: title.id }, orderBy: { episodeNumber: "asc" }, select: { episodeNumber: true, subtitle: true } });
+    expect(rows).toEqual([
+      { episodeNumber: 1, subtitle: "はじまりの日" },
+      { episodeNumber: 2, subtitle: "つづき" }
+    ]);
+  });
+
+  it("backfills subtitle lists for the most recently aired titles first", async () => {
+    await importFixtures(prisma);
+    await prisma.title.updateMany({ data: { subtitlesFetchedAt: null } });
+    const lastAired = await prisma.$queryRaw<{ externalId: string }[]>`
+      SELECT t."externalId" FROM "Title" t JOIN "Broadcast" b ON b."titleId" = t.id WHERE b.deleted = false
+      GROUP BY t.id ORDER BY MAX(b."startAt") DESC, t.id DESC
+    `;
+    const picked = await titlesNeedingSubtitles(prisma, 3);
+    expect(picked).toEqual(lastAired.slice(0, 3).map((row) => row.externalId));
+    // Titles already read are not picked again.
+    await prisma.title.updateMany({ where: { externalId: { in: picked } }, data: { subtitlesFetchedAt: new Date() } });
+    expect(await titlesNeedingSubtitles(prisma, 100)).not.toEqual(expect.arrayContaining(picked));
+    expect(await titlesNeedingSubtitles(prisma, 100)).toHaveLength(lastAired.length - 3);
   });
 });

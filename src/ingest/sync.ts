@@ -15,7 +15,7 @@ import { NormalizeError, extractSlotLabels, normalizeProgram, normalizeTitle, sh
 import { PROG_LOOKUP_ROW_CAP, parseChGroupLookup, parseChLookup, parseProgLookup, parseTitleLookup, type Rejected, type SyoboiProgram } from "./syoboi/parse";
 
 export const TITLE_FIELDS =
-  "TID,LastUpdate,Title,ShortTitle,TitleYomi,TitleEN,Comment,Cat,TitleFlag,FirstYear,FirstMonth,FirstEndYear,FirstEndMonth,FirstCh";
+  "TID,LastUpdate,Title,ShortTitle,TitleYomi,TitleEN,Comment,Cat,TitleFlag,FirstYear,FirstMonth,FirstEndYear,FirstEndMonth,FirstCh,SubTitles";
 const PROGRAM_FIELDS = "LastUpdate,PID,TID,StTime,StOffset,EdTime,Count,SubTitle,ProgComment,Flag,Deleted,Warn,ChID,Revision";
 const MIN_SPLIT_WINDOW_MS = 6 * 60 * 60 * 1000;
 export const CURSOR_PROGRAMS = "syoboi:programs:lastUpdate";
@@ -175,6 +175,37 @@ export async function fetchTitles(ctx: IngestContext, tids: string[]): Promise<{
   const missing = tids.filter((tid) => !returned.has(tid));
   const stubs = await ensureTitleStubs(ctx.prisma, missing);
   return { fetched, stubs };
+}
+
+/** Titles whose subtitle list is read per scheduled run while the backfill lasts (5 TitleLookup requests). */
+export const SUBTITLE_BACKFILL_PER_RUN = 500;
+
+/** Titles with airings whose subtitle list has never been read, most recently aired first. */
+export async function titlesNeedingSubtitles(prisma: PrismaClient, limit: number): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ externalId: string }[]>`
+    SELECT t."externalId" FROM "Title" t
+    JOIN (SELECT "titleId", MAX("startAt") AS last FROM "Broadcast" WHERE deleted = false GROUP BY "titleId") b ON b."titleId" = t.id
+    WHERE t.source = ${SOURCE_SYOBOI} AND t."subtitlesFetchedAt" IS NULL
+    ORDER BY b.last DESC, t.id DESC
+    LIMIT ${limit}
+  `;
+  return rows.map((row) => row.externalId);
+}
+
+/**
+ * One step of the subtitle backfill: re-read the details (now including the SubTitles list) of up to `limit`
+ * titles that do not have it yet. Titles the source no longer returns are marked as read too, so they are
+ * not requested again on every run.
+ */
+export async function backfillSubtitles(ctx: IngestContext, limit: number): Promise<{ titles: number; fetched: number; remaining: number }> {
+  const tids = await titlesNeedingSubtitles(ctx.prisma, limit);
+  let fetched = 0;
+  if (tids.length > 0) {
+    fetched = (await fetchTitles(ctx, tids)).fetched;
+    await ctx.prisma.title.updateMany({ where: { source: SOURCE_SYOBOI, externalId: { in: tids }, subtitlesFetchedAt: null }, data: { subtitlesFetchedAt: ctx.now() } });
+  }
+  const remaining = (await titlesNeedingSubtitles(ctx.prisma, 100_000)).length;
+  return { titles: tids.length, fetched, remaining };
 }
 
 function normalizeAll(programs: SyoboiProgram[], log: (message: string) => void): { broadcasts: NormalizedBroadcast[]; errors: number } {

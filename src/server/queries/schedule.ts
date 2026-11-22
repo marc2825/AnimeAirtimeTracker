@@ -4,7 +4,7 @@ import type { RerunMode } from "@/lib/search-params";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
-import { airingWhere, getTrackedChannels, type ChannelInfo } from "./common";
+import { airingWhere, episodeSubtitles, getTrackedChannels, type ChannelInfo } from "./common";
 
 export interface ScheduleItem {
   id: number;
@@ -66,9 +66,11 @@ export async function getSchedule(query: ScheduleQuery): Promise<{ items: Schedu
       rerunBasis: true,
       comment: true,
       channelId: true,
+      titleId: true,
       title: { select: { slug: true, name: true, detailsFetchedAt: true } }
     }
   });
+  const listed = await episodeSubtitles(rows);
   const channelById = new Map(channels.map((c) => [c.id, c]));
   const items = rows.map((row) => {
     const channel = channelById.get(row.channelId)!;
@@ -87,7 +89,7 @@ export async function getSchedule(query: ScheduleQuery): Promise<{ items: Schedu
       durationMinutes: row.durationMinutes,
       episodeNumber: row.episodeNumber,
       episodeLabel: row.episodeLabel,
-      subtitle: row.subtitle,
+      subtitle: row.subtitle ?? listed.get(`${row.titleId}:${row.episodeNumber}`) ?? null,
       flagNew: row.flagNew,
       flagFinal: row.flagFinal,
       flagNote: row.flagNote,
