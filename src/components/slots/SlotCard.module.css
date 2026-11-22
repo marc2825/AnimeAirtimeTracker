@@ -1,4 +1,4 @@
-/* A ledger entry, not a box: a rule above, the content below it. */
+/* A slot entry: a black rule above, the content below it. No box. */
 .card {
   display: grid;
   align-content: start;
@@ -21,9 +21,9 @@
 }
 
 .name {
-  font-family: var(--font-serif);
+  color: var(--color-accent);
   font-size: var(--text-xl);
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-black);
   line-height: var(--leading-tight);
 }
 
@@ -48,7 +48,6 @@
 }
 
 .tick {
-  border-radius: 2px;
   background: var(--color-surface-3);
   border: 1px solid var(--color-line);
 }

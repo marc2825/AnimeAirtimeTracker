@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Noto_Sans_JP, Noto_Serif_JP } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { Suspense, type ReactNode } from "react";
 
 import { NowAiring } from "@/components/layout/NowAiring";
@@ -13,10 +13,8 @@ import styles from "./layout.module.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
-// Japanese glyphs are split into unicode-range chunks; only the latin subset is preloaded.
-// Headings only, one weight.
-const notoSerifJp = Noto_Serif_JP({ subsets: ["latin"], weight: ["700"], variable: "--font-noto-serif-jp", display: "swap", preload: false });
-const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-noto-jp", display: "swap", preload: false });
+// Japanese glyphs are split into unicode-range chunks; only the latin subset is preloaded. 900 is for headings.
+const notoSansJp = Noto_Sans_JP({ subsets: ["latin"], weight: ["400", "500", "700", "900"], variable: "--font-noto-jp", display: "swap", preload: false });
 
 /** Resolve the theme before first paint: stored choice, else OS preference. Follows OS changes until the user picks. */
 const themeScript = `(function(){var d=document.documentElement,m=window.matchMedia('(prefers-color-scheme: dark)');function s(){var t=null;try{t=localStorage.getItem('theme')}catch(e){}d.dataset.theme=(t==='light'||t==='dark')?t:(m.matches?'dark':'light')}s();try{m.addEventListener('change',function(){var t=null;try{t=localStorage.getItem('theme')}catch(e){}if(t!=='light'&&t!=='dark')s()})}catch(e){}})();`;
@@ -35,15 +33,16 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f5f4f0" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0f1d" }
+    // The masthead colour (tokens.css --color-masthead), so the browser chrome continues the black band.
+    { media: "(prefers-color-scheme: light)", color: "#17171c" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0b0e" }
   ],
   colorScheme: "light dark"
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="ja" className={`${geist.variable} ${geistMono.variable} ${notoSansJp.variable} ${notoSerifJp.variable}`} suppressHydrationWarning>
+    <html lang="ja" className={`${geist.variable} ${geistMono.variable} ${notoSansJp.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

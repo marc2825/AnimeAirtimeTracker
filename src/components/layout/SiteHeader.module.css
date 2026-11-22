@@ -3,10 +3,8 @@
   top: 0;
   z-index: var(--z-header);
   height: var(--header-height);
-  background: color-mix(in srgb, var(--color-bg) 86%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px);
-  -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  border-bottom: var(--border);
+  background: var(--color-masthead);
+  color: var(--color-masthead-ink);
 }
 
 .inner {
@@ -36,15 +34,14 @@
 .brandKicker {
   font-size: var(--text-2xs);
   letter-spacing: 0.02em;
-  color: var(--color-ink-3);
+  color: var(--color-masthead-ink-2);
 }
 
-/* The site name is the masthead: mincho, like the headings. */
 .brandName {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
   font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  letter-spacing: 0.06em;
+  font-weight: var(--weight-black);
+  letter-spacing: 0.02em;
 }
 
 .desktopNav {
@@ -61,18 +58,18 @@
   align-items: center;
   padding: 0 var(--space-3);
   font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  color: var(--color-ink-2);
+  font-weight: var(--weight-bold);
+  color: var(--color-masthead-ink-2);
   transition: color var(--duration-fast) var(--ease-out);
 }
 
 .navLink:hover {
-  color: var(--color-ink);
+  color: var(--color-masthead-ink);
   text-decoration: none;
 }
 
 .navLink[aria-current="page"] {
-  color: var(--color-ink);
+  color: var(--color-masthead-ink);
 }
 
 .navLink[aria-current="page"]::after {
@@ -80,10 +77,9 @@
   position: absolute;
   left: var(--space-3);
   right: var(--space-3);
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--color-accent);
+  bottom: 0;
+  height: 4px;
+  background: var(--color-marker-bright);
 }
 
 .actions {
@@ -101,13 +97,13 @@
   border-radius: var(--radius-sm);
   border: 0;
   background: transparent;
-  color: var(--color-ink-2);
+  color: var(--color-masthead-ink-2);
   transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
 }
 
 .iconButton:hover {
-  background: var(--state-hover);
-  color: var(--color-ink);
+  background: color-mix(in srgb, var(--color-masthead-ink) 16%, transparent);
+  color: var(--color-masthead-ink);
   text-decoration: none;
 }
 
@@ -119,10 +115,8 @@
   grid-template-columns: repeat(4, 1fr);
   height: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
-  background: color-mix(in srgb, var(--color-surface-1) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(12px);
-  -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  border-top: var(--border);
+  background: var(--color-surface-1);
+  border-top: var(--border-strong);
 }
 
 .mobileLink {
@@ -140,7 +134,9 @@
 }
 
 .mobileLink[aria-current="page"] {
-  color: var(--color-accent);
+  color: var(--color-ink);
+  font-weight: var(--weight-bold);
+  box-shadow: inset 0 4px 0 var(--color-marker);
 }
 
 @media (min-width: 48rem) {
