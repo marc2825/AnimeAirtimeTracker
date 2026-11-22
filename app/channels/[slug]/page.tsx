@@ -94,6 +94,9 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         <li>
           <Link href={`/stats?region=all&channel=${channel.slug}`}>この局の編成統計</Link>
         </li>
+        <li>
+          <Link href={`/compare/channels?a=${channel.slug}&b=${channel.slug === "mx" ? "bs11" : "mx"}`}>ほかの局と比べる</Link>
+        </li>
       </ul>
 
       <StatGrid>

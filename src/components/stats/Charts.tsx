@@ -189,6 +189,53 @@ export function ColumnChart({
 }
 
 /**
+ * Two series side by side per category (e.g. two channels per season). Series A is the data blue, series B
+ * ink, so they differ in hue and lightness; the legend names them and each column carries its values.
+ */
+export function PairColumnChart({
+  columns,
+  series,
+  unit,
+  label = "クール別のグラフ（左が古く、右が新しい）"
+}: {
+  columns: { key: string; label: string; sublabel?: string; values: [number | null, number | null] }[];
+  series: [string, string];
+  unit: string;
+  label?: string;
+}) {
+  const max = Math.max(1, ...columns.flatMap((column) => column.values.map((value) => value ?? 0)));
+  return (
+    <div>
+      <ul role="list" className={styles.seriesLegend}>
+        {series.map((name, index) => (
+          <li key={name}>
+            <span className={`${styles.seriesSwatch} ${index === 0 ? styles.pairA : styles.pairB}`} aria-hidden="true" />
+            {name}
+          </li>
+        ))}
+      </ul>
+      <ScrollToEnd className={styles.columnsWrap} label={label}>
+        <ol role="list" className={styles.columns} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
+          {columns.map((column) => (
+            <li key={column.key} className={styles.column} title={`${column.label}: ${series[0]} ${column.values[0] ?? "—"}${unit}／${series[1]} ${column.values[1] ?? "—"}${unit}`}>
+              <span className={styles.pairBars}>
+                {column.values.map((value, index) => (
+                  <span key={index} className={`${styles.pairBar} ${index === 0 ? styles.pairA : styles.pairB}`} style={{ height: `${((value ?? 0) / max) * 100}%` }} aria-hidden="true" />
+                ))}
+              </span>
+              <span className={styles.columnLabel}>
+                {column.sublabel ? <span className={styles.columnYear}>{column.sublabel}</span> : null}
+                {column.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </ScrollToEnd>
+    </div>
+  );
+}
+
+/**
  * Stacked columns for ordered series (e.g. time of day). Series i uses the sequential step `firstStep + i`, so later
  * series are more prominent in both themes; segments are separated by a 2px surface gap and carry a hover title.
  */

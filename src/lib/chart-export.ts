@@ -137,7 +137,11 @@ function plot(spec: ChartSpec, top: number): { body: string; height: number } {
   }
 
   const series = spec.series;
-  const legend = series.length > 1 ? series.map((s, i) => ({ name: s.name, color: RAMP[Math.min(7, 3 + i)]! })) : [];
+  // Ordered series (stacks) step through the blue ramp; two series compared side by side are blue and ink,
+  // so they differ in hue as well as lightness (as on the site).
+  const paired = series.length === 2 && !("stacked" in spec && spec.stacked);
+  const colorOf = (i: number) => (paired ? [RAMP[5]!, INK2][i]! : series.length > 1 ? RAMP[Math.min(7, 3 + i)]! : RAMP[5]!);
+  const legend = series.length > 1 ? series.map((s, i) => ({ name: s.name, color: colorOf(i) })) : [];
   let body = "";
   let y = top;
   if (legend.length) {
@@ -148,7 +152,6 @@ function plot(spec: ChartSpec, top: number): { body: string; height: number } {
     }
     y += 30;
   }
-  const colorOf = (i: number) => (series.length > 1 ? RAMP[Math.min(7, 3 + i)]! : RAMP[5]!);
 
   if (spec.kind === "bars") {
     const labelW = Math.min(220, Math.max(...spec.categories.map(textWidth)) * 12 + 12);

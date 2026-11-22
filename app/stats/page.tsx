@@ -512,7 +512,13 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
       <Section
         id="regional"
         title="関東と関西の放送時差"
-        description={`${formatSeason(season)}に関東・関西の両方で放送された作品について、関西での放送が関東よりどれだけ遅いか。${band ? `時間帯（${TIME_BANDS[band].label}）は関東での開始時刻で判定しています。` : ""}`}
+        description={`${formatSeason(season)}に関東・関西の両方で放送された作品の、関西での放送の遅れ`}
+        details={band ? `時間帯（${TIME_BANDS[band].label}）は関東での開始時刻で判定しています。` : undefined}
+        actions={
+          <Link href={`/compare/channels?a=kanto&b=kansai&season=${seasonId(season)}`} className="inline-link">
+            地域・放送局を選んで比べる
+          </Link>
+        }
       >
         {channelSlug ? <Notice tone="info" title="放送局の条件はこの図に適用していません">地域をまたいで比べるため、系列・時間帯・放送時間の条件だけを使います。</Notice> : null}
         <ChartFrame

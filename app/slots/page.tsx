@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { latestOrdinal, SeasonStrip, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
 import { StripTooltip } from "@/components/slots/StripTooltip";
-import { Disclosure, SegmentedLinks } from "@/components/ui/controls";
+import { ButtonLink, Disclosure, SegmentedLinks } from "@/components/ui/controls";
 import { EmptyState, MoreInfo, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { buildHref, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
@@ -26,6 +26,11 @@ export default function SlotsPage({ searchParams }: PageProps<"/slots">) {
       <PageHeader
         title="放送枠"
         lead="局・曜日・時刻ごとの作品の移り変わり"
+        actions={
+          <ButtonLink href="/compare/slots" variant="secondary">
+            放送枠を比べる
+          </ButtonLink>
+        }
       />
       <Suspense fallback={<SkeletonBlock rows={6} label="放送枠を読み込み中" />}>
         <SlotsContent searchParams={searchParams} />

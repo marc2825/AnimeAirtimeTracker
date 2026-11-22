@@ -485,6 +485,31 @@
   padding-bottom: 2.5rem;
 }
 
+/* PairColumnChart: two bars per category, A in the data blue, B in ink. */
+.pairBars {
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1px;
+  width: 100%;
+  height: 100%;
+}
+
+.pairBar {
+  width: 40%;
+  max-width: 1.1rem;
+  min-height: 1px;
+}
+
+.pairA {
+  background: var(--viz-bar);
+}
+
+.pairB {
+  background: var(--color-ink-2);
+}
+
 /* Stacked columns (StackedColumnChart): first series at the bottom, 2px surface gap between segments. */
 .stack {
   display: flex;
@@ -587,4 +612,25 @@
   background: var(--color-surface-2);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
+}
+
+/* StartTimeChart */
+.startTime {
+  margin: 0;
+}
+
+.startTimeSvg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.startTimeGrid {
+  stroke: var(--color-line);
+}
+
+.startTimeAxis {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--color-ink-3);
 }

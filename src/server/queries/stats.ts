@@ -27,11 +27,11 @@ export function statsFilter(overrides: Partial<StatsFilter> = {}): StatsFilter {
 
 const STAT_SELECT = { titleId: true, channelId: true, animeDate: true, animeWeekday: true, animeStartMinute: true, durationMinutes: true, startAt: true, episodeNumber: true } as const;
 
-function toAiringFilter(filter: StatsFilter, extra: Pick<AiringFilter, "season" | "range">): AiringFilter {
+export function toAiringFilter(filter: StatsFilter, extra: Pick<AiringFilter, "season" | "range">): AiringFilter {
   return { ...extra, region: filter.region, network: filter.network, channelSlug: filter.channelSlug, band: filter.band, length: filter.length, rerun: filter.rerun, allKinds: false };
 }
 
-async function loadAirings(where: AiringFilter, channels: ChannelInfo[]): Promise<StatAiring[]> {
+export async function loadAirings(where: AiringFilter, channels: ChannelInfo[]): Promise<StatAiring[]> {
   const rows = await db().broadcast.findMany({ where: airingWhere(where, channels), select: STAT_SELECT });
   return rows.map((row) => ({ ...row, animeDate: dbDateToIsoDate(row.animeDate) }));
 }
