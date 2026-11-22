@@ -5,8 +5,10 @@ import { Notice, Section } from "@/components/ui/primitives";
 import { lateNightByYear, lateNightFindings, lateNightSeasons } from "@/domain/analysis/late-night";
 import { FIRST_SEASON, REGIONS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE } from "@/domain/coverage";
 import { currentSeason, seasonFromOrdinal, seasonOrdinal } from "@/domain/season";
-import { formatPercent, formatSeasonOrdinal } from "@/lib/format";
+import { formatDateTime, formatPercent, formatSeasonOrdinal } from "@/lib/format";
+import { absoluteUrl } from "@/lib/site";
 import { getSeasonTrend, statsFilter } from "@/server/queries/stats";
+import { getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./analysis.module.css";
 import type { Analysis } from "./types";
@@ -19,14 +21,23 @@ async function LateNightContent() {
   await io(); // the current season is per request
   const now = currentSeason();
   let rows;
+  let dataset;
   try {
-    rows = await getSeasonTrend(FILTER, FIRST_SEASON, now);
+    [rows, dataset] = await Promise.all([getSeasonTrend(FILTER, FIRST_SEASON, now), getDatasetStatus().catch(() => null)]);
   } catch {
     return <Notice tone="danger" title="データを読み込めませんでした">時間をおいて再読み込みしてください。</Notice>;
   }
   const seasons = lateNightSeasons(rows);
   const years = lateNightByYear(seasons);
   const nowOrdinal = seasonOrdinal(now);
+  const scope = lateNight.meta.scope;
+  const meta = (anchor: string, title: string) => ({
+    title,
+    scope,
+    url: absoluteUrl(`/analysis/late-night#${anchor}`),
+    dataTime: dataset?.lastSuccessAt ? formatDateTime(dataset.lastSuccessAt) : undefined,
+    filename: `analysis-late-night-${anchor}`
+  });
   const findings = lateNightFindings(seasons, SOURCE_COMPLETE_FROM_YEAR, nowOrdinal);
 
   return (
@@ -80,6 +91,20 @@ async function LateNightContent() {
               </table>
             </div>
           }
+          exportData={{
+            spec: {
+              kind: "columns",
+              categoryLabel: "クール",
+              categories: seasons.map((s) => formatSeasonOrdinal(s.seasonOrdinal)),
+              series: [
+                { name: "23–24時台", values: seasons.map((s) => s.late - s.afterOne) },
+                { name: "25時以降", values: seasons.map((s) => s.afterOne) }
+              ],
+              unit: "作品",
+              stacked: true
+            },
+            meta: meta("seasons", "23時以降に始まるアニメ（クール別）")
+          }}
         >
           <StackedColumnChart
             unit="作品"
@@ -132,6 +157,16 @@ async function LateNightContent() {
               </table>
             </div>
           }
+          exportData={{
+            spec: {
+              kind: "columns",
+              categoryLabel: "年",
+              categories: years.map((year) => `${year.year}年`),
+              series: [{ name: "23時以降の割合", values: years.map((year) => Math.round(year.lateShare * 1000) / 10) }],
+              unit: "%"
+            },
+            meta: meta("years", "23時以降に始まるアニメの割合（年別）")
+          }}
         >
           <ColumnChart
             unit="%"

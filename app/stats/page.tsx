@@ -11,7 +11,9 @@ import { NETWORKS, NETWORK_KEYS, REGIONS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOUR
 import { currentSeason, formatSeason, parseSeasonId, seasonDateRange, seasonFromOrdinal, seasonId, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
 import { DELAY_BUCKETS, type CountUnit } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
-import { formatDateJa, formatDelay, formatNumber, formatPercent, formatSeasonOrdinal } from "@/lib/format";
+import type { ChartSpec } from "@/lib/chart-export";
+import { formatDateJa, formatDateTime, formatDelay, formatNumber, formatPercent, formatSeasonOrdinal } from "@/lib/format";
+import { absoluteUrl } from "@/lib/site";
 import {
   buildHref,
   flattenParams,
@@ -28,7 +30,7 @@ import {
   type RerunMode
 } from "@/lib/search-params";
 import { getRegionalDelay, getSeasonStats, getSeasonTrend, scopeChannelNames, statsFilter, TREND_BANDS, type StatsFilter } from "@/server/queries/stats";
-import { getCoveredSeasonOrdinals, getSeasonCoverage } from "@/server/queries/status";
+import { getCoveredSeasonOrdinals, getDatasetStatus, getSeasonCoverage } from "@/server/queries/status";
 
 import styles from "./stats.module.css";
 
@@ -99,19 +101,42 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
     null;
   const href = (overrides: Record<string, string | null>) => buildHref(PATH, current, overrides);
 
-  const [stats, coverage, trend, delay, compareStats] = await Promise.all([
+  const [stats, coverage, trend, delay, compareStats, dataset] = await Promise.all([
     getSeasonStats(season, unit, filter),
     getSeasonCoverage(season),
     getSeasonTrend(filter, seasonFromOrdinal(covered[0]!), latestCovered),
     getRegionalDelay(season, { band, network, length }),
-    compare ? getSeasonStats(compare, unit, filter) : Promise.resolve(null)
+    compare ? getSeasonStats(compare, unit, filter) : Promise.resolve(null),
+    getDatasetStatus().catch(() => null)
   ]);
+
+  // Share links and exports name every condition explicitly, so they show the same view later (the default
+  // season moves on; an explicit one does not).
+  const shareQuery = buildHref(PATH, {}, {
+    season: seasonId(season),
+    region: region ?? "all",
+    rerun,
+    unit: unit === "broadcasts" ? "broadcasts" : null,
+    time: band,
+    network,
+    channel: channelSlug,
+    length
+  });
+  const dataTime = dataset?.lastSuccessAt ? formatDateTime(dataset.lastSuccessAt) : undefined;
+  const exportMeta = (anchor: string, title: string, scope: string) => ({
+    title,
+    scope,
+    url: absoluteUrl(`${shareQuery}#${anchor}`),
+    dataTime,
+    filename: `stats-${anchor}-${seasonId(season)}`
+  });
 
   const range = seasonDateRange(season);
   const isCurrent = seasonOrdinal(season) === seasonOrdinal(now);
   const channelName = channelSlug ? (TRACKED_CHANNELS.find((c) => c.slug === channelSlug)?.name ?? channelSlug) : null;
-  const scopeText = [
-    `${formatSeason(season)}（${range.first.replaceAll("-", "/")}〜${range.last.replaceAll("-", "/")}）`,
+  const seasonScope = `${formatSeason(season)}（${range.first.replaceAll("-", "/")}〜${range.last.replaceAll("-", "/")}）`;
+  // The conditions without the season: the trend charts span every covered season.
+  const conditionScope = [
     `${channelName ?? (region ? REGIONS[region].label : "全対象局")}${network && !channelSlug ? `の${NETWORKS[network].label}` : ""}（${scopeChannelNames(filter)}）`,
     band ? `${TIME_BANDS[band].label}に始まる放送` : null,
     length ? LENGTHS[length].label : null,
@@ -120,6 +145,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
   ]
     .filter(Boolean)
     .join("・");
+  const scopeText = `${seasonScope}・${conditionScope}`;
   const channelOptions = TRACKED_CHANNELS.filter((c) => {
     const slugs = channelSlugsFor(region, network);
     return !slugs || slugs.has(c.slug) || c.slug === channelSlug;
@@ -262,6 +288,18 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
               : "単位: 放送件数。各話の放送1回を1件として数えます。時刻はアニメ時刻（5時切替）。"
           }
           table={<HeatmapTable cells={stats.heatmap.cells} unitLabel={unitLabel(unit)} />}
+          exportData={{
+            spec: {
+              kind: "matrix",
+              rowLabel: "曜日",
+              colLabel: "時台",
+              rows: WEEKDAY_LABELS.map((label) => `${label}曜`),
+              cols: stats.heatmap.cells[0]!.map((_, index) => `${index + 5}時`),
+              values: stats.heatmap.cells,
+              unit: unitLabel(unit)
+            } satisfies ChartSpec,
+            meta: exportMeta("heatmap", `曜日×時間帯（${unit === "titles" ? "作品本数" : "放送件数"}）`, scopeText)
+          }}
         >
           <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel={unitLabel(unit)} details={stats.heatmap.details} controls />
         </ChartFrame>
@@ -287,6 +325,16 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
             title="放送局別の作品本数"
             takeaway={topChannel ? `最も多いのは${topChannel.channel.name}（${topChannel.titles}作品・${topChannel.broadcasts}件）。` : "該当データがありません。"}
             scope="単位: 作品本数（棒）と放送件数（数値の下）。同じ作品が複数局で放送された場合は各局で数えます。"
+            exportData={{
+              spec: {
+                kind: "bars",
+                categoryLabel: "放送局",
+                categories: stats.byChannel.map((row) => row.channel.name),
+                series: [{ name: "作品本数", values: stats.byChannel.map((row) => row.titles) }],
+                unit: "作品"
+              } satisfies ChartSpec,
+              meta: exportMeta("channels", "放送局別の作品本数", scopeText)
+            }}
           >
             <BarList
               unit="作品"
@@ -311,6 +359,16 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
               : undefined
           }
           scope={`単位: 作品本数（そのクールに1回以上放送された作品）。新規作品は取得期間内で初めて放送されたクールに数えます。対象期間は取得済みのクールのみで、${formatSeasonOrdinal(trend[0]?.seasonOrdinal ?? seasonOrdinal(season))}より前は未取得です。${sparseNote}${rerunLabel(rerun)}。`}
+          exportData={{
+            spec: {
+              kind: "columns",
+              categoryLabel: "クール",
+              categories: trend.map((row) => formatSeasonOrdinal(row.seasonOrdinal)),
+              series: [{ name: "作品本数", values: trend.map((row) => row.titles) }],
+              unit: "作品"
+            } satisfies ChartSpec,
+            meta: exportMeta("trend", "クール別の作品本数", `${conditionScope}（取得済みのクール別）`)
+          }}
           table={
             <div className={styles.tableWrap} role="region" aria-label="クール別の推移の表" tabIndex={0}>
               <table className={styles.table}>
@@ -363,6 +421,17 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
               : undefined
           }
           scope={`単位: 作品本数。各作品はクールごとに、最も多かった開始時刻（同数なら早い時刻）の時間帯に1回だけ数えます。朝と昼は本数が少ないため「5–17時」にまとめています。${sparseNote}${band ? `時間帯の条件（${TIME_BANDS[band].label}）で放送を絞り込んでいるため、帯の外の時間帯は0になります。` : ""}`}
+          exportData={{
+            spec: {
+              kind: "columns",
+              categoryLabel: "クール",
+              categories: trend.map((row) => formatSeasonOrdinal(row.seasonOrdinal)),
+              series: TREND_BANDS.map((group) => ({ name: group.label, values: trend.map((row) => row.bandTitles[group.key] ?? 0) })),
+              unit: "作品",
+              stacked: true
+            } satisfies ChartSpec,
+            meta: exportMeta("bands", "時間帯別の作品本数（クール別）", `${conditionScope}（取得済みのクール別、各作品を最も多かった開始時刻の時間帯に1回）`)
+          }}
           table={
             <div className={styles.tableWrap} role="region" aria-label="時間帯別の推移の表" tabIndex={0}>
               <table className={styles.table}>
