@@ -131,6 +131,8 @@ export const syoboiTitleSchema = z.object({
   FirstEndMonth: optionalInt,
   FirstCh: text,
   Comment: text,
+  /** Per-episode subtitles, one per line: `*01*サブタイトル`. */
+  SubTitles: text,
   LastUpdate: optionalJstTimestamp
 });
 export type SyoboiTitle = z.infer<typeof syoboiTitleSchema>;

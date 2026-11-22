@@ -42,6 +42,8 @@ export interface NormalizedTitle {
   officialUrl: string | null;
   slotLabels: string[];
   seriesKey: string | null;
+  /** Subtitles by episode number from the title's SubTitles list (empty when the list is empty). */
+  episodeSubtitles: { episodeNumber: number; subtitle: string }[];
   sourceUpdatedAt: Date | null;
   contentHash: string;
 }
@@ -214,9 +216,27 @@ export function normalizeTitle(raw: SyoboiTitle): NormalizedTitle {
   };
   return {
     ...fields,
+    // Kept out of the content hash: the hash tracks the title's own metadata.
+    episodeSubtitles: parseEpisodeSubtitles(raw.SubTitles),
     sourceUpdatedAt: raw.LastUpdate ? parseJstDateTime(raw.LastUpdate) : null,
     contentHash: hashSemantic(fields)
   };
+}
+
+/**
+ * The source's per-title subtitle list: one `*<episode>*<subtitle>` per line (`*01*はじまり`, `*1*…`). Other
+ * lines are ignored; a repeated episode keeps its last subtitle; blank subtitles are skipped.
+ */
+export function parseEpisodeSubtitles(value: string | null): { episodeNumber: number; subtitle: string }[] {
+  if (!value) return [];
+  const byEpisode = new Map<number, string>();
+  for (const line of value.replace(/\r\n?/g, "\n").split("\n")) {
+    const match = /^\*(\d{1,4})\*(.*)$/.exec(line.trim());
+    if (!match) continue;
+    const subtitle = match[2]!.trim();
+    if (subtitle) byEpisode.set(Number(match[1]), subtitle);
+  }
+  return [...byEpisode.entries()].sort(([a], [b]) => a - b).map(([episodeNumber, subtitle]) => ({ episodeNumber, subtitle }));
 }
 
 /** Evidence lines for a title's slot labels (used when deriving memberships). */

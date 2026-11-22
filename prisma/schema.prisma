@@ -121,16 +121,33 @@ model Title {
   sourceUpdatedAt  DateTime? @db.Timestamptz(3)
   /// null = only the TID is known (details not fetched yet).
   detailsFetchedAt DateTime? @db.Timestamptz(3)
+  /// When the per-episode subtitle list (TitleLookup SubTitles) was last read. null = not yet: the
+  /// subtitle backfill fetches these titles, most recently aired first.
+  subtitlesFetchedAt DateTime? @db.Timestamptz(3)
   contentHash      String?
   createdAt        DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
   broadcasts  Broadcast[]
   memberships SlotMembership[]
+  subtitles   TitleSubtitle[]
 
   @@unique([source, externalId])
   @@index([seriesKey])
   @@index([name])
+}
+
+/// Episode subtitles from the title's SubTitles list in the source ("*01*…"). Source data: upserted on every
+/// title refresh, never deleted (an episode dropped from the list keeps its last known subtitle).
+model TitleSubtitle {
+  id            Int    @id @default(autoincrement())
+  titleId       Int
+  episodeNumber Int
+  subtitle      String
+
+  title Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@unique([titleId, episodeNumber])
 }
 
 /// One airing on one channel (Syoboi PID). Effective values; the source history lives in BroadcastRevision.

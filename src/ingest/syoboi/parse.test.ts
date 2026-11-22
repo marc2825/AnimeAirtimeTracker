@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { extractOfficialUrl, extractSlotLabels, normalizeProgram, normalizeTitle, toSeriesKey } from "./normalize";
+import { extractOfficialUrl, extractSlotLabels, normalizeProgram, normalizeTitle, parseEpisodeSubtitles, toSeriesKey } from "./normalize";
 import { parseChGroupLookup, parseChLookup, parseProgLookup, parseTitleLookup, SyoboiResultError } from "./parse";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "__fixtures__", name), "utf8");
@@ -115,5 +115,24 @@ describe("channels", () => {
     expect(channels.items.find((channel) => channel.ChID === "19")?.ChName).toBe("TOKYO MX");
     const groups = parseChGroupLookup(fixture("chgroups.xml"));
     expect(groups.items.find((group) => group.ChGID === "1")?.ChGroupName).toBe("テレビ 関東");
+  });
+});
+
+describe("episode subtitles", () => {
+  it("reads the SubTitles list of a title", () => {
+    const xml =
+      '<?xml version="1.0" encoding="UTF-8"?><TitleLookupResponse><Result><Code>200</Code><Message></Message></Result><TitleItems><TitleItem id="1"><TID>1</TID><Title>テスト</Title>' +
+      "<SubTitles>*01*はじまりの日\r\n*02*  二つ目の扉 \r\n*3*三話\r\n*04*\r\nメモ行\r\n*02*二つ目の扉（修正）</SubTitles></TitleItem></TitleItems></TitleLookupResponse>";
+    const [title] = parseTitleLookup(xml).items.map(normalizeTitle);
+    expect(title!.episodeSubtitles).toEqual([
+      { episodeNumber: 1, subtitle: "はじまりの日" },
+      { episodeNumber: 2, subtitle: "二つ目の扉（修正）" },
+      { episodeNumber: 3, subtitle: "三話" }
+    ]);
+  });
+
+  it("is empty when the list is missing or blank", () => {
+    expect(parseEpisodeSubtitles(null)).toEqual([]);
+    expect(parseEpisodeSubtitles("   ")).toEqual([]);
   });
 });

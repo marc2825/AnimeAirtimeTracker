@@ -6,8 +6,12 @@
  *   npm run ingest -- backfill --from 2024-winter --to 2026-summer
  *   npm run ingest -- recent                           # re-sync anime days today-7 … today+14
  *   npm run ingest -- update                           # incremental via LastUpdate since the last cursor
+ *   npm run ingest -- subtitles                        # read episode subtitle lists of titles that lack them
  *   npm run ingest -- derive                           # recompute slots from stored data (no network)
  *   npm run ingest -- status                           # print recent import runs (no network)
+ *
+ * `update` and `recent` also run one `subtitles` step (SUBTITLE_BACKFILL_PER_RUN titles, default 500, 0 = off)
+ * until every title has its subtitle list; newly seen and changed titles get theirs with their details.
  *
  * Options: --dry-run (print the plan, no requests), --window-days N (default 7)
  * Docs: docs/data-pipeline.md
@@ -24,6 +28,8 @@ import { splitRange, toRangeParam, type TimeWindow } from "@/ingest/plan";
 import { assertValidUserAgent } from "@/ingest/syoboi/client";
 import {
   CURSOR_PROGRAMS,
+  SUBTITLE_BACKFILL_PER_RUN,
+  backfillSubtitles,
   createRecordingClient,
   readCursor,
   syncChannels,
@@ -136,7 +142,7 @@ async function main() {
       });
       return;
     }
-    if (!["channels", "season", "backfill", "recent", "update"].includes(command)) {
+    if (!["channels", "season", "backfill", "recent", "update", "subtitles"].includes(command)) {
       throw new Error(`Unknown command "${command}"`);
     }
 
@@ -144,6 +150,23 @@ async function main() {
     assertValidUserAgent(userAgent);
     const minIntervalMs = Number(process.env.SYOBOI_MIN_INTERVAL_MS ?? 3000);
     const overrides = await loadOverrides();
+
+    const subtitleLimit = Number(process.env.SUBTITLE_BACKFILL_PER_RUN ?? SUBTITLE_BACKFILL_PER_RUN);
+    /** One backfill step as its own import run (its requests are counted and shown on /status). */
+    const runSubtitles = async () => {
+      if (!Number.isInteger(subtitleLimit) || subtitleLimit <= 0) return;
+      const { stats } = await withImportRun<object>(prisma, "subtitles", { limit: subtitleLimit }, async (importRunId) => {
+        const client = createRecordingClient(prisma, importRunId, { userAgent, minIntervalMs });
+        const ctx: IngestContext = { prisma, client, overrides, importRunId, now: () => new Date(), log };
+        return { stats: { ...(await backfillSubtitles(ctx, subtitleLimit)), requests: client.requestCount } };
+      });
+      log(`subtitles done: ${JSON.stringify(stats)}`);
+    };
+
+    if (command === "subtitles") {
+      await withLock(runSubtitles);
+      return;
+    }
 
     await withLock(async () => {
       const startedAt = new Date();
@@ -179,6 +202,7 @@ async function main() {
         };
       });
       log(`${command} done: ${JSON.stringify(stats)}`);
+      if (command === "update" || command === "recent") await runSubtitles();
       const derived = await withImportRun(prisma, "derive", { after: command }, async () => ({ stats: await deriveAll(prisma, { log }) }));
       log(`derive done: ${JSON.stringify(derived.stats)}`);
     });
