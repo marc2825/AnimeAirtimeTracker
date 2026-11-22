@@ -109,6 +109,34 @@ Actions logs of a public repository are public: the workflows mask the database 
 
 Until then, failures are noticed through GitHub's Actions notifications and the stale-data notice on the site.
 
+## Web Analytics
+
+Vercel Web Analytics counts page views, visitors, pages and referrers. The owner enabled it in the Vercel dashboard; the code side is `<Analytics />` from `@vercel/analytics/next` at the end of `app/layout.tsx`. No API key or environment variable is involved. Visitors are told on `/privacy#analytics`.
+
+- Sent: one page view on the first load and one per client-side navigation. The Next.js component reports route changes and switches off the script's own history tracking, so nothing is counted twice. A page view carries the URL (with its query string, e.g. `/search?q=…`), the route pattern (`/titles/[slug]`), the external referrer on the first view, and the script version. No custom events, no `identify`, no cookies.
+- Paths: `/_vercel/insights/script.js` and `/_vercel/insights/view` (newer deployments may use `/<unique-path>/script.js` and `/<unique-path>/view`), on the site's own domain. Locally `next start` returns 404 for them; the page is unaffected. `next dev` loads a debug script from `va.vercel-scripts.com` that logs to the console and sends nothing.
+- Not counted: automated browsers (the script skips `navigator.webdriver` and headless user agents), so E2E runs and screenshots add no page views. Visitors with ad blockers are usually not counted either.
+- Environments: the dashboard shows Production by default; the environment menu (top right) switches to Preview or All. Nothing else is needed to look at production only.
+
+Dashboard: Vercel → project → Analytics. Panels: Pages, Route, Hostname, Referrers, Country, Browsers, Devices, Operating System; timeframe and environment at the top right. Event usage: Vercel → Usage (limits under Usage and limits).
+
+After a deploy that changes the layout, `next.config.ts` headers or the package version:
+
+1. Open the production site in a normal browser with ad blockers off. DevTools → Network: `script.js` under `/_vercel/insights/` (or the unique path) returns 200, and one Fetch request to `…/view` is sent on load and one per page change.
+2. DevTools → Console: no Content Security Policy errors and no `[Vercel Web Analytics]` warning.
+3. The visit shows up in the dashboard under Production.
+
+Troubleshooting:
+
+- `script.js` returns 404 in production: the deployment was built before Web Analytics was enabled. Redeploy the current production deployment.
+- The script loads but no `/view` request: an ad blocker or privacy extension, or an automated browser. The console shows `[Vercel Web Analytics]` messages when the script fails.
+- Requests are sent but the dashboard is empty: check the environment menu and timeframe, then the monthly event limit (collection pauses at the limit).
+- A CSP error that names the analytics script: the script should come from this site's domain. Find out why it does not before touching `next.config.ts`.
+
+CSP: the production policy needs nothing for Web Analytics; `script-src 'self'` covers the script and `connect-src 'self'` the requests. Only development allows `https://va.vercel-scripts.com` in `script-src`. If Analytics is ever pointed at another host (`scriptSrc`, `endpoint`, a proxy), allow that one host only, never a wildcard, and update `/privacy`.
+
+To stop measuring: remove `<Analytics />` and the package, update `/privacy`, then turn Web Analytics off in the dashboard.
+
 ## Security
 
 State checked 2026-11-22:
@@ -116,7 +144,7 @@ State checked 2026-11-22:
 - Repository settings: secret scanning with push protection, Dependabot alerts and security updates, private vulnerability reporting (`SECURITY.md`) are on. The default workflow token is read-only; first-time contributors' PRs need approval before workflows run.
 - Audit: no credentials in the git history (all refs, including closed PRs), the current files or sampled Actions logs; the database host is masked in logs; `npm audit` reports 0 vulnerabilities. `.github/backup/backup-cert.pem` is a public certificate; the private key was never committed.
 - Workflows: actions are pinned to commit SHAs (Dependabot's monthly `github-actions` updates bump the pins); top-level permissions are `contents: read`; no `pull_request_target`; PR-triggered jobs receive no secrets; dispatch inputs reach scripts only through `env`. CodeQL (`codeql.yml`, `security-extended`) runs on PRs, `main` and weekly.
-- Headers (`next.config.ts`): CSP limited to `'self'` with `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`. `script-src` keeps `'unsafe-inline'` because the inline RSC payloads differ per request (no hashes) and nonces would give up prerendered shells; there are no third-party scripts.
+- Headers (`next.config.ts`): CSP limited to `'self'` with `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`. `script-src` keeps `'unsafe-inline'` because the inline RSC payloads differ per request (no hashes) and nonces would give up prerendered shells. The only script not built with the site is Vercel Web Analytics, served from the site's own domain (see Web Analytics).
 - Database: the web uses the read-only `web_readonly` role; previews share it, so a preview cannot write. Fork PRs do not get Vercel environment variables (Git Fork Protection).
 - External text and links: titles and comments from the source are rendered as text by React (no HTML injection); outbound links use `rel="noopener"`.
 
@@ -134,6 +162,7 @@ Both providers are on free plans (see Deployment for the figures known at setup)
 | --- | --- | --- | --- |
 | Neon Free | storage (≈ 370 MB of 1 GB on 2026-11-21, ≈ 5 MB per season), compute hours, network transfer | Neon console → project → Usage | e-mail near limits; at a limit the compute suspends and pages show "読み込めませんでした" |
 | Vercel Hobby | function invocations and duration, bandwidth (`/slots` is the largest page, ≈ 330 KB compressed), build minutes | Vercel → Usage | e-mail near limits; Hobby pauses the project when exceeded |
+| Vercel Web Analytics (Hobby) | events: 50,000 per month, 1-month reporting window (checked 2026-11-22) | Vercel → Usage | collection pauses at the limit until the next cycle; Hobby is never charged |
 | GitHub Actions | free for public repositories; artifact storage (one ≈ 52 MB backup per month, kept 90 days) | repository → Actions | failed runs notify the account that last changed the schedule |
 
 Any plan change, billing setting or production setting is the owner's decision. Commercial use (ads, affiliate links) is not allowed on Vercel Hobby.
@@ -189,4 +218,5 @@ Status 2026-11-21.
 - [x] Monthly encrypted backup with restore check (`backup.yml`; first successful run 2026-11-21: 9 tables matched after restore, artifact decrypted with the owner's key)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
 - [ ] Open Graph preview checked; Search Console verified (optional)
-- [x] Privacy policy (`/privacy`) and terms (`/terms`) published 2026-11-22, describing the site as built: no accounts, forms, cookies, analytics or ads; two localStorage keys; Vercel request logs. Update `/privacy` **before** adding anything that collects or sends visitor data (analytics, forms, embeds), and bump `POLICIES_UPDATED` in `src/lib/site.ts`. The wording was written from the code; the owner reviews legal wording.
+- [ ] Vercel Web Analytics (`<Analytics />`, added 2026-11-22): the owner confirms that page views appear in Vercel → Analytics (Production)
+- [x] Privacy policy (`/privacy`) and terms (`/terms`) published 2026-11-22, describing the site as built: no accounts, forms, cookies or ads; Vercel Web Analytics page views (added 2026-11-22); two localStorage keys; Vercel request logs. Update `/privacy` **before** adding anything that collects or sends visitor data (analytics, forms, embeds), and bump `POLICIES_UPDATED` in `src/lib/site.ts`. The wording was written from the code; the owner reviews legal wording.
