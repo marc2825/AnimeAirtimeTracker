@@ -379,3 +379,24 @@ test("analysis pages state their scope and are reachable from the index", async 
   await expect(page.getByText("比べられる年がまだありません")).toBeVisible();
   expect((await request.get("/analysis/no-such-analysis")).status()).toBe(404);
 });
+
+test("a figure exports its data as CSV with source and conditions, and shares a link that pins them", async ({ page, browserName, context }) => {
+  await page.goto("/stats?season=2026-autumn&region=all");
+  const heatmap = page.locator("#heatmap");
+  const [download] = await Promise.all([page.waitForEvent("download"), heatmap.getByRole("button", { name: "CSV", exact: true }).click()]);
+  expect(download.suggestedFilename()).toBe("stats-heatmap-2026-autumn.csv");
+  const csv = await (await download.createReadStream()).toArray().then((chunks) => Buffer.concat(chunks).toString("utf8"));
+  expect(csv).toContain("# 出典: 番組データ しょぼいカレンダー");
+  expect(csv).toContain("# URL: ");
+  expect(csv).toContain("season=2026-autumn");
+  expect(csv).toMatch(/\r\n月曜,(\d+,){23}\d+\r\n/);
+  const [svg] = await Promise.all([page.waitForEvent("download"), heatmap.getByRole("button", { name: "SVG", exact: true }).click()]);
+  expect(svg.suggestedFilename()).toBe("stats-heatmap-2026-autumn.svg");
+  if (browserName === "chromium") {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await heatmap.getByRole("button", { name: "リンクをコピー" }).click();
+    await expect(heatmap.getByRole("status")).toHaveText("この条件のリンクをコピーしました");
+    const url = await page.evaluate(() => navigator.clipboard.readText());
+    expect(url).toMatch(/\/stats\?season=2026-autumn&region=all&rerun=exclude#heatmap$/);
+  }
+});

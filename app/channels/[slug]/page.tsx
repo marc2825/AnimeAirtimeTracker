@@ -8,12 +8,13 @@ import { ChartFrame, HeatmapTable, StackedColumnChart, WeekdayHourHeatmap } from
 import { Disclosure } from "@/components/ui/controls";
 import { EmptyState, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, StatGrid, StatTile } from "@/components/ui/primitives";
 import { AREA_LABELS, MEDIUM_LABELS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, TRACKED_CHANNELS, networkLabelOf } from "@/domain/coverage";
-import { currentSeason, formatSeason, seasonFromOrdinal, seasonOrdinal } from "@/domain/season";
+import { currentSeason, formatSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
-import { formatSeasonOrdinal } from "@/lib/format";
+import { formatDateTime, formatSeasonOrdinal } from "@/lib/format";
+import { absoluteUrl } from "@/lib/site";
 import { listSlots } from "@/server/queries/slots";
 import { getSeasonStats, getSeasonTrend, statsFilter, TREND_BANDS } from "@/server/queries/stats";
-import { getCoveredSeasonOrdinals } from "@/server/queries/status";
+import { getCoveredSeasonOrdinals, getDatasetStatus } from "@/server/queries/status";
 
 import styles from "../channels.module.css";
 
@@ -55,11 +56,19 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
   }
   if (covered.length === 0) return <EmptyState title="データがまだありません" />;
   const latest = seasonFromOrdinal(Math.min(covered.at(-1)!, seasonOrdinal(currentSeason())));
-  const [trend, stats, slots] = await Promise.all([
+  const [trend, stats, slots, dataset] = await Promise.all([
     getSeasonTrend(filter, seasonFromOrdinal(covered[0]!), latest),
     getSeasonStats(latest, "titles", filter),
-    listSlots()
+    listSlots(),
+    getDatasetStatus().catch(() => null)
   ]);
+  const exportMeta = (anchor: string, title: string, scope: string, path = `/channels/${channel.slug}`) => ({
+    title: `${channel.name}: ${title}`,
+    scope,
+    url: absoluteUrl(`${path}#${anchor}`),
+    dataTime: dataset?.lastSuccessAt ? formatDateTime(dataset.lastSuccessAt) : undefined,
+    filename: `channel-${channel.slug}-${anchor}`
+  });
   const ownSlots = slots.filter((slot) => slot.channel?.slug === channel.slug);
   const active = trend.filter((row) => row.titles > 0);
   const peak = active.length ? active.reduce((a, b) => (b.titles > a.titles ? b : a)) : null;
@@ -100,6 +109,17 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
           title="クール別・時間帯別の作品本数"
           takeaway={peak ? `最も多かったのは${formatSeasonOrdinal(peak.seasonOrdinal)}の${peak.titles}作品です。` : "放送の記録がありません。"}
           scope={`単位: 作品本数（そのクールに1回以上放送された作品、再放送を除く）。各作品はクールごとに最頻の開始時刻の時間帯に1回だけ数えます。${trend.length > 0 && Math.floor(trend[0]!.seasonOrdinal / 10) < SOURCE_COMPLETE_FROM_YEAR ? SPARSE_SOURCE_NOTE : ""}`}
+          exportData={{
+            spec: {
+              kind: "columns",
+              categoryLabel: "クール",
+              categories: trend.map((row) => formatSeasonOrdinal(row.seasonOrdinal)),
+              series: TREND_BANDS.map((group) => ({ name: group.label, values: trend.map((row) => row.bandTitles[group.key] ?? 0) })),
+              unit: "作品",
+              stacked: true
+            },
+            meta: exportMeta("trend", "クール別・時間帯別の作品本数", `${channel.name}、取得済みのクール別、アニメカテゴリ、再放送を除く`)
+          }}
           table={
             <div className={styles.tableWrap} role="region" aria-label="クール別・時間帯別の作品本数の表" tabIndex={0}>
               <table className={styles.table}>
@@ -153,6 +173,24 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
           title="曜日×時間帯（作品本数）"
           scope="単位: 作品本数。各作品は放送が始まった曜日・時台ごとに1回数えます。時刻はアニメ時刻（5時切替）。"
           table={<HeatmapTable cells={stats.heatmap.cells} unitLabel="作品" />}
+          exportData={{
+            spec: {
+              kind: "matrix",
+              rowLabel: "曜日",
+              colLabel: "時台",
+              rows: WEEKDAY_LABELS.map((label) => `${label}曜`),
+              cols: stats.heatmap.cells[0]!.map((_, index) => `${index + 5}時`),
+              values: stats.heatmap.cells,
+              unit: "作品"
+            },
+            // This page always shows the latest season; the shared link pins the season on the stats page.
+            meta: exportMeta(
+              "heatmap",
+              `${formatSeason(latest)}の曜日×時間帯（作品本数）`,
+              `${channel.name}、${formatSeason(latest)}、アニメカテゴリ、再放送を除く`,
+              `/stats?season=${seasonId(latest)}&region=all&channel=${channel.slug}&rerun=exclude`
+            )
+          }}
         >
           <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" details={stats.heatmap.details} />
         </ChartFrame>
