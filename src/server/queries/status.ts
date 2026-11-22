@@ -1,4 +1,5 @@
 import { seasonInstantRange, type Season } from "@/domain/season";
+import { toAnimeTime, type IsoDate } from "@/domain/time";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
@@ -45,6 +46,18 @@ export async function getDatasetStatus(): Promise<DatasetStatus> {
       errorSummary: summarizeRunError(run.error)
     }))
   };
+}
+
+/** First and last anime dates with fetched data (for date pickers); empty when unknown or unreadable. */
+export async function coverageDates(): Promise<{ min?: IsoDate; max?: IsoDate }> {
+  try {
+    const { coverage } = await getDatasetStatus();
+    if (!coverage) return {};
+    // The range end is exclusive.
+    return { min: toAnimeTime(coverage.start).animeDate, max: toAnimeTime(new Date(coverage.end.getTime() - 1)).animeDate };
+  } catch {
+    return {};
+  }
 }
 
 /** Fraction (0–1) of a season's time range covered by complete fetch windows, plus seasons that have any coverage. */

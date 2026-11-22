@@ -92,7 +92,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
         <StatTile label="関連枠" value={slot.related.length} unit="枠" hint="作品が重なる他の枠" />
       </StatGrid>
 
-      <Section id="timeline" title="クール別の年表" description="左から右へ時系列。"
+      <Section id="timeline" title="クール別の年表" description="左から右へ時系列"
         details="各クールの位置は、所属作品の定時放送のうち最も早い開始時刻（同じ曜日内）です。灰色の上線は前クールから継続している作品。出典記載枠では、所属の記載がない作品は含まれないため、開始時刻の変化が記載状況による場合があります。">
         {slot.timeline.length === 0 ? (
           <EmptyState title="対象局での定時放送が確認できません">
@@ -169,7 +169,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
         </div>
       </Section>
 
-      <Section id="members" title="所属作品" description="新しい順。"
+      <Section id="members" title="所属作品" description="新しい順"
         details="根拠が出典記載の場合は、しょぼいカレンダーの作品備考の該当行を引用しています。">
         <div className={styles.tableWrap}>
           <table className={styles.memberTable}>
@@ -202,7 +202,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
       </Section>
 
       {slot.related.length > 0 ? (
-        <Section id="related" title="関連する枠" description="所属作品が重なる枠（例: 出典記載枠と同じ位置の推定枠）。">
+        <Section id="related" title="関連する枠" description="所属作品が重なる枠（例: 出典記載枠と同じ位置の推定枠）">
           <ul role="list" className={styles.related}>
             {slot.related.map((related) => (
               <li key={related.slug}>

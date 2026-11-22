@@ -2,16 +2,12 @@ import type { ReactNode } from "react";
 
 import { ScrollToEnd } from "@/components/slots/ScrollToEnd";
 import { Disclosure } from "@/components/ui/controls";
-import { ANIME_HOURS } from "@/domain/stats";
+import { ANIME_HOURS, rampStep } from "@/domain/stats";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 
 import styles from "./Charts.module.css";
 
-/** Quantize to the 7-step sequential ramp; 0 stays on the neutral zero color. */
-function rampStep(value: number, max: number): number {
-  if (value <= 0 || max <= 0) return 0;
-  return Math.min(7, Math.max(1, Math.ceil((value / max) * 7)));
-}
+export { WeekdayHourHeatmap } from "./Heatmap";
 
 function RampLegend({ max, unit }: { max: number; unit: string }) {
   return (
@@ -40,37 +36,6 @@ export function ChartFrame({ title, takeaway, scope, children, table }: { title:
       {scope ? <p className={styles.scope}>{scope}</p> : null}
       {table ? <Disclosure summary="表で見る">{table}</Disclosure> : null}
     </figure>
-  );
-}
-
-export function WeekdayHourHeatmap({ cells, max, unitLabel, hours = ANIME_HOURS }: { cells: number[][]; max: number; unitLabel: string; hours?: number[] }) {
-  return (
-    <div className={styles.heatmapWrap}>
-      <div className={styles.heatmap} style={{ gridTemplateColumns: `2rem repeat(${hours.length}, minmax(1.25rem, 1fr))` }} role="img" aria-label={`曜日×時間帯ヒートマップ（最大${max}${unitLabel}）。詳細は「表で見る」を参照。`}>
-        <span />
-        {hours.map((hour) => (
-          <span key={hour} className={`${styles.hourLabel} ${hour === 24 ? styles.hourMidnight : ""}`}>
-            {hour % 3 === 0 || hour === 5 ? hour : ""}
-          </span>
-        ))}
-        {cells.map((row, weekday) => (
-          <Row key={weekday} weekday={weekday} row={row} max={max} unitLabel={unitLabel} hours={hours} />
-        ))}
-      </div>
-      <RampLegend max={max} unit={unitLabel} />
-    </div>
-  );
-}
-
-function Row({ weekday, row, max, unitLabel, hours }: { weekday: number; row: number[]; max: number; unitLabel: string; hours: number[] }) {
-  return (
-    <>
-      <span className={`${styles.rowLabel} ${weekday === 5 ? "sat" : weekday === 6 ? "sun" : ""}`}>{WEEKDAY_LABELS[weekday]}</span>
-      {hours.map((hour) => {
-        const value = row[hour - 5] ?? 0;
-        return <span key={hour} className={styles.cell} data-step={rampStep(value, max)} title={`${WEEKDAY_LABELS[weekday]}曜 ${hour}時台: ${value}${unitLabel}`} />;
-      })}
-    </>
   );
 }
 

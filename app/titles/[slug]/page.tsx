@@ -85,7 +85,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
 
       <div className={styles.columns}>
         <div className={styles.mainColumn}>
-          <Section id="channels" title="放送局別の放送" description="各局の主な放送位置（新作放送の最頻の曜日・時刻）、初回の放送日、放送回数。">
+          <Section id="channels" title="放送局別の放送" description="各局の主な放送位置（新作放送の最頻の曜日・時刻）、初回の放送日、放送回数">
             {title.groups.length === 0 ? (
               <EmptyState title="対象局での放送記録はありません">本サイトは対象局の放送のみを取得しています。</EmptyState>
             ) : (
@@ -98,7 +98,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
           </Section>
 
           {title.slots.length > 0 ? (
-            <Section id="slots" title="関連する放送枠" description="出典の記載、または同じ位置に新作が続いたことによる判定。">
+            <Section id="slots" title="関連する放送枠" description="出典の記載、または同じ位置に新作が続いたことによる判定">
               <ul role="list" className={styles.slotList}>
                 {title.slots.map((slot) => (
                   <li key={slot.slug} className={styles.slotItem}>
@@ -121,7 +121,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
             </Section>
           ) : null}
 
-          <Section id="history" title="放送履歴" description="出典に登録された各回の放送。時刻はアニメ時刻（5時切替）。"
+          <Section id="history" title="放送履歴" description="出典に登録された各回の放送（時刻は5時切替のアニメ時刻）"
             details="変更回数は本サイトが取得後に観測した変更です。">
             <div className={styles.histories}>
               {title.groups.map((group, index) => (

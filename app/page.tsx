@@ -2,6 +2,7 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { Suspense, type CSSProperties } from "react";
 
+import { MonthCalendar } from "@/components/schedule/MonthCalendar";
 import { latestOrdinal, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
 import { StripTooltip } from "@/components/slots/StripTooltip";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
@@ -15,7 +16,7 @@ import { episodeText, formatCoverage, formatDateTime, formatStartTime } from "@/
 import { getSchedule } from "@/server/queries/schedule";
 import { getSlotStripTitles, listSlots, type StripTitles } from "@/server/queries/slots";
 import { getSeasonStats, statsFilter } from "@/server/queries/stats";
-import { getDatasetStatus } from "@/server/queries/status";
+import { coverageDates, getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./home.module.css";
 
@@ -69,9 +70,14 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-        <Suspense fallback={<OnAirSkeleton />}>
-          <OnAirPanel />
-        </Suspense>
+        <div className={styles.today}>
+          <Suspense fallback={<OnAirSkeleton />}>
+            <OnAirPanel />
+          </Suspense>
+          <Suspense fallback={null}>
+            <CalendarPanel />
+          </Suspense>
+        </div>
       </section>
 
       <Suspense fallback={<SkeletonBlock rows={4} label="放送枠を読み込み中" />}>
@@ -154,6 +160,21 @@ async function OnAirPanel() {
   );
 }
 
+/** Month calendar: every day links to its programme guide. */
+async function CalendarPanel() {
+  await io();
+  const today = currentAnimeDate();
+  const range = await coverageDates();
+  return (
+    <aside className={styles.calendar} aria-labelledby="calendar-title">
+      <h2 id="calendar-title" className={styles.onAirTitle}>
+        <span className="marker">日付から番組表へ</span>
+      </h2>
+      <MonthCalendar today={today} min={range.min} max={range.max} />
+    </aside>
+  );
+}
+
 async function FeaturedSlots() {
   await io(); // request-time: the build must not need a database
   let slots;
@@ -177,7 +198,7 @@ async function FeaturedSlots() {
           <h2 id="featured-title" className={styles.blockTitle}>
             <span className="marker">放送枠の年表</span>
           </h2>
-          <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品。</p>
+          <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品</p>
         </div>
         <ButtonLink href="/slots" variant="ghost" icon="arrowRight">
           すべての放送枠
@@ -211,7 +232,7 @@ async function StatsPreview() {
           <h2 id="stats-title" className={styles.blockTitle}>
             <span className="marker">{formatSeason(season)}の編成</span>
           </h2>
-          <p className={styles.blockLead}>関東地上波・新作のみ。</p>
+          <p className={styles.blockLead}>関東地上波・新作のみ</p>
         </div>
         <ButtonLink href="/stats" variant="ghost" icon="arrowRight">
           統計を詳しく見る
@@ -219,7 +240,7 @@ async function StatsPreview() {
       </div>
       <div className={styles.statsGrid}>
         <div className={styles.statsFigure}>
-          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" hours={hours} />
+          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" hours={hours} details={stats.heatmap.details} />
           <p className={styles.statsNote}>単位: 作品本数（17時〜28時台、アニメ時刻）。</p>
         </div>
         <dl className={styles.figures}>

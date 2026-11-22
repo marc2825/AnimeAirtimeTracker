@@ -57,8 +57,8 @@ export async function listSlots(): Promise<SlotListItem[]> {
   }));
 }
 
-/** Title names per slot and season ordinal, for the season strips ({ [slotSlug]: { [ordinal]: names } }). */
-export type StripTitles = Record<string, Record<number, string[]>>;
+/** Titles per slot and season ordinal, in airing order, for the season strips ({ [slotSlug]: { [ordinal]: titles } }). */
+export type StripTitles = Record<string, Record<number, { name: string; slug: string }[]>>;
 
 /**
  * Names of the titles behind each strip tick, from `fromOrdinal` on. Reads the per-season title ids stored
@@ -72,12 +72,14 @@ export async function getSlotStripTitles(fromOrdinal: number, slugs?: string[]):
     select: { seasonOrdinal: true, titleIds: true, slot: { select: { slug: true } } }
   });
   const ids = [...new Set(seasons.flatMap((season) => season.titleIds))];
-  const names = new Map(
-    ids.length === 0 ? [] : (await db().title.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })).map((title) => [title.id, title.name])
+  const titles = new Map(
+    ids.length === 0
+      ? []
+      : (await db().title.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, slug: true } })).map((title) => [title.id, { name: title.name, slug: title.slug }])
   );
   const result: StripTitles = {};
   for (const season of seasons) {
-    const list = season.titleIds.map((id) => names.get(id)).filter((name): name is string => name !== undefined);
+    const list = season.titleIds.map((id) => titles.get(id)).filter((title) => title !== undefined);
     if (list.length > 0) (result[season.slot.slug] ??= {})[season.seasonOrdinal] = list;
   }
   return result;

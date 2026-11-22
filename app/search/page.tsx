@@ -33,7 +33,7 @@ const SORT_LABELS: Record<TitleSort, string> = { position: "曜日・時刻順",
 export default function SearchPage({ searchParams }: PageProps<"/search">) {
   return (
     <div className="container">
-      <PageHeader title="検索" lead="作品・放送・放送枠の検索。初期表示は今期の作品。" />
+      <PageHeader title="検索" lead="作品・放送・放送枠の検索（初期表示は今期の作品）" />
       <Suspense fallback={<SkeletonBlock rows={8} label="検索結果を読み込み中" />}>
         <SearchContent searchParams={searchParams} />
       </Suspense>

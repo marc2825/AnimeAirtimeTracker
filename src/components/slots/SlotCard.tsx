@@ -4,7 +4,7 @@ import { SlotKindBadge } from "@/components/ui/primitives";
 import { seasonFromOrdinal, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { formatSeasonOrdinal } from "@/lib/format";
-import { stripTickLabel, stripTicks } from "@/lib/season-strip";
+import { stripTickLabel, stripTicks, type StripSeasonTitles } from "@/lib/season-strip";
 import type { SlotSummary } from "@/server/queries/slots";
 
 import styles from "./SlotCard.module.css";
@@ -12,10 +12,11 @@ import styles from "./SlotCard.module.css";
 /**
  * Mini strip: one tick per season across a fixed window, filled when the slot had a regular title. Filled
  * ticks name their season and titles in aria-label; StripTooltip shows the same on hover, focus or tap.
- * The strip is one tab stop (the latest filled season); arrow keys move between filled seasons. Empty
+ * A double-click (Enter, or a second tap) opens the season's first title. The strip is one tab stop (the
+ * latest filled season); arrow keys move between filled seasons. Empty
  * ticks carry no text so that /slots, with hundreds of strips, stays light.
  */
-export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: number[]; end: Season; count?: number; titles?: Record<number, string[]> }) {
+export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: number[]; end: Season; count?: number; titles?: StripSeasonTitles }) {
   const ticks = stripTicks(ordinals, end, count, titles);
   const filled = ticks.filter((tick) => tick.on);
   const focusable = filled.at(-1)?.ordinal;
@@ -29,6 +30,7 @@ export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: n
             tabIndex={tick.ordinal === focusable ? 0 : -1}
             aria-label={stripTickLabel(tick)}
             data-t={tick.lines.length > 1 ? tick.lines.join("\n") : undefined}
+            data-s={tick.slug ?? undefined}
             className={`${styles.tick} ${styles.tickOn} ${tick.season.quarter === 1 ? styles.tickYear : ""}`}
           />
         ) : (
@@ -39,7 +41,7 @@ export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: n
   );
 }
 
-export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; stripEnd: Season; stripTitles?: Record<number, string[]> }) {
+export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; stripEnd: Season; stripTitles?: StripSeasonTitles }) {
   return (
     <li className={styles.card}>
       <div className={styles.head}>

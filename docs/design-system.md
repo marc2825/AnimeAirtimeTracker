@@ -22,12 +22,12 @@ What this system deliberately avoids:
 
 | Group | Light | Dark | Notes |
 | --- | --- | --- | --- |
-| Background / surfaces | white `#ffffff`; greys `#f1f1f2`, `#f6f6f7` | neutral near-black `#141418`, `#1a1a20`, `#202027`, `#2a2a33` | greys are untinted |
-| Ink | `#17171c` / `#3f3f47` / `#66666f` | `#f4f4f1` / `#c6c6cc` / `#9a9aa3` | all ≥ 4.5:1 on their grounds (computed) |
+| Background / surfaces | white `#ffffff`; greys `#f1f1f2`, `#f6f6f7` | neutral near-black `#111114`, `#18181d`, `#1f1f26`, `#2a2a33` | greys are untinted; no brown or navy cast in dark mode |
+| Ink | `#17171c` / `#3f3f47` / `#66666f` | `#f2f2f5` / `#c4c4cc` / `#9797a1` | all ≥ 4.5:1 on their grounds (computed) |
 | Lines | hairline `#dedee2`; `--color-line-strong` is ink | hairline 14% white; strong is ink | hairlines separate rows, ink frames things |
 | Accent (link blue) | `#1f4fe0` | `#8eb0ff` | links to titles/slots/channels (`main a[href^="/titles/"]` etc. in `base.css`), focus ring, data marks |
-| Marker | `#ffd95a`, soft `#fff4cf` | deep mustard `#7d6200` under light text; `--color-marker-bright` `#ffd95a` on black grounds | heading stroke, hover wash, active nav, button offset |
-| Masthead | `#17171c` with white text | `#0b0b0e` | black in both themes; `themeColor` in `app/layout.tsx` matches |
+| Marker | `#ffd95a` as a wide band (`--marker-from: 62%`), soft wash `#fff4cf` | the same `#ffd95a` as a thin underline (`--marker-from: 88%`); washes are neutral white at 8% | heading stroke, hover wash, active nav. A wide yellow or mustard band under light text looked muddy, so dark mode keeps yellow to thin strokes and the button |
+| Masthead | `#17171c` with white text | `#060608` with a hairline below | black in both themes; `themeColor` in `app/layout.tsx` matches |
 | Broadcast status | 新 `#d9264a` (solid), 終 `#5b45c4` (outline), 再 `#66666f` (dashed), 注 `#7a5200` | lighter steps | shape + text always accompany color |
 | Slot kinds | 公式 solid · 出典記載 outline · 推定 dashed | | |
 | Calendar | 土 `#1f5fb0`, 日 `#d03027` | `#7fb2ff`, `#ff8f84` | Japanese calendar convention; weekdays stay ink |
@@ -35,7 +35,7 @@ What this system deliberately avoids:
 | Type | Noto Sans JP + Geist for Latin throughout. Headings (h1, h2, site name, slot names) at weight 900; body 400/500/700. Times/numbers: Geist Mono; key figures: Geist 800, tabular | | scale 11–38 px; body 16 px, line-height 1.7; `word-break: auto-phrase` |
 | Space | 4 px base (`--space-1` … `--space-16`), gutter 16/24 px | | rows are tight: one line per item where it fits |
 | Radius | 0 everywhere (pill only for round dots) | | |
-| Rules | hairline `--border`, frame `--border-strong` (2 px ink), section rule `--rule` (4 px ink) | | no soft shadows; `--shadow-offset` is the hard yellow block behind the primary button |
+| Rules | hairline `--border`, frame `--border-strong` (2 px ink), section rule `--rule` (4 px ink) | | no soft shadows; `--shadow-offset` is the hard block behind the primary button and the heatmap panel (yellow behind a black button; in dark mode white behind a yellow button) |
 | Motion | 120 / 200 / 320 ms, `--ease-out`; key figures count up in 800 ms (`CountUp`); the primary button shifts 2 px on hover | | all durations 0 and no count-up under `prefers-reduced-motion`; the server always renders the final value |
 | Breakpoints | sm 640 · md 768 · lg 1024 · xl 1280 | | mobile nav switches at md |
 | States | hover = marker wash, selected = ink underline or ink fill, focus ring 2 px accent + 2 px offset, disabled 45% | | |
@@ -51,12 +51,13 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 | SegmentedLinks, SelectField, FilterChips, Pagination, Disclosure, ButtonLink | `src/components/ui/controls.tsx` | link-based controls keep state in the URL; SegmentedLinks are underline tabs (current = ink underline + bold, hover = marker underline; never colour alone); the primary button is a black block with the yellow offset |
 | FilterForm | `src/components/ui/FilterForm.tsx` | GET form; works without JS; with JS: client navigation, empty params dropped, auto-submit, pending text |
 | ScheduleGrid / NowLine / ScheduleDayList / WeekNav / DayTabs / Legend | `src/components/schedule/*` | layout math in `layout.ts` (tested) |
-| SlotTimeline / SlotCard / SeasonStrip / StripTooltip | `src/components/slots/*` | timeline scrolls to the latest season; strip ticks name their season and titles on hover, focus or tap (one delegated tooltip per page; the strip is one tab stop, arrows move between filled seasons; empty ticks carry no text to keep `/slots` light) |
-| ChartFrame, WeekdayHourHeatmap, ConcurrencyStrip, BarList, ColumnChart, HeatmapTable | `src/components/stats/Charts.tsx` | every chart: computed takeaway, scope line, table view |
+| SlotTimeline / SlotCard / SeasonStrip / StripTooltip | `src/components/slots/*` | timeline scrolls to the latest season; strip ticks name their season and titles on hover, focus or tap, and open the season's first title on double-click, Enter or a second tap (one delegated tooltip per page; the strip is one tab stop, arrows move between filled seasons; empty ticks carry no text to keep `/slots` light) |
+| MonthCalendar | `src/components/schedule/MonthCalendar.tsx` | Monday-first month of day links to the guide (home, and under the week switcher); today = ink block, shown week = wash; days outside the fetched range are not links |
+| ChartFrame, WeekdayHourHeatmap, ConcurrencyStrip, BarList, ColumnChart, HeatmapTable | `src/components/stats/Charts.tsx`, `Heatmap.tsx` | every chart: computed takeaway, scope line, table view. Heatmap cells are buttons: hover/focus shows the titles, channels and times behind a cell, a click pins the panel (titles become links). With `controls` the hour range can be cropped and cells enlarged; the colour scale stays fixed so views remain comparable |
 
 ## Page patterns
 
-- **Header → controls → content → footnote.** H1 (heavy gothic with the marker) + a one-line lead saying what the page is; details collapsed under 「詳しく」; no eyebrow label, no tagline. The home page opens with a plain description, the entry points in one ruled bar, and today's first-run airings in two columns.
+- **Header → controls → content → footnote.** H1 (heavy gothic with the marker) + a one-line lead saying what the page is (a phrase, no trailing 「。」); details collapsed under 「詳しく」; no eyebrow label, no tagline. The home page opens with a plain description, the entry points in one ruled bar, and today's first-run airings in two columns.
 - **Data sections** stream under `<Suspense>` with skeletons sized like the content; errors render a `Notice`, empty results an `EmptyState` with a next step.
 - **Schedule grid**: channel columns × time; empty hours collapse to a hatched "放送なし" band; 24:00 is highlighted as "日付変更"; overlapping items share lanes; phones get the day list.
 - **Slot chronicle**: season columns on a rail; filled node = titles present, hollow = none, coral = time moved; title cards show continuation from the previous season.

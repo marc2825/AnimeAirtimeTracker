@@ -41,13 +41,22 @@
   /* Marker: the highlighter stroke under headings and behind hovered rows. Warm, not fluorescent. */
   --color-marker: #ffd95a;
   --color-marker-soft: #fff4cf;
-  /* The same yellow for dark grounds (masthead, dark theme), where the stroke sits under nothing. */
+  /* Where the stroke starts, from the top of the line: a wide band on white. */
+  --marker-from: 62%;
+  --color-on-marker: #17171c;
+  /* The same yellow on the black masthead, in both themes. */
   --color-marker-bright: #ffd95a;
 
   /* Masthead: the site header is a black band in both themes */
   --color-masthead: #17171c;
   --color-masthead-ink: #ffffff;
   --color-masthead-ink-2: #b9b9c2;
+  --color-masthead-line: transparent;
+
+  /* Primary button: a black block with a yellow offset. */
+  --color-button: #17171c;
+  --color-on-button: #ffffff;
+  --color-offset: #ffd95a;
 
   /* Broadcast status (always paired with a text label) */
   --color-new: #d9264a;
@@ -151,7 +160,7 @@
   --shadow-1: none;
   --shadow-2: none;
   --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.3);
-  --shadow-offset: 4px 4px 0 var(--color-marker);
+  --shadow-offset: 4px 4px 0 var(--color-offset);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -177,22 +186,22 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces: neutral near-black */
-  --color-bg: #141418;
-  --color-surface-1: #1a1a20;
-  --color-surface-2: #202027;
+  /* Surfaces: neutral black, no brown or navy cast. Yellow appears only as thin bright strokes. */
+  --color-bg: #111114;
+  --color-surface-1: #18181d;
+  --color-surface-2: #1f1f26;
   --color-surface-3: #2a2a33;
-  --color-surface-sunken: #0e0e12;
+  --color-surface-sunken: #0b0b0d;
   --color-overlay: rgba(0, 0, 0, 0.6);
 
   --color-line: rgba(255, 255, 255, 0.14);
-  --color-line-strong: #f4f4f1;
+  --color-line-strong: #f2f2f5;
   --color-grid: rgba(255, 255, 255, 0.07);
 
-  --color-ink: #f4f4f1;
-  --color-ink-2: #c6c6cc;
-  --color-ink-3: #9a9aa3;
-  --color-ink-inverse: #141418;
+  --color-ink: #f2f2f5;
+  --color-ink-2: #c4c4cc;
+  --color-ink-3: #9797a1;
+  --color-ink-inverse: #111114;
 
   --color-accent: #8eb0ff;
   --color-accent-strong: #b5cbff;
@@ -200,13 +209,21 @@
   --color-accent-line: rgba(142, 176, 255, 0.5);
   --color-on-accent: #0c1430;
 
-  /* Marker under light text: a deep mustard, so the stroke never fights the letters. */
-  --color-marker: #7d6200;
-  --color-marker-soft: rgba(255, 217, 90, 0.14);
+  /* The marker is a thin bright underline here (a wide band under light text turns muddy), and the
+     washes are neutral. */
+  --color-marker: #ffd95a;
+  --color-marker-soft: rgba(255, 255, 255, 0.08);
+  --marker-from: 88%;
 
-  --color-masthead: #0b0b0e;
+  --color-masthead: #060608;
   --color-masthead-ink: #ffffff;
   --color-masthead-ink-2: #a9a9b3;
+  --color-masthead-line: rgba(255, 255, 255, 0.14);
+
+  /* The primary button turns yellow with a white offset. */
+  --color-button: #ffd95a;
+  --color-on-button: #111114;
+  --color-offset: #f2f2f5;
 
   --color-new: #ff7d8f;
   --color-new-soft: rgba(255, 125, 143, 0.14);
@@ -215,11 +232,11 @@
   --color-rerun: #a2a2ab;
   --color-rerun-soft: rgba(162, 162, 171, 0.12);
   --color-note: #ffd95a;
-  --color-note-soft: rgba(255, 217, 90, 0.12);
+  --color-note-soft: rgba(255, 255, 255, 0.07);
 
-  --color-kind-official: #f4f4f1;
+  --color-kind-official: #f2f2f5;
   --color-kind-source: #8eb0ff;
-  --color-kind-inferred: #9a9aa3;
+  --color-kind-inferred: #9797a1;
 
   --color-sat: #7fb2ff;
   --color-sun: #ff8f84;
@@ -230,7 +247,7 @@
   --color-warning: #ffd95a;
 
   /* Sequential ramp, dark-mode steps: near-surface → bright */
-  --viz-zero: #202027;
+  --viz-zero: #1f1f26;
   --viz-1: #133059;
   --viz-2: #184f95;
   --viz-3: #1c5cab;
@@ -241,7 +258,7 @@
   --viz-bar: #3987e5;
   --viz-bar-muted: #34343f;
 
-  --shadow-offset: 4px 4px 0 var(--color-marker-bright);
+  --state-pressed: rgba(255, 255, 255, 0.16);
 }
 
 @media (min-width: 48rem) {

@@ -46,6 +46,20 @@
   overflow-x: auto;
 }
 
+/* The interactive heatmap scrolls only its grid, so the controls and legend stay put when zoomed. */
+.heatmapBox {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.heatmapScroll {
+  overflow-x: auto;
+  /* Room for the outline of a hovered cell at the edges. */
+  padding: 3px;
+  margin: -3px;
+}
+
 .heatmap,
 .strip {
   display: grid;
@@ -83,6 +97,166 @@
   height: 1.6rem;
   border-radius: 0;
   background: var(--viz-zero);
+}
+
+/* Heatmap cells are buttons: hover or focus names what is behind them, a click pins the panel. */
+.cellButton {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  line-height: 1;
+  color: var(--viz-ink-on-light);
+  cursor: pointer;
+}
+
+.cellButton[data-step="4"],
+.cellButton[data-step="5"],
+.cellButton[data-step="6"],
+.cellButton[data-step="7"] {
+  color: var(--viz-ink-on-dark);
+}
+
+/* The dark ramp runs dim → bright, so the ink flips the other way. */
+:global([data-theme="dark"]) .cellButton {
+  color: var(--viz-ink-on-dark);
+}
+
+:global([data-theme="dark"]) .cellButton[data-step="5"],
+:global([data-theme="dark"]) .cellButton[data-step="6"],
+:global([data-theme="dark"]) .cellButton[data-step="7"] {
+  color: var(--viz-ink-on-light);
+}
+
+.cellButton:hover,
+.cellButton[data-active] {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 1px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Crop and zoom controls above the heatmap. */
+.tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+}
+
+.toolGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1-5);
+  font-size: var(--text-sm);
+}
+
+.toolButton {
+  min-width: 2.25rem;
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border: var(--border-strong);
+  background: var(--color-surface-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.toolButton:hover:not(:disabled) {
+  background: var(--state-hover);
+}
+
+.toolButton[aria-pressed="true"] {
+  background: var(--color-ink);
+  color: var(--color-ink-inverse);
+}
+
+.toolButton:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: default;
+}
+
+.toolSelect select {
+  height: 2rem;
+  padding: 0 var(--space-2);
+  border: var(--border-strong);
+  border-radius: 0;
+  background: var(--color-surface-2);
+  font-size: var(--text-sm);
+}
+
+.toolValue {
+  min-width: 3.5rem;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-ink-2);
+}
+
+/* The panel naming a cell's titles and channels. Fixed to the viewport; clickable only when pinned. */
+.cellPanel {
+  position: fixed;
+  z-index: var(--z-popover);
+  display: grid;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 1rem));
+  max-height: min(28rem, calc(100vh - 1rem));
+  overflow-y: auto;
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: var(--border-strong);
+  box-shadow: var(--shadow-offset);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  pointer-events: none;
+}
+
+.cellPanelPinned {
+  pointer-events: auto;
+}
+
+.cellPanelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.cellPanelHead span {
+  font-family: var(--font-mono);
+}
+
+.cellPanelList {
+  display: grid;
+  gap: var(--space-1-5);
+}
+
+.cellPanelList li {
+  display: grid;
+  gap: 1px;
+}
+
+.cellPanelTitle {
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.cellPanelAirings {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--color-ink-2);
+}
+
+.cellPanelMore {
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
 }
 
 .stripCell {

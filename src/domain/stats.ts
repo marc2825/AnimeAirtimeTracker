@@ -51,6 +51,47 @@ export function weekdayHourMatrix(airings: StatAiring[], unit: CountUnit): Weekd
   return { cells, max: Math.max(0, ...cells.flat()), total };
 }
 
+/** One title on one channel inside a weekday×hour cell. */
+export interface CellEntry {
+  titleId: number;
+  channelId: number;
+  /** Most frequent start minute of these airings (ties: the earlier one). */
+  startMinute: number;
+  airings: number;
+}
+
+/**
+ * What stands behind each heatmap cell: the titles and channels whose airings started in that weekday and
+ * hour. Keys are `weekday * 24 + hourIndex` (hourIndex 0 = 05:00); cells without airings have no key.
+ * Entries are ordered by start time, then channel, then title.
+ */
+export function weekdayHourEntries(airings: StatAiring[]): Record<number, CellEntry[]> {
+  const groups = new Map<string, { cell: number; titleId: number; channelId: number; minutes: Map<number, number> }>();
+  for (const airing of airings) {
+    const hourIndex = Math.floor(airing.animeStartMinute / 60) - 5;
+    if (hourIndex < 0 || hourIndex > 23 || airing.animeWeekday < 0 || airing.animeWeekday > 6) continue;
+    const cell = airing.animeWeekday * 24 + hourIndex;
+    const key = `${cell}|${airing.titleId}|${airing.channelId}`;
+    const group = groups.get(key) ?? { cell, titleId: airing.titleId, channelId: airing.channelId, minutes: new Map<number, number>() };
+    group.minutes.set(airing.animeStartMinute, (group.minutes.get(airing.animeStartMinute) ?? 0) + 1);
+    groups.set(key, group);
+  }
+  const result: Record<number, CellEntry[]> = {};
+  for (const group of groups.values()) {
+    const [startMinute] = [...group.minutes.entries()].sort(([a, an], [b, bn]) => bn - an || a - b)[0]!;
+    const airingCount = [...group.minutes.values()].reduce((sum, n) => sum + n, 0);
+    (result[group.cell] ??= []).push({ titleId: group.titleId, channelId: group.channelId, startMinute, airings: airingCount });
+  }
+  for (const list of Object.values(result)) list.sort((a, b) => a.startMinute - b.startMinute || a.channelId - b.channelId || a.titleId - b.titleId);
+  return result;
+}
+
+/** Quantize a value to the 7-step sequential ramp; 0 stays on the neutral zero color. */
+export function rampStep(value: number, max: number): number {
+  if (value <= 0 || max <= 0) return 0;
+  return Math.min(7, Math.max(1, Math.ceil((value / max) * 7)));
+}
+
 export interface SeasonTrendRow {
   seasonOrdinal: number;
   titles: number;

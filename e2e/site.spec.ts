@@ -306,3 +306,34 @@ test.describe("with motion allowed", () => {
     await expect(tileValue(page, "放送件数")).toHaveText(/^3\s*件$/);
   });
 });
+
+test("the month calendar opens the chosen day's guide and keeps the current conditions", async ({ page }) => {
+  // The week before the fixture day; the fixtures cover 2026-11-16 only, so that is the one day with a link.
+  await page.goto("/schedule?week=2026-11-09&region=all");
+  await page.getByText("カレンダーから選ぶ").click();
+  const calendar = page.getByRole("table", { name: /2026年11月/ });
+  await expect(calendar.getByRole("link")).toHaveCount(1);
+  await calendar.getByRole("link", { name: /11月16日（月）/ }).click();
+  await expect(page).toHaveURL(/week=2026-11-16/);
+  await expect(page).toHaveURL(/day=mon/);
+  await expect(page).toHaveURL(/region=all/);
+});
+
+test("heatmap cells name their titles, and the range can be cropped and enlarged", async ({ page }) => {
+  await page.goto("/stats?season=2026-autumn&region=all");
+  const heatmap = page.getByRole("group", { name: /曜日×時間帯ヒートマップ/ });
+  await expect(heatmap.locator('[data-cell^="0-"]')).toHaveCount(24);
+  // Crop to late night: 22時台–28時台. The colour scale and the counts do not change.
+  await page.getByRole("button", { name: "深夜", exact: true }).click();
+  await expect(heatmap.locator('[data-cell^="0-"]')).toHaveCount(7);
+  await page.getByRole("button", { name: "拡大", exact: true }).click();
+  const filled = heatmap.locator('[data-cell]:not([data-step="0"])').first();
+  await expect(filled).toHaveText(/^\d+$/);
+  // A click pins the panel; its titles are links, each with its channel and time.
+  await filled.click();
+  const panel = page.getByRole("tooltip");
+  await expect(panel.getByRole("link").first()).toBeVisible();
+  await expect(panel).toContainText(/\d{2}:\d{2}/);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+});
