@@ -3,6 +3,7 @@ import Link from "next/link";
 import { io } from "next/cache";
 import { Suspense } from "react";
 
+import { ButtonLink } from "@/components/ui/controls";
 import { Notice, PageHeader, SkeletonBlock } from "@/components/ui/primitives";
 import { TRACKED_CHANNELS, networkLabelOf, type TrackedChannel } from "@/domain/coverage";
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonOrdinal } from "@/domain/season";
@@ -28,7 +29,15 @@ const GROUPS: { label: string; match: (c: TrackedChannel) => boolean }[] = [
 export default function ChannelsPage() {
   return (
     <div className="container">
-      <PageHeader title="放送局" lead="局ごとの作品本数の推移・時間帯・放送枠" />
+      <PageHeader
+        title="放送局"
+        lead="局ごとの作品本数の推移・時間帯・放送枠"
+        actions={
+          <ButtonLink href="/compare/channels" variant="secondary">
+            地域・放送局を比べる
+          </ButtonLink>
+        }
+      />
       <Suspense fallback={<SkeletonBlock rows={6} label="放送局を読み込み中" />}>
         <ChannelsContent />
       </Suspense>

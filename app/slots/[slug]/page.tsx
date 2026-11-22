@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { SlotTimeline } from "@/components/slots/SlotTimeline";
+import { ButtonLink } from "@/components/ui/controls";
 import { Badge, EmptyState, ExternalLink, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, SLOT_KIND_LABELS, StatGrid, StatTile } from "@/components/ui/primitives";
 import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, MIN_REGULAR_AIRINGS } from "@/domain/slots";
 import { WEEKDAY_LABELS, formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
@@ -76,6 +77,11 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
       </nav>
       <PageHeader
         title={slot.name}
+        actions={
+          <ButtonLink href={`/compare/slots?s=${encodeURIComponent(slot.slug)}`} variant="secondary">
+            ほかの枠と比べる
+          </ButtonLink>
+        }
         meta={
           <>
             <SlotKindBadge kind={slot.kind} />

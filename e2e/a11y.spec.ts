@@ -19,6 +19,7 @@ const PAGES = [
   "/status",
   "/analysis",
   "/analysis/late-night",
+  "/compare/channels?a=mx&b=bs11&season=2026-autumn",
   "/about",
   "/privacy",
   "/terms"

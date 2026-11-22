@@ -400,3 +400,20 @@ test("a figure exports its data as CSV with source and conditions, and shares a 
     expect(url).toMatch(/\/stats\?season=2026-autumn&region=all&rerun=exclude#heatmap$/);
   }
 });
+
+test("comparisons: two sides side by side, and slots chosen in the URL", async ({ page }) => {
+  await page.goto("/compare/channels?a=mx&b=bs11&season=2026-autumn");
+  const summary = page.getByRole("region", { name: "比較の要約" });
+  await expect(summary.getByRole("columnheader", { name: "TOKYO MX" })).toBeVisible();
+  await expect(summary.getByRole("columnheader", { name: "BS11" })).toBeVisible();
+  await expect(summary.getByRole("row", { name: /作品本数/ })).toContainText("作品");
+  await expect(page.getByRole("heading", { name: "同じ作品・同じ話数の放送時差" })).toBeVisible();
+  // Kanto and Kansai both receive NHK: those channels are left out of the overlap and timing, and the page says so.
+  await page.goto("/compare/channels?a=kanto&b=kansai&season=2026-autumn");
+  await page.getByText("詳しく").first().click();
+  await expect(page.getByText(/両方に含まれる局（NHK総合・Eテレ）/).first()).toBeVisible();
+  // Slots: fewer than two asks for more; an unknown slug is dropped with a notice.
+  await page.goto("/compare/slots?s=no-such-slot");
+  await expect(page.getByText("見つからない枠を除きました")).toBeVisible();
+  await expect(page.getByText("枠を2つ以上選んでください")).toBeVisible();
+});

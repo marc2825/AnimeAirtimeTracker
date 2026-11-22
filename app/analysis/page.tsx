@@ -34,6 +34,22 @@ export default function AnalysisIndexPage() {
           ))}
         </ul>
       </Section>
+      <Section id="compare" title="比べる" description="条件を選んで、自分で比べられるページ">
+        <ul role="list" className={styles.list}>
+          <li className={styles.item}>
+            <Link href="/compare/slots" className={styles.itemTitle}>
+              放送枠を比べる
+            </Link>
+            <p className={styles.itemSummary}>2〜4つの枠の、クールごとの放送位置・作品数・開始時刻の移動</p>
+          </li>
+          <li className={styles.item}>
+            <Link href="/compare/channels" className={styles.itemTitle}>
+              地域・放送局を比べる
+            </Link>
+            <p className={styles.itemSummary}>関東と関西、TOKYO MX と BS11 など。作品本数の推移、曜日×時間帯、共通の作品と同じ話数の放送時差</p>
+          </li>
+        </ul>
+      </Section>
     </div>
   );
 }
