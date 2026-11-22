@@ -125,7 +125,7 @@ async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; 
                   </span>
                 }
               >
-                <div className={styles.tableWrap}>
+                <div className={styles.tableWrap} role="region" aria-label={`${channelName}の推定枠`} tabIndex={0}>
                   <table className={styles.positionTable}>
                     <thead>
                       <tr>

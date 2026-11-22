@@ -81,10 +81,10 @@
   color: var(--color-ink-inverse);
 }
 
+/* Days without data: regular weight and muted ink (still ≥ 4.5:1), not a link. */
 .outside {
   font-weight: var(--weight-regular);
   color: var(--color-ink-3);
-  opacity: 0.6;
 }
 
 .selectedWeek td {

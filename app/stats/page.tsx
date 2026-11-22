@@ -312,7 +312,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
           }
           scope={`単位: 作品本数（そのクールに1回以上放送された作品）。新規作品は取得期間内で初めて放送されたクールに数えます。対象期間は取得済みのクールのみで、${formatSeasonOrdinal(trend[0]?.seasonOrdinal ?? seasonOrdinal(season))}より前は未取得です。${sparseNote}${rerunLabel(rerun)}。`}
           table={
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="クール別の推移の表" tabIndex={0}>
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -364,7 +364,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
           }
           scope={`単位: 作品本数。各作品はクールごとに、最も多かった開始時刻（同数なら早い時刻）の時間帯に1回だけ数えます。朝と昼は本数が少ないため「5–17時」にまとめています。${sparseNote}${band ? `時間帯の条件（${TIME_BANDS[band].label}）で放送を絞り込んでいるため、帯の外の時間帯は0になります。` : ""}`}
           table={
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="時間帯別の推移の表" tabIndex={0}>
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -503,7 +503,7 @@ function ComparisonTable({ seasonLabel, compareLabel, rows, channelRows }: { sea
     ));
   return (
     <div className={styles.compare}>
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="全体と時間帯別の表" tabIndex={0}>
         <table className={styles.table}>
           <caption className={styles.caption}>全体と時間帯別（作品本数）</caption>
           <thead>
@@ -517,7 +517,7 @@ function ComparisonTable({ seasonLabel, compareLabel, rows, channelRows }: { sea
           <tbody>{body(rows)}</tbody>
         </table>
       </div>
-      <div className={styles.tableWrap}>
+      <div className={styles.tableWrap} role="region" aria-label="放送局別の表" tabIndex={0}>
         <table className={styles.table}>
           <caption className={styles.caption}>放送局別（作品本数）</caption>
           <thead>

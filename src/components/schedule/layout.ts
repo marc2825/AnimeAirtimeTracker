@@ -4,7 +4,8 @@
  */
 export const PX_PER_MINUTE = 2.2;
 export const GAP_SEGMENT_PX = 30;
-export const MIN_CELL_PX = 26;
+/** Cells are links: at least 24 px tall once the 2 px gap is taken off (WCAG 2.2 target size). */
+export const MIN_CELL_PX = 28;
 
 export interface TimeSegment {
   kind: "active" | "gap";
@@ -71,7 +72,11 @@ export function totalHeight(segments: TimeSegment[]): number {
   return last ? last.top + last.height : 0;
 }
 
-/** Place items; overlapping items in the same column share the width in lanes. */
+/**
+ * Place items; overlapping items in the same column share the width in lanes. Overlap is judged on the drawn
+ * extent, not on minutes: a short programme is drawn at least MIN_CELL_PX tall, so the next one may start
+ * inside its cell even though their times do not overlap. Those get separate lanes instead of covering it.
+ */
 export function placeItems(items: LayoutInput[], segments: TimeSegment[]): Map<number, PlacedItem> {
   const result = new Map<number, PlacedItem>();
   const byColumn = new Map<string, LayoutInput[]>();
@@ -80,38 +85,40 @@ export function placeItems(items: LayoutInput[], segments: TimeSegment[]): Map<n
     list.push(item);
     byColumn.set(item.column, list);
   }
+  const round = (value: number) => Math.round(value * 10) / 10;
   for (const list of byColumn.values()) {
-    const sorted = [...list].sort((a, b) => a.start - b.start || b.duration - a.duration || a.id - b.id);
-    // Cluster transitively overlapping items, then assign lanes within each cluster.
-    let cluster: LayoutInput[] = [];
-    let clusterEnd = -Infinity;
-    const flush = () => {
-      const laneEnds: number[] = [];
-      const lanesOf = new Map<number, number>();
-      for (const item of cluster) {
-        const end = item.start + Math.max(1, item.duration);
-        let lane = laneEnds.findIndex((laneEnd) => laneEnd <= item.start);
-        if (lane === -1) {
-          lane = laneEnds.length;
-          laneEnds.push(end);
-        } else {
-          laneEnds[lane] = end;
-        }
-        lanesOf.set(item.id, lane);
-      }
-      for (const item of cluster) {
+    const sorted = [...list]
+      .sort((a, b) => a.start - b.start || b.duration - a.duration || a.id - b.id)
+      .map((item) => {
         const top = minuteToY(segments, item.start) ?? 0;
         const bottom = minuteToY(segments, item.start + Math.max(1, item.duration)) ?? top + MIN_CELL_PX;
-        const round = (value: number) => Math.round(value * 10) / 10;
-        result.set(item.id, { id: item.id, top: round(top), height: round(Math.max(MIN_CELL_PX, bottom - top)), lane: lanesOf.get(item.id)!, lanes: laneEnds.length });
+        return { item, top, bottom: Math.max(top + MIN_CELL_PX, bottom) };
+      });
+    // Cluster transitively overlapping cells, then assign lanes within each cluster.
+    let cluster: typeof sorted = [];
+    let clusterBottom = -Infinity;
+    const flush = () => {
+      const laneBottoms: number[] = [];
+      const lanesOf = new Map<number, number>();
+      for (const cell of cluster) {
+        let lane = laneBottoms.findIndex((laneBottom) => laneBottom <= cell.top);
+        if (lane === -1) {
+          lane = laneBottoms.length;
+          laneBottoms.push(cell.bottom);
+        } else {
+          laneBottoms[lane] = cell.bottom;
+        }
+        lanesOf.set(cell.item.id, lane);
+      }
+      for (const cell of cluster) {
+        result.set(cell.item.id, { id: cell.item.id, top: round(cell.top), height: round(cell.bottom - cell.top), lane: lanesOf.get(cell.item.id)!, lanes: laneBottoms.length });
       }
       cluster = [];
     };
-    for (const item of sorted) {
-      const end = item.start + Math.max(1, item.duration);
-      if (cluster.length > 0 && item.start >= clusterEnd) flush();
-      clusterEnd = cluster.length === 0 ? end : Math.max(clusterEnd, end);
-      cluster.push(item);
+    for (const cell of sorted) {
+      if (cluster.length > 0 && cell.top >= clusterBottom) flush();
+      clusterBottom = cluster.length === 0 ? cell.bottom : Math.max(clusterBottom, cell.bottom);
+      cluster.push(cell);
     }
     if (cluster.length > 0) flush();
   }

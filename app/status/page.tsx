@@ -62,7 +62,7 @@ async function StatusContent() {
 
       <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件"
         details="リクエスト数は出典への実際のアクセス回数です。失敗時の備考は原因の概要のみを表示します。">
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="取り込みの実行履歴" tabIndex={0}>
           <table className={styles.table}>
             <thead>
               <tr>

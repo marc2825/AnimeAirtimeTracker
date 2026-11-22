@@ -74,7 +74,7 @@ export default function AboutPage() {
           <section id="coverage">
             <h2>対象範囲</h2>
             <p>取得対象は次の{TRACKED_CHANNELS.length}局です。これ以外の局（他地域の地上波、その他のBS・CS、配信）は含みません。取得済みの期間は<Link href="/status">データ更新状況</Link>で確認できます。</p>
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="取得対象の放送局" tabIndex={0}>
               <table>
                 <thead>
                   <tr>

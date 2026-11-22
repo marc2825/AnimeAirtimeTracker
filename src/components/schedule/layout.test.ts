@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildSegments, GAP_SEGMENT_PX, minuteToY, placeItems, PX_PER_MINUTE, totalHeight } from "./layout";
+import { buildSegments, GAP_SEGMENT_PX, MIN_CELL_PX, minuteToY, placeItems, PX_PER_MINUTE, totalHeight } from "./layout";
 
 describe("schedule grid layout", () => {
   const items = [
@@ -36,6 +36,22 @@ describe("schedule grid layout", () => {
     expect(placed.get(2)).toMatchObject({ lane: 1, lanes: 2 });
     // Starts exactly when #2 ends: half-open intervals do not overlap, so it gets the full width.
     expect(placed.get(3)).toMatchObject({ lane: 0, lanes: 1 });
+  });
+
+  it("gives a short programme its own lane when the next one would cover its minimum-height cell", () => {
+    // 6 minutes is drawn 13.2 px but a cell is at least MIN_CELL_PX tall; the next programme starts inside it.
+    const short = [
+      { id: 1, column: "mx", start: 1500, duration: 6 },
+      { id: 2, column: "mx", start: 1506, duration: 30 },
+      { id: 3, column: "mx", start: 1560, duration: 30 }
+    ];
+    const placed = placeItems(short, buildSegments(short));
+    expect(placed.get(1)).toMatchObject({ lane: 0, lanes: 2, height: MIN_CELL_PX });
+    expect(placed.get(2)).toMatchObject({ lane: 1, lanes: 2 });
+    // Well clear of both: full width again.
+    expect(placed.get(3)).toMatchObject({ lane: 0, lanes: 1 });
+    // No cell in the same lane starts before the previous one is drawn to its end.
+    expect(placed.get(1)!.top + placed.get(1)!.height).toBeGreaterThan(placed.get(2)!.top);
   });
 
   it("returns no segments for an empty day", () => {

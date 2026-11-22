@@ -41,7 +41,7 @@ export function ChartFrame({ title, takeaway, scope, children, table }: { title:
 
 export function HeatmapTable({ cells, unitLabel, hours = ANIME_HOURS }: { cells: number[][]; unitLabel: string; hours?: number[] }) {
   return (
-    <div className={styles.tableWrap}>
+    <div className={styles.tableWrap} role="region" aria-label={`曜日×時間帯の表（${unitLabel}）`} tabIndex={0}>
       <table className={styles.dataTable}>
         <caption className="visually-hidden">曜日×時間帯（{unitLabel}）</caption>
         <thead>
@@ -77,7 +77,7 @@ export function ConcurrencyStrip({ counts, fromMinute, bucketMinutes }: { counts
   const max = Math.max(1, ...counts.flat());
   const buckets = counts[0]?.length ?? 0;
   return (
-    <div className={styles.heatmapWrap}>
+    <div className={styles.heatmapWrap} role="region" aria-label="同時放送数の密度（横にスクロールできます）" tabIndex={0}>
       <div className={styles.strip} style={{ gridTemplateColumns: `2rem repeat(${buckets}, minmax(0.55rem, 1fr))` }} role="img" aria-label={`同時放送数の密度（最大${max}本）。詳細は「表で見る」を参照。`}>
         <span />
         {Array.from({ length: buckets }, (_, index) => {

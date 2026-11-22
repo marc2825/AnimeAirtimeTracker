@@ -141,7 +141,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
                     </span>
                   }
                 >
-                  <div className={styles.tableWrap}>
+                  <div className={styles.tableWrap} role="region" aria-label={`${group.channel.name}の放送履歴`} tabIndex={0}>
                     <table className={styles.table}>
                       <thead>
                         <tr>

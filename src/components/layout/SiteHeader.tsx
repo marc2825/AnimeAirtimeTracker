@@ -14,7 +14,7 @@ export function SiteHeader() {
     <>
       <header className={styles.header}>
         <div className={`container ${styles.inner}`}>
-          <Link href="/" className={styles.brand} aria-label={`${SITE_NAME} トップへ`}>
+          <Link href="/" className={styles.brand}>
             <LogoMark />
             <span className={styles.brandText}>
               <span className={styles.brandKicker}>{SITE_NAME_EN}</span>
