@@ -71,12 +71,12 @@ Actions logs of a public repository are public: the workflows mask the database 
 ## Backup and restore
 
 - Neon Free keeps a **6-hour** restore window (instant restore / branch from a past point); longer windows and scheduled snapshots need a paid plan.
-- `backup.yml` (1st of each month, 04:47 UTC, or Actions → Backup → Run workflow; it shares the `ingest` concurrency group so an import never lands between the dump and the count check) dumps production with a PostgreSQL 18 client, restores the dump into a throwaway PostgreSQL 18 and compares row counts, then uploads it **encrypted** to `.github/backup/backup-cert.pem` as an artifact kept 90 days (artifacts of a public repository are downloadable, so never upload it unencrypted). The private key is only on the owner's machine (`~/.config/anime-airtime-tracker/backup-key.pem`); keep a second copy of it elsewhere (password manager). To restore:
+- `backup.yml` (1st of each month, 04:47 UTC, or Actions → Backup → Run workflow; it shares the `ingest` concurrency group so an import never lands between the dump and the count check) dumps production with a PostgreSQL 18 client, restores the dump into a throwaway PostgreSQL 18 and compares the list of tables and the row count of every table (the list is read from the database, so tables added later are checked too), then uploads it **encrypted** to `.github/backup/backup-cert.pem` as an artifact kept 90 days (artifacts of a public repository are downloadable, so never upload it unencrypted). The private key is only on the owner's machine (`~/.config/anime-airtime-tracker/backup-key.pem`); keep a second copy of it elsewhere (password manager). To restore:
   `gh run download <run id> --name <artifact>` →
   `openssl cms -decrypt -binary -inform DER -in anime-airtime-tracker-<date>.dump.cms -inkey ~/.config/anime-airtime-tracker/backup-key.pem -out backup.dump` →
   `pg_restore --no-owner --no-privileges -d <new database> backup.dump` (PostgreSQL 18 client, e.g. `docker run postgres:18 pg_restore …`).
 - Manual copies from a trusted machine, when needed:
-  - copy into a local PostgreSQL 18 with the read-only role (no PostgreSQL client needed; verifies row counts per table):
+  - copy into a local PostgreSQL 18 with the read-only role (no PostgreSQL client needed; verifies row counts per table and refuses to run when a table is missing from its list):
     `DIRECT_DATABASE_URL=<local db> npm run db:deploy && SOURCE_DATABASE_URL=<web_readonly url> TARGET_DATABASE_URL=<local db> npx tsx scripts/copy-db.ts`
   - or a logical dump with a **PostgreSQL 18** client (older `pg_dump` refuses an 18 server):
     `pg_dump --format=custom --no-owner "$DIRECT_DATABASE_URL" > backup-$(date +%F).dump`
