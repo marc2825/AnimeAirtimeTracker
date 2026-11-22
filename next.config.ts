@@ -6,9 +6,12 @@ const isDev = process.env.NODE_ENV === "development";
 // 'unsafe-inline' for scripts is required by the pre-hydration theme script and the inline RSC payloads, which
 // differ per request (so they cannot be hashed). Nonces would need per-request rendering of every page and
 // give up the prerendered shells; reviewed 2026-11-22 and kept. Everything else is 'self' only.
+// Vercel Web Analytics needs nothing extra in production: its script and the page-view requests use paths on
+// this site (/_vercel/insights/*, /<unique-path>/*). Only `next dev` loads the debug script from
+// va.vercel-scripts.com (it logs to the console and sends nothing), so that host is allowed in development only.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval' https://va.vercel-scripts.com" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "font-src 'self'",

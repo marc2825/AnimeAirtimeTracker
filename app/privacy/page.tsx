@@ -8,14 +8,15 @@ import styles from "../about/about.module.css";
 
 export const metadata: Metadata = {
   title: "プライバシーポリシー",
-  description: `${SITE_NAME}が扱う情報（ブラウザに保存する設定、ホスティング事業者のアクセス記録）と、問い合わせの扱い。`,
+  description: `${SITE_NAME}が扱う情報（アクセス解析、ブラウザに保存する設定、ホスティング事業者のアクセス記録）と、問い合わせの扱い。`,
   alternates: { canonical: "/privacy" }
 };
 
 /*
  * Every statement here describes how the site actually works (checked in the code on the date above):
- * no accounts, forms, cookies, analytics or ads; two localStorage keys; fonts served from this site.
- * Update this page before adding anything that collects or sends visitor information.
+ * no accounts, forms, cookies or ads; Vercel Web Analytics page views (app/layout.tsx; its script only writes
+ * localStorage for identify/group calls, which this site does not make); two localStorage keys of our own;
+ * fonts served from this site. Update this page before adding anything that collects or sends visitor information.
  */
 export default function PrivacyPage() {
   return (
@@ -26,10 +27,33 @@ export default function PrivacyPage() {
           <h2>概要</h2>
           <ul>
             <li>本サイトには、アカウント登録・入力フォーム・コメント機能はありません。</li>
-            <li>Cookie を使った利用者の識別、アクセス解析ツール、広告は使っていません。</li>
+            <li>ページの閲覧数を集計するため、Vercel Web Analytics を使っています（下記）。Cookie は使いません。</li>
+            <li>広告は掲載していません。</li>
             <li>ブラウザには、表示の設定を2つだけ保存します（下記）。サーバーには送信しません。</li>
             <li>サイトの配信を委託している事業者のシステムに、通信の記録が残ります（下記）。</li>
           </ul>
+        </section>
+
+        <section id="analytics">
+          <h2>アクセス解析（Vercel Web Analytics）</h2>
+          <p>
+            どのページがどれだけ読まれているか、どこから訪問されているかを知り、サイトの改善に役立てるため、Vercel Inc. の Vercel Web Analytics を使っています。ページを開いたときと、サイト内で別のページへ移動したときに、閲覧の記録が同社に送られます。計測用のプログラムと送信先は、どちらも本サイトのドメイン上にあります。
+          </p>
+          <p>Vercel の説明によると、処理されるのは次の情報です。</p>
+          <ul>
+            <li>閲覧した日時と、ページのURL（URLに含まれる検索語や絞り込みの条件を含むことがあります）</li>
+            <li>参照元（本サイトに来る直前に見ていたページ）</li>
+            <li>国・地域などのおおまかな位置</li>
+            <li>ブラウザ、OS、端末の種類とバージョン</li>
+          </ul>
+          <p>
+            Cookie は使いません。同社によると、訪問者はリクエストの情報から作ったハッシュ値で区別され、この値は1日で無効になります。記録は個人や IP アドレスと結び付けずに保存されるとされています。運営者が見るのは、ページ別の閲覧数や参照元などの集計結果だけです。
+          </p>
+          <p>
+            広告ブロッカーなどで計測を止めても、本サイトはそのまま使えます。詳しくは
+            <ExternalLink href="https://vercel.com/docs/analytics/privacy-policy">Vercel Web Analytics のプライバシーとデータの扱い（英語）</ExternalLink>
+            を参照してください。
+          </p>
         </section>
 
         <section id="browser">
@@ -87,7 +111,7 @@ export default function PrivacyPage() {
         <section id="changes">
           <h2>変更</h2>
           <p>
-            情報の扱いを変えるとき（アクセス解析の導入など）は、導入の前にこのページを更新します。変更の履歴は<Link href="/terms#changes">更新履歴</Link>と GitHub のリポジトリで公開しています。
+            情報の扱いを変えるとき（計測する内容や送信先を変えるときなど）は、変更より前にこのページを更新します。変更の履歴は<Link href="/terms#changes">更新履歴</Link>と GitHub のリポジトリで公開しています。
           </p>
         </section>
       </div>

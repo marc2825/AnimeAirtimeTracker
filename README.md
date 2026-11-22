@@ -19,7 +19,7 @@
 
 Next.js 16 (App Router, Cache Components) · React 19 · TypeScript 6 · PostgreSQL 18 · Prisma 7 · Vitest 5 · Playwright · Node.js 24
 
-本番環境: Vercel（Web）· Neon（PostgreSQL）· GitHub Actions（定期データ取得・マイグレーション）。構成と運用手順は [docs/operations.md](docs/operations.md)。
+本番環境: Vercel（Web、アクセス解析は Vercel Web Analytics）· Neon（PostgreSQL）· GitHub Actions（定期データ取得・マイグレーション）。構成と運用手順は [docs/operations.md](docs/operations.md)。
 
 ## 開発環境のセットアップ
 
