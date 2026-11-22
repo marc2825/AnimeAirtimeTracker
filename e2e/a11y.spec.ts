@@ -17,6 +17,8 @@ const PAGES = [
   "/channels/mx",
   "/titles/8053",
   "/status",
+  "/analysis",
+  "/analysis/late-night",
   "/about",
   "/privacy",
   "/terms"

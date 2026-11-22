@@ -31,6 +31,9 @@ export function DesktopNavView({ pathname }: { pathname: string }) {
           {item.label}
         </Link>
       ))}
+      <Link href="/analysis" className={styles.navLink} aria-current={isActive(pathname, "/analysis") ? "page" : undefined}>
+        分析
+      </Link>
       <Link href="/about" className={styles.navLink} aria-current={isActive(pathname, "/about") ? "page" : undefined}>
         このサイトについて
       </Link>

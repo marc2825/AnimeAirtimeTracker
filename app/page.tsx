@@ -30,7 +30,7 @@ export default function HomePage() {
           </h1>
           <MoreInfo summary="このサイトについて">
             <p>
-              今週の番組表、ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計をまとめています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠と統計は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
+              日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです。今週の番組表を入口に、ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計、長期の変化を調べた分析を載せています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠・統計・分析は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
             </p>
             <p>
               <Link href="/about" className="inline-link">
@@ -48,6 +48,9 @@ export default function HomePage() {
               </Link>
               <Link href="/slots" className={styles.textLink}>
                 放送枠の年表
+              </Link>
+              <Link href="/analysis" className={styles.textLink}>
+                分析
               </Link>
             </div>
             <div className={styles.index}>

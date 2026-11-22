@@ -2,13 +2,14 @@
 
 ## Concept
 
-**「日本のアニメ放送編成を、今週から過去まで横断的に調べられるサイト」** — アニメ放送枠観測所 (Anime Airtime Tracker).
+**「日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を横断的に調べられる専門データベース」** — アニメ放送枠観測所 (Anime Airtime Tracker). Not a general anime information or programme-guide site: the weekly schedule stays as the everyday entry point, and the value is in the accumulated data (product policy, #23; also in `docs/roadmap.md`).
 
 | Pillar | What users get | Status |
 | --- | --- | --- |
 | A. Schedule | Weekly grid (channel × time) and lists, anime-time notation (25:30), new/final/rerun marks, region/channel filters, shareable URLs | v1 |
 | B. Slot history (differentiator) | Per-slot season timeline: which titles, when the time moved, on which channel, with source evidence and judgement basis | v1 |
 | C. Statistics | Weekday × hour heatmap, concurrency, channel breakdown, season trend, Kanto↔Kansai delay — always with unit and scope | v1 |
+| D. Analysis | Pages that answer one question from the accumulated data (scope, unit, definitions, limits and how to reproduce stated on every page; findings computed, never written in advance) | v1 (`/analysis`) |
 
 ## Positioning
 
@@ -30,7 +31,7 @@ Syoboi Calendar already provides an excellent, detailed program guide, title pag
 
 In: 20 tracked channels (Kanto terrestrial 8, Kansai terrestrial 5, BS 6, CS 1 — list in `src/domain/coverage.ts`), seasons from 2000 winter onward (source records are sparse before 2006, see `SOURCE_COMPLETE_FROM_YEAR`), anime categories by default.
 
-Out (not blocking launch): accounts, watch lists, notifications, streaming catalogues, images, genre/staff enrichment, nationwide channel completeness, public editing, an admin web UI.
+Out (by policy, not just for launch): general title introductions, reviews, watch lists and records, accounts, notifications, streaming catalogues, images, genre/staff enrichment, auto-generated articles without evidence, public editing, an admin web UI. Nationwide channel completeness is a research item, not a goal.
 
 ## Information architecture
 
@@ -44,6 +45,7 @@ Out (not blocking launch): accounts, watch lists, notifications, streaming catal
 | `/slots`, `/slots/[slug]` | Slot index (labelled cards, inferred positions per channel) and chronicle pages |
 | `/seasons`, `/seasons/[season]` | Season index and the season's new series (first-episode airings) by weekday |
 | `/channels`, `/channels/[slug]` | Channel index and per-channel trend, weekday × hour, slots |
+| `/analysis`, `/analysis/[slug]` | Analyses from a typed registry (`src/analysis/`): shared frame with scope, unit, source, data time, definitions, limits, reproduce links |
 | `/stats` | Season statistics with scope selector (region, network, channel, time band, length), band trend, season comparison, table views |
 | `/about` | Sources, terms, coverage, time conventions, definitions, slot rules, limits, corrections |
 | `/terms`, `/privacy` | Terms and disclaimer (unofficial site, source and limits, code vs data licensing, requests); privacy policy (what the browser stores, hosting logs, contact data) |
