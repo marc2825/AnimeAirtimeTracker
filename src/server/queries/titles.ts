@@ -74,10 +74,13 @@ export async function getTitleDetail(slug: string): Promise<TitleDetail | null> 
         orderBy: { startAt: "asc" },
         include: { channel: true, _count: { select: { revisions: true } } }
       },
-      memberships: { include: { slot: true, channel: true } }
+      memberships: { include: { slot: true, channel: true } },
+      subtitles: { select: { episodeNumber: true, subtitle: true } }
     }
   });
   if (!title) return null;
+  // The source fills an airing's own subtitle mostly for specials; regular episodes take the title's list.
+  const listed = new Map(title.subtitles.map((s) => [s.episodeNumber, s.subtitle]));
 
   const groupsBySlug = new Map<string, TitleChannelGroup>();
   for (const b of title.broadcasts) {
@@ -101,7 +104,7 @@ export async function getTitleDetail(slug: string): Promise<TitleDetail | null> 
       durationMinutes: b.durationMinutes,
       episodeNumber: b.episodeNumber,
       episodeLabel: b.episodeLabel,
-      subtitle: b.subtitle,
+      subtitle: b.subtitle ?? (b.episodeNumber === null ? null : (listed.get(b.episodeNumber) ?? null)),
       comment: b.comment,
       flagNew: b.flagNew,
       flagFinal: b.flagFinal,
@@ -295,8 +298,9 @@ export async function searchBroadcasts(filter: AiringFilter, query: string, orde
     { id: number; startAt: Date; animeDate: Date; animeWeekday: number; animeStartMinute: number; durationMinutes: number; episodeNumber: number | null; episodeLabel: string | null; subtitle: string | null; flagNew: boolean; flagFinal: boolean; isRerun: boolean; slug: string; name: string; channelId: number; total: number }[]
   >`
     SELECT b.id, b."startAt", b."animeDate", b."animeWeekday", b."animeStartMinute", b."durationMinutes", b."episodeNumber", b."episodeLabel",
-           b.subtitle, b."flagNew", b."flagFinal", b."isRerun", t.slug, t.name, b."channelId", COUNT(*) OVER()::int AS total
+           COALESCE(b.subtitle, s.subtitle) AS subtitle, b."flagNew", b."flagFinal", b."isRerun", t.slug, t.name, b."channelId", COUNT(*) OVER()::int AS total
     FROM "Broadcast" b JOIN "Title" t ON t.id = b."titleId"
+    LEFT JOIN "TitleSubtitle" s ON s."titleId" = b."titleId" AND s."episodeNumber" = b."episodeNumber"
     WHERE ${where} ${textFilter}
     ORDER BY b."startAt" ${direction}, b.id
     LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}

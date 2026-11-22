@@ -18,6 +18,20 @@ export interface ChannelInfo {
   externalId: string;
 }
 
+/**
+ * Subtitles from the titles' per-episode lists for airings that carry none of their own (the source fills an
+ * airing's subtitle mostly for specials). Keyed `titleId:episodeNumber`.
+ */
+export async function episodeSubtitles(airings: { titleId: number; episodeNumber: number | null; subtitle: string | null }[]): Promise<Map<string, string>> {
+  const wanted = airings.filter((a) => a.subtitle === null && a.episodeNumber !== null);
+  if (wanted.length === 0) return new Map();
+  const rows = await db().titleSubtitle.findMany({
+    where: { titleId: { in: [...new Set(wanted.map((a) => a.titleId))] }, episodeNumber: { in: [...new Set(wanted.map((a) => a.episodeNumber!))] } },
+    select: { titleId: true, episodeNumber: true, subtitle: true }
+  });
+  return new Map(rows.map((row) => [`${row.titleId}:${row.episodeNumber}`, row.subtitle]));
+}
+
 export async function getTrackedChannels(): Promise<ChannelInfo[]> {
   "use cache";
   datasetCacheProfile();

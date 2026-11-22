@@ -20,6 +20,7 @@ const COMMAND_LABELS: Record<string, string> = {
   backfill: "過去分取得",
   recent: "直近の再取得",
   update: "差分更新",
+  subtitles: "サブタイトルの取得",
   channels: "放送局情報",
   derive: "放送枠の算出",
   fixtures: "テスト用データ"
@@ -58,6 +59,16 @@ async function StatusContent() {
         />
         <StatTile label="放送" value={status.totals.broadcasts} unit="件" hint={`作品 ${formatNumber(status.totals.titles)}・対象局 ${status.totals.channels}`} />
         <StatTile label="放送枠" value={status.totals.slots} unit="枠" hint="出典記載枠と推定枠の合計" />
+        <StatTile
+          label="話数別サブタイトル"
+          value={status.subtitles.total === 0 ? 0 : Math.floor((status.subtitles.done / status.subtitles.total) * 100)}
+          unit="%"
+          hint={
+            status.subtitles.done >= status.subtitles.total
+              ? `全${formatNumber(status.subtitles.total)}作品の一覧を取得済み`
+              : `${formatNumber(status.subtitles.done)} / ${formatNumber(status.subtitles.total)}作品。定期取得のたびに、最近放送された作品から順に取得しています`
+          }
+        />
       </StatGrid>
 
       <Section id="runs" title="取り込みの実行履歴" description="新しい順に最大12件"
