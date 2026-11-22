@@ -101,7 +101,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
           takeaway={peak ? `最も多かったのは${formatSeasonOrdinal(peak.seasonOrdinal)}の${peak.titles}作品です。` : "放送の記録がありません。"}
           scope={`単位: 作品本数（そのクールに1回以上放送された作品、再放送を除く）。各作品はクールごとに最頻の開始時刻の時間帯に1回だけ数えます。${trend.length > 0 && Math.floor(trend[0]!.seasonOrdinal / 10) < SOURCE_COMPLETE_FROM_YEAR ? SPARSE_SOURCE_NOTE : ""}`}
           table={
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} role="region" aria-label="クール別・時間帯別の作品本数の表" tabIndex={0}>
               <table className={styles.table}>
                 <thead>
                   <tr>

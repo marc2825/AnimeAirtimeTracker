@@ -272,7 +272,7 @@ async function AiringResults({ filter, query, order, page, href, channelName }: 
           条件を変えてください。
         </EmptyState>
       ) : (
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="放送の検索結果" tabIndex={0}>
           <table className={styles.table}>
             <thead>
               <tr>

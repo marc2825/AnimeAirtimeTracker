@@ -177,7 +177,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
 
       <Section id="members" title="所属作品" description="新しい順"
         details="根拠が出典記載の場合は、しょぼいカレンダーの作品備考の該当行を引用しています。">
-        <div className={styles.tableWrap}>
+        <div className={styles.tableWrap} role="region" aria-label="所属作品" tabIndex={0}>
           <table className={styles.memberTable}>
             <thead>
               <tr>
