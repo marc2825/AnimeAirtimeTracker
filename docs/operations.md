@@ -83,6 +83,8 @@ Actions logs of a public repository are public: the workflows mask the database 
 - Restore check done 2026-11-21: production → local PostgreSQL 18 with `copy-db.ts` (≈ 6.5 min); all 12 tables matched (326,151 airings, 6,490 titles, 866 slots) and the site served every page from the copy.
 - Restore into a **new** database, verify, then switch `DATABASE_URL`:
   `createdb restore_test && pg_restore --no-owner -d restore_test backup.dump`
+- **Frequency (reviewed 2026-11-22): monthly stays.** A dump is ≈ 52 MB compressed (2026-11-21), but `pg_dump` reads every table over the network, so each run uses a few hundred MB of Neon's monthly network-transfer allowance; weekly would make backups a large share of the Free plan's transfer. Between dumps, Neon's 6-hour restore window covers operator mistakes, and source tables can be re-fetched from the source; what only a dump preserves is the history this site observed (`BroadcastRevision`, `ImportRun`) and `data/` overrides (those are in git). Revisit if the plan changes or the observed history becomes important.
+- The backup job's PostgreSQL image is pinned by digest (it handles the owner-role URL). When testing a restore, update the digest: `docker pull postgres:18` and copy the `sha256:` digest into `PG_IMAGE` and the service image in `backup.yml`.
 - Test a restore at least once per quarter. Derived tables can be rebuilt with `npm run ingest -- derive`; source tables can be re-fetched from the API if ever lost (respecting the request budget).
 - `RawPayload` grows with every distinct response (~MBs per season); prune old payloads only after confirming no replay is needed.
 
@@ -106,6 +108,35 @@ Actions logs of a public repository are public: the workflows mask the database 
 5. Record in this file that it is configured (service name and check interval, not the account details).
 
 Until then, failures are noticed through GitHub's Actions notifications and the stale-data notice on the site.
+
+## Security
+
+State checked 2026-11-22:
+
+- Repository settings: secret scanning with push protection, Dependabot alerts and security updates, private vulnerability reporting (`SECURITY.md`) are on. The default workflow token is read-only; first-time contributors' PRs need approval before workflows run.
+- Audit: no credentials in the git history (all refs, including closed PRs), the current files or sampled Actions logs; the database host is masked in logs; `npm audit` reports 0 vulnerabilities. `.github/backup/backup-cert.pem` is a public certificate; the private key was never committed.
+- Workflows: actions are pinned to commit SHAs (Dependabot's monthly `github-actions` updates bump the pins); top-level permissions are `contents: read`; no `pull_request_target`; PR-triggered jobs receive no secrets; dispatch inputs reach scripts only through `env`. CodeQL (`codeql.yml`, `security-extended`) runs on PRs, `main` and weekly.
+- Headers (`next.config.ts`): CSP limited to `'self'` with `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`. `script-src` keeps `'unsafe-inline'` because the inline RSC payloads differ per request (no hashes) and nonces would give up prerendered shells; there are no third-party scripts.
+- Database: the web uses the read-only `web_readonly` role; previews share it, so a preview cannot write. Fork PRs do not get Vercel environment variables (Git Fork Protection).
+- External text and links: titles and comments from the source are rendered as text by React (no HTML injection); outbound links use `rel="noopener"`.
+
+Recommended settings that only the owner can change (not applied):
+
+- A ruleset for `main`: block deletion and force pushes; optionally require a PR and the CI checks (this also blocks direct pushes).
+- Move `DIRECT_DATABASE_URL` from a repository secret into a `production` environment limited to `main`, and reference that environment from `ingest.yml`, `migrate.yml` and `backup.yml`.
+- Secret scanning: enable validity checks and non-provider patterns.
+
+## Usage and limits
+
+Both providers are on free plans (see Deployment for the figures known at setup); confirm current limits on their pricing pages before relying on a number.
+
+| Where | What to watch | Where to see it | Notification |
+| --- | --- | --- | --- |
+| Neon Free | storage (≈ 370 MB of 1 GB on 2026-11-21, ≈ 5 MB per season), compute hours, network transfer | Neon console → project → Usage | e-mail near limits; at a limit the compute suspends and pages show "読み込めませんでした" |
+| Vercel Hobby | function invocations and duration, bandwidth (`/slots` is the largest page, ≈ 330 KB compressed), build minutes | Vercel → Usage | e-mail near limits; Hobby pauses the project when exceeded |
+| GitHub Actions | free for public repositories; artifact storage (one ≈ 52 MB backup per month, kept 90 days) | repository → Actions | failed runs notify the account that last changed the schedule |
+
+Any plan change, billing setting or production setting is the owner's decision. Commercial use (ads, affiliate links) is not allowed on Vercel Hobby.
 
 ## Contact channels
 
@@ -153,7 +184,7 @@ Status 2026-11-21.
 - [x] `SYOBOI_USER_AGENT` points to `/about#contact`
 - [x] Migrations applied; initial season + backfill ingested; `/status` shows success
 - [x] Security headers verified; `npm audit` clean; Dependabot version updates configured
-- [ ] Dependabot security updates, secret scanning and push protection enabled (repository settings)
+- [x] Dependabot alerts and security updates, secret scanning, push protection and private vulnerability reporting enabled (confirmed 2026-11-22)
 - [x] Restore test done (2026-11-21, copy into a separate database; see Backup and restore)
 - [x] Monthly encrypted backup with restore check (`backup.yml`; first successful run 2026-11-21: 9 tables matched after restore, artifact decrypted with the owner's key)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain

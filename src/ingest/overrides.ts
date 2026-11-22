@@ -25,7 +25,7 @@ const broadcastOverride = z.object({
 const titleOverride = z.discriminatedUnion("field", [
   z.object({ externalId: z.string().regex(/^\d+$/), field: z.literal("name"), value: z.string().min(1), ...provenance }),
   z.object({ externalId: z.string().regex(/^\d+$/), field: z.literal("seriesKey"), value: z.string().min(2).nullable(), ...provenance }),
-  z.object({ externalId: z.string().regex(/^\d+$/), field: z.literal("officialUrl"), value: z.url().nullable(), ...provenance }),
+  z.object({ externalId: z.string().regex(/^\d+$/), field: z.literal("officialUrl"), value: z.url({ protocol: /^https?$/ }).nullable(), ...provenance }),
   z.object({ externalId: z.string().regex(/^\d+$/), field: z.literal("sourceCategory"), value: z.number().int().nullable(), ...provenance })
 ]);
 
