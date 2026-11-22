@@ -7,7 +7,8 @@ Schema: `prisma/schema.prisma`. This document explains the concepts and invarian
 | Model | One row is | Source key | Notes |
 | --- | --- | --- | --- |
 | `Channel` | a tracked broadcast channel | (`source`, `externalId` = ChID) | `medium` (TERRESTRIAL/BS/CS) and `area` (NATIONWIDE/KANTO/KANSAI) are separate axes |
-| `Title` | a Syoboi title (TID) — usually one season/installment of a work | (`source`, `externalId` = TID) | `seriesKey` = normalized reading, a *derived* grouping (not verified series identity); `detailsFetchedAt = null` marks a stub |
+| `Title` | a Syoboi title (TID) — usually one season/installment of a work | (`source`, `externalId` = TID) | `seriesKey` = normalized reading, a *derived* grouping (not verified series identity); `detailsFetchedAt = null` marks a stub; `subtitlesFetchedAt = null` = episode subtitle list not read yet |
+| `TitleSubtitle` | a subtitle per episode number from the title's source list (`SubTitles`) | (`titleId`, `episodeNumber`) | source data: upserted on every title refresh, never deleted; shown for an airing without its own subtitle, matched by episode number |
 | `Broadcast` | one airing of one episode on one channel | (`source`, `externalId` = PID) | JST instant (`startAt`, `endAt`) **and** anime-time fields (`animeDate`, `animeWeekday`, `animeStartMinute`) |
 | `BroadcastRevision` | an observed change of a broadcast | — | `CREATED`, `RESCHEDULED`, `FLAGS_CHANGED`, `DELETED`, `RESTORED`, `UPDATED` with before/after snapshots |
 | `Slot` / `SlotMembership` / `SlotSeason` | derived slot, title membership with method/confidence/evidence, per-season position and the titles behind it (`titleIds`, in airing order) | `slug` | Fully rebuilt by `ingest derive`; never edited by hand (use `data/` files) |
