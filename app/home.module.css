@@ -1,4 +1,4 @@
-/* Home: a front page set like a printed programme guide — rules and type, no boxes. */
+/* Home: the description, the entry points in one bar, then today's listing in two columns. */
 .hero {
   display: grid;
   gap: var(--space-10);
@@ -21,7 +21,7 @@
 
 .heroTitle {
   font-size: var(--text-2xl);
-  line-height: var(--leading-tight);
+  line-height: 1.4;
 }
 
 .heroActions {
@@ -32,9 +32,10 @@
 }
 
 .textLink {
+  color: var(--color-accent);
   font-weight: var(--weight-bold);
   text-decoration: underline;
-  text-decoration-color: var(--color-line-strong);
+  text-decoration-color: var(--color-accent-line);
   text-underline-offset: 0.35em;
 }
 
@@ -117,7 +118,7 @@
   grid-template-columns: 3.75rem 4rem minmax(0, 1fr);
   align-items: baseline;
   gap: var(--space-3);
-  padding-block: var(--space-3);
+  padding-block: var(--space-2);
   border-top: var(--border);
 }
 
@@ -140,13 +141,17 @@
   color: var(--color-ink-2);
 }
 
+/* Title and episode on one line where they fit. */
 .onAirMain {
-  display: grid;
-  gap: var(--space-0-5);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
   min-width: 0;
 }
 
 .onAirName {
+  color: var(--color-accent);
   font-weight: var(--weight-bold);
   line-height: var(--leading-snug);
 }
@@ -242,7 +247,7 @@
 .figures dd {
   font-family: var(--font-geist), var(--font-sans);
   font-size: 2.25rem;
-  font-weight: 600;
+  font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;

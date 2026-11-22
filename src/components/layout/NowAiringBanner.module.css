@@ -1,6 +1,6 @@
 .banner {
   border-bottom: var(--border);
-  background: var(--color-accent-soft);
+  background: var(--color-marker-soft);
   font-size: var(--text-sm);
 }
 
@@ -24,7 +24,7 @@
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
-  background: var(--color-accent);
+  background: var(--color-new);
 }
 
 .list {
@@ -72,8 +72,10 @@
 .more {
   flex: none;
   font-size: var(--text-xs);
-  color: var(--color-accent-strong);
+  color: var(--color-ink);
   font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
 }
 
 .close {

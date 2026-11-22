@@ -25,7 +25,7 @@ export default function HomePage() {
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
           <h1 id="hero-title" className={styles.heroTitle}>
-            TVアニメの番組表・放送枠・編成統計
+            <span className="marker">TVアニメの番組表・放送枠・編成統計</span>
           </h1>
           <MoreInfo summary="このサイトについて">
             <p>
@@ -114,7 +114,7 @@ async function OnAirPanel() {
     <aside className={styles.onAir} aria-labelledby="onair-title">
       <div className={styles.onAirHead}>
         <h2 id="onair-title" className={styles.onAirTitle}>
-          今日のこれからの新作
+          <span className="marker">今日のこれからの新作</span>
         </h2>
         <span className={styles.onAirMeta}>
           {formatIsoDateJa(today, { withWeekday: true })}・関東地上波
@@ -175,7 +175,7 @@ async function FeaturedSlots() {
       <div className={styles.blockHead}>
         <div>
           <h2 id="featured-title" className={styles.blockTitle}>
-            放送枠の年表
+            <span className="marker">放送枠の年表</span>
           </h2>
           <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品。</p>
         </div>
@@ -209,7 +209,7 @@ async function StatsPreview() {
       <div className={styles.blockHead}>
         <div>
           <h2 id="stats-title" className={styles.blockTitle}>
-            {formatSeason(season)}の編成
+            <span className="marker">{formatSeason(season)}の編成</span>
           </h2>
           <p className={styles.blockLead}>関東地上波・新作のみ。</p>
         </div>

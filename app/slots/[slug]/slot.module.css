@@ -68,7 +68,7 @@
   display: block;
   height: 0.75rem;
   min-width: 2px;
-  border-radius: 0 4px 4px 0;
+  border-radius: 0;
   background: var(--viz-bar);
 }
 

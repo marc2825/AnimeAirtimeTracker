@@ -1,5 +1,6 @@
 /*
- * Design tokens — "深夜の編成表" (late-night programming grid).
+ * Design tokens — pop programme guide: white ground, black masthead and rules, a highlighter marker,
+ * blue links.
  * Single source for color, type, space, radius, elevation and motion. Rationale: docs/design-system.md.
  * Theme: the pre-hydration script always resolves `data-theme` on <html> (system → light|dark),
  * so dark values are declared once under [data-theme="dark"].
@@ -11,59 +12,70 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces: paper-like off-white */
-  --color-bg: #f5f4f0;
-  --color-surface-1: #fcfbf8;
+  /* Surfaces: plain white; greys are neutral (no tint) */
+  --color-bg: #ffffff;
+  --color-surface-1: #ffffff;
   --color-surface-2: #ffffff;
-  --color-surface-3: #efede7;
-  --color-surface-sunken: #ebe9e2;
-  --color-overlay: rgba(20, 24, 40, 0.38);
+  --color-surface-3: #f1f1f2;
+  --color-surface-sunken: #f6f6f7;
+  --color-overlay: rgba(10, 10, 14, 0.45);
 
-  /* Lines */
-  --color-line: rgba(20, 26, 46, 0.1);
-  --color-line-strong: rgba(20, 26, 46, 0.2);
-  --color-grid: rgba(20, 26, 46, 0.06);
+  /* Lines: a grey hairline between rows, ink for everything that frames */
+  --color-line: #dedee2;
+  --color-line-strong: #17171c;
+  --color-grid: #ececef;
 
   /* Ink */
-  --color-ink: #141a2e;
-  --color-ink-2: #474e65;
-  --color-ink-3: #5e6479;
-  --color-ink-inverse: #f4f6fb;
+  --color-ink: #17171c;
+  --color-ink-2: #3f3f47;
+  --color-ink-3: #66666f;
+  --color-ink-inverse: #ffffff;
 
-  /* Brand accent: broadcast-signal cyan */
-  --color-accent: #08717f;
-  --color-accent-strong: #075f6c;
-  --color-accent-soft: rgba(10, 122, 138, 0.1);
-  --color-accent-line: rgba(10, 122, 138, 0.35);
+  /* Accent: link blue (titles, links, selected data) */
+  --color-accent: #1f4fe0;
+  --color-accent-strong: #163aae;
+  --color-accent-soft: rgba(31, 79, 224, 0.08);
+  --color-accent-line: rgba(31, 79, 224, 0.45);
   --color-on-accent: #ffffff;
 
+  /* Marker: the highlighter stroke under headings and behind hovered rows. Warm, not fluorescent. */
+  --color-marker: #ffd95a;
+  --color-marker-soft: #fff4cf;
+  /* The same yellow for dark grounds (masthead, dark theme), where the stroke sits under nothing. */
+  --color-marker-bright: #ffd95a;
+
+  /* Masthead: the site header is a black band in both themes */
+  --color-masthead: #17171c;
+  --color-masthead-ink: #ffffff;
+  --color-masthead-ink-2: #b9b9c2;
+
   /* Broadcast status (always paired with a text label) */
-  --color-new: #b83a2a;
-  --color-new-soft: rgba(200, 64, 47, 0.1);
+  --color-new: #d9264a;
+  --color-new-soft: rgba(217, 38, 74, 0.1);
   --color-final: #5b45c4;
   --color-final-soft: rgba(91, 69, 196, 0.1);
-  --color-rerun: #5f6478;
-  --color-rerun-soft: rgba(107, 112, 132, 0.1);
-  --color-note: #8a5a00;
-  --color-note-soft: rgba(176, 116, 0, 0.12);
+  --color-rerun: #66666f;
+  --color-rerun-soft: rgba(102, 102, 111, 0.1);
+  --color-note: #7a5200;
+  --color-note-soft: #fff4cf;
 
   /* Slot evidence kinds */
-  --color-kind-official: #08717f;
-  --color-kind-source: #2f5fb3;
-  --color-kind-inferred: #7a6a3a;
+  --color-kind-official: #17171c;
+  --color-kind-source: #1f4fe0;
+  --color-kind-inferred: #66666f;
 
   /* Japanese calendar convention: Saturday blue, Sunday red */
   --color-sat: #1f5fb0;
-  --color-sun: #c0392b;
+  --color-sun: #d03027;
 
   /* Feedback */
   --color-danger: #b42318;
   --color-danger-soft: rgba(180, 35, 24, 0.08);
   --color-success: #1d6b3a;
-  --color-warning: #8a5a00;
+  --color-warning: #7a5200;
 
   /* Data viz: sequential (single blue hue; validated ramp, light → dark) */
-  --viz-zero: #ecebe6;
+  --viz-zero: #f1f1f2;
   --viz-1: #cde2fb;
   --viz-2: #9ec5f4;
   --viz-3: #6da7ec;
@@ -72,14 +84,14 @@
   --viz-6: #184f95;
   --viz-7: #0d366b;
   --viz-bar: #2a78d6;
-  --viz-bar-muted: #b9cbe3;
+  --viz-bar-muted: #c9d3e3;
   --viz-ink-on-dark: #ffffff;
   --viz-ink-on-light: #0b0b0b;
 
   /* Typography */
   --font-sans: var(--font-geist), var(--font-noto-jp), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
-  /* Headings: mincho, the display face of Japanese print (programme guides, almanacs). */
-  --font-serif: var(--font-noto-serif-jp), "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDPMincho", serif;
+  /* Headings: the same gothic as the text, at its heaviest weight. */
+  --font-display: var(--font-geist), var(--font-noto-jp), "Hiragino Sans", "Hiragino Kaku Gothic ProN", "BIZ UDPGothic", "Yu Gothic UI", Meiryo, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   --text-2xs: 0.6875rem; /* 11 */
   --text-xs: 0.75rem; /* 12 */
@@ -93,12 +105,13 @@
   --text-4xl: 2.375rem; /* 38 */
   --leading-tight: 1.3;
   --leading-snug: 1.45;
-  --leading-body: 1.75;
+  --leading-body: 1.7;
   --tracking-jp: 0.02em;
   --tracking-caps: 0.12em;
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-bold: 700;
+  --weight-black: 900;
 
   /* Space (4px base) */
   --space-0-5: 0.125rem;
@@ -112,7 +125,7 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
-  --space-16: 4rem;
+  --space-16: 3.5rem;
   --gutter: 1rem;
 
   /* Layout */
@@ -122,22 +135,23 @@
   --mobile-nav-height: 4rem;
 
   /* Radius */
-  /* Small on purpose: structure comes from rules and space, not rounded boxes. */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
+  /* Square: blocks are cut, not rounded. */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
   --radius-pill: 999px;
 
   /* Border & elevation */
   --border: 1px solid var(--color-line);
-  --border-strong: 1px solid var(--color-line-strong);
-  /* Section rule: the heavy line that opens a section, as in a printed listing. */
-  --rule: 2px solid var(--color-ink);
-  /* Flat by design: elevation is not used; the tokens stay so components need no change. */
+  --border-strong: 2px solid var(--color-line-strong);
+  /* Section rule: the heavy line that opens a section. */
+  --rule: 4px solid var(--color-ink);
+  /* No soft shadows. The one "shadow" is a hard offset block behind the primary button. */
   --shadow-1: none;
   --shadow-2: none;
   --shadow-3: 0 12px 40px rgba(0, 0, 0, 0.3);
+  --shadow-offset: 4px 4px 0 var(--color-marker);
 
   /* Motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -147,8 +161,8 @@
   --duration-slow: 320ms;
 
   /* Interaction states */
-  --state-hover: rgba(20, 26, 46, 0.04);
-  --state-pressed: rgba(20, 26, 46, 0.08);
+  --state-hover: var(--color-marker-soft);
+  --state-pressed: var(--color-marker);
   --state-selected: var(--color-accent-soft);
   --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-accent);
   --opacity-disabled: 0.45;
@@ -163,41 +177,49 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Surfaces: deep night navy */
-  --color-bg: #0a0f1d;
-  --color-surface-1: #0f1628;
-  --color-surface-2: #141c32;
-  --color-surface-3: #1b2540;
-  --color-surface-sunken: #080c18;
-  --color-overlay: rgba(2, 4, 10, 0.6);
+  /* Surfaces: neutral near-black */
+  --color-bg: #141418;
+  --color-surface-1: #1a1a20;
+  --color-surface-2: #202027;
+  --color-surface-3: #2a2a33;
+  --color-surface-sunken: #0e0e12;
+  --color-overlay: rgba(0, 0, 0, 0.6);
 
-  --color-line: rgba(160, 176, 220, 0.12);
-  --color-line-strong: rgba(160, 176, 220, 0.24);
-  --color-grid: rgba(160, 176, 220, 0.07);
+  --color-line: rgba(255, 255, 255, 0.14);
+  --color-line-strong: #f4f4f1;
+  --color-grid: rgba(255, 255, 255, 0.07);
 
-  --color-ink: #e9edf7;
-  --color-ink-2: #b2bad0;
-  --color-ink-3: #8a93ad;
-  --color-ink-inverse: #0a0f1d;
+  --color-ink: #f4f4f1;
+  --color-ink-2: #c6c6cc;
+  --color-ink-3: #9a9aa3;
+  --color-ink-inverse: #141418;
 
-  --color-accent: #45d3e4;
-  --color-accent-strong: #7ce3ef;
-  --color-accent-soft: rgba(69, 211, 228, 0.12);
-  --color-accent-line: rgba(69, 211, 228, 0.4);
-  --color-on-accent: #04222a;
+  --color-accent: #8eb0ff;
+  --color-accent-strong: #b5cbff;
+  --color-accent-soft: rgba(142, 176, 255, 0.14);
+  --color-accent-line: rgba(142, 176, 255, 0.5);
+  --color-on-accent: #0c1430;
 
-  --color-new: #ff8a78;
-  --color-new-soft: rgba(255, 138, 120, 0.14);
+  /* Marker under light text: a deep mustard, so the stroke never fights the letters. */
+  --color-marker: #7d6200;
+  --color-marker-soft: rgba(255, 217, 90, 0.14);
+
+  --color-masthead: #0b0b0e;
+  --color-masthead-ink: #ffffff;
+  --color-masthead-ink-2: #a9a9b3;
+
+  --color-new: #ff7d8f;
+  --color-new-soft: rgba(255, 125, 143, 0.14);
   --color-final: #b8a6ff;
   --color-final-soft: rgba(184, 166, 255, 0.14);
-  --color-rerun: #9aa3bb;
-  --color-rerun-soft: rgba(154, 163, 187, 0.12);
-  --color-note: #f2c25b;
-  --color-note-soft: rgba(242, 194, 91, 0.13);
+  --color-rerun: #a2a2ab;
+  --color-rerun-soft: rgba(162, 162, 171, 0.12);
+  --color-note: #ffd95a;
+  --color-note-soft: rgba(255, 217, 90, 0.12);
 
-  --color-kind-official: #45d3e4;
-  --color-kind-source: #8cb4ff;
-  --color-kind-inferred: #d6c38c;
+  --color-kind-official: #f4f4f1;
+  --color-kind-source: #8eb0ff;
+  --color-kind-inferred: #9a9aa3;
 
   --color-sat: #7fb2ff;
   --color-sun: #ff8f84;
@@ -205,10 +227,10 @@
   --color-danger: #ff8a80;
   --color-danger-soft: rgba(255, 138, 128, 0.1);
   --color-success: #6fd69a;
-  --color-warning: #f2c25b;
+  --color-warning: #ffd95a;
 
   /* Sequential ramp, dark-mode steps: near-surface → bright */
-  --viz-zero: #141c32;
+  --viz-zero: #202027;
   --viz-1: #133059;
   --viz-2: #184f95;
   --viz-3: #1c5cab;
@@ -217,11 +239,9 @@
   --viz-6: #86b6ef;
   --viz-7: #cde2fb;
   --viz-bar: #3987e5;
-  --viz-bar-muted: #2a3a5c;
+  --viz-bar-muted: #34343f;
 
-
-  --state-hover: rgba(200, 214, 255, 0.05);
-  --state-pressed: rgba(200, 214, 255, 0.09);
+  --shadow-offset: 4px 4px 0 var(--color-marker-bright);
 }
 
 @media (min-width: 48rem) {

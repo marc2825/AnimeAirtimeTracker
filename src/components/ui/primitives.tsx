@@ -34,7 +34,9 @@ export function PageHeader({
   return (
     <header className={styles.pageHeader}>
       <div className={styles.pageHeaderMain}>
-        <h1 className={styles.pageTitle}>{title}</h1>
+        <h1 className={styles.pageTitle}>
+          <span className="marker">{title}</span>
+        </h1>
         {lead ? <p className={styles.lead}>{lead}</p> : null}
         {details ? <MoreInfo>{details}</MoreInfo> : null}
         {meta ? <div className={styles.meta}>{meta}</div> : null}
@@ -68,7 +70,7 @@ export function Section({
       <div className={styles.sectionHeader}>
         <div className={styles.sectionHeading}>
           <Heading id={id ? `${id}-title` : undefined} className={level === 2 ? styles.sectionTitle : styles.subsectionTitle}>
-            {title}
+            {level === 2 ? <span className="marker">{title}</span> : title}
           </Heading>
           {description ? <p className={styles.sectionDescription}>{description}</p> : null}
           {details ? <MoreInfo>{details}</MoreInfo> : null}
