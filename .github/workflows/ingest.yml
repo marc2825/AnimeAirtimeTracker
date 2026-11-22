@@ -43,6 +43,8 @@ jobs:
       DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
       SYOBOI_USER_AGENT: ${{ secrets.SYOBOI_USER_AGENT }}
       SYOBOI_MIN_INTERVAL_MS: "3000"
+      # Titles per run for the subtitle backfill. Unset = default (500); set the repository variable to 0 to pause.
+      SUBTITLE_BACKFILL_PER_RUN: ${{ vars.SUBTITLE_BACKFILL_PER_RUN }}
       EVENT: ${{ github.event_name }}
       SCHEDULE: ${{ github.event.schedule }}
       INPUT_COMMAND: ${{ inputs.command }}
