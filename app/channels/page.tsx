@@ -28,7 +28,7 @@ const GROUPS: { label: string; match: (c: TrackedChannel) => boolean }[] = [
 export default function ChannelsPage() {
   return (
     <div className="container">
-      <PageHeader title="放送局" lead="局ごとの作品本数の推移・時間帯・放送枠。" />
+      <PageHeader title="放送局" lead="局ごとの作品本数の推移・時間帯・放送枠" />
       <Suspense fallback={<SkeletonBlock rows={6} label="放送局を読み込み中" />}>
         <ChannelsContent />
       </Suspense>

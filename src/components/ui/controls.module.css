@@ -121,15 +121,15 @@
 
 /* Primary: a black block with a hard yellow offset; it presses in on hover. */
 .buttonPrimary {
-  background: var(--color-ink);
-  color: var(--color-ink-inverse);
+  background: var(--color-button);
+  color: var(--color-on-button);
   box-shadow: var(--shadow-offset);
   transition: transform var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
 .buttonPrimary:hover {
   transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--color-marker-bright);
+  box-shadow: 2px 2px 0 var(--color-offset);
 }
 
 .buttonSecondary {
@@ -186,7 +186,7 @@
 
 .chip:hover {
   text-decoration: none;
-  background: var(--color-marker);
+  background: var(--state-pressed);
 }
 
 .clearAll {

@@ -46,7 +46,7 @@ export default function StatsPage({ searchParams }: PageProps<"/stats">) {
     <div className="container">
       <PageHeader
         title="編成統計"
-        lead="アニメがどの曜日・時間帯・局に集まっているか。"
+        lead="アニメがどの曜日・時間帯・局に集まっているか"
       />
       <Suspense fallback={<SkeletonBlock rows={8} label="統計を集計中" />}>
         <StatsContent searchParams={searchParams} />
@@ -240,7 +240,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         />
       </StatGrid>
 
-      <Section id="heatmap" title="曜日×時間帯の分布" description="どの曜日のどの時間帯にアニメが集中しているか。">
+      <Section id="heatmap" title="曜日×時間帯の分布" description="どの曜日のどの時間帯にアニメが集中しているか">
         <ChartFrame
           title={`曜日×時間帯（${unit === "titles" ? "作品本数" : "放送件数"}）`}
           takeaway={
@@ -263,7 +263,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
           }
           table={<HeatmapTable cells={stats.heatmap.cells} unitLabel={unitLabel(unit)} />}
         >
-          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel={unitLabel(unit)} />
+          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel={unitLabel(unit)} details={stats.heatmap.details} controls />
         </ChartFrame>
       </Section>
 
@@ -282,7 +282,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
           </ChartFrame>
         </Section>
 
-        <Section id="channels" title="放送局別" description="局ごとのアニメの本数。">
+        <Section id="channels" title="放送局別" description="局ごとのアニメの本数">
           <ChartFrame
             title="放送局別の作品本数"
             takeaway={topChannel ? `最も多いのは${topChannel.channel.name}（${topChannel.titles}作品・${topChannel.broadcasts}件）。` : "該当データがありません。"}
@@ -302,7 +302,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         </Section>
       </div>
 
-      <Section id="trend" title="クール別の推移" description="集計対象と同じ条件での作品本数の推移。">
+      <Section id="trend" title="クール別の推移" description="集計対象と同じ条件での作品本数の推移">
         <ChartFrame
           title="クール別の作品本数"
           takeaway={
@@ -354,7 +354,7 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         </ChartFrame>
       </Section>
 
-      <Section id="bands" title="時間帯別の推移" description="各クールの作品を、そのクールで最も多かった開始時刻の時間帯に分けた本数。">
+      <Section id="bands" title="時間帯別の推移" description="各クールの作品を、そのクールで最も多かった開始時刻の時間帯に分けた本数">
         <ChartFrame
           title="時間帯別の作品本数（クール別）"
           takeaway={
@@ -412,7 +412,8 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
       </Section>
 
       {compare && compareStats ? (
-        <Section id="compare" title="クール間の比較" description={`${formatSeason(season)}と${formatSeason(compare)}を、集計対象と同じ条件で比べます。比較するクールは上の条件で変えられます。`}>
+        <Section id="compare" title="クール間の比較" description={`${formatSeason(season)}と${formatSeason(compare)}の比較（集計対象と同じ条件）`}
+        details="比較するクールは上の条件で変えられます。">
           <ComparisonTable
             seasonLabel={formatSeason(season)}
             compareLabel={formatSeason(compare)}

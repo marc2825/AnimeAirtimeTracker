@@ -95,7 +95,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         <StatTile label="放送があったクール" value={active.length} unit="クール" hint={`取得済み${covered.length}クール中`} />
       </StatGrid>
 
-      <Section id="trend" title="クール別の作品本数" description="クールごとの作品本数（最も多かった開始時刻の時間帯別）。">
+      <Section id="trend" title="クール別の作品本数" description="クールごとの作品本数（最も多かった開始時刻の時間帯別）">
         <ChartFrame
           title="クール別・時間帯別の作品本数"
           takeaway={peak ? `最も多かったのは${formatSeasonOrdinal(peak.seasonOrdinal)}の${peak.titles}作品です。` : "放送の記録がありません。"}
@@ -148,17 +148,17 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
         </ChartFrame>
       </Section>
 
-      <Section id="heatmap" title={`${formatSeason(latest)}の曜日×時間帯`} description="この局でアニメが放送された曜日と時台。">
+      <Section id="heatmap" title={`${formatSeason(latest)}の曜日×時間帯`} description="この局でアニメが放送された曜日と時台">
         <ChartFrame
           title="曜日×時間帯（作品本数）"
           scope="単位: 作品本数。各作品は放送が始まった曜日・時台ごとに1回数えます。時刻はアニメ時刻（5時切替）。"
           table={<HeatmapTable cells={stats.heatmap.cells} unitLabel="作品" />}
         >
-          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" />
+          <WeekdayHourHeatmap cells={stats.heatmap.cells} max={stats.heatmap.max} unitLabel="作品" details={stats.heatmap.details} />
         </ChartFrame>
       </Section>
 
-      <Section id="slots" title="この局の放送枠" description="この局を基準局とする枠。位置は各枠の最新クールです。">
+      <Section id="slots" title="この局の放送枠" description="この局を基準局とする枠（位置は各枠の最新クール）">
         {ownSlots.length === 0 ? (
           <EmptyState title="この局を基準局とする放送枠はありません" icon="search" />
         ) : (

@@ -35,7 +35,7 @@ export const viewport: Viewport = {
   themeColor: [
     // The masthead colour (tokens.css --color-masthead), so the browser chrome continues the black band.
     { media: "(prefers-color-scheme: light)", color: "#17171c" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b0b0e" }
+    { media: "(prefers-color-scheme: dark)", color: "#060608" }
   ],
   colorScheme: "light dark"
 };

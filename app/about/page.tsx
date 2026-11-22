@@ -29,7 +29,7 @@ const TOC = [
 export default function AboutPage() {
   return (
     <div className="container">
-      <PageHeader title="このサイトについて" lead="データの取得元と、判定・集計のルール。" />
+      <PageHeader title="このサイトについて" lead="データの取得元と、判定・集計のルール" />
       <div className={styles.layout}>
         <nav className={styles.toc} aria-label="目次">
           <ol role="list">

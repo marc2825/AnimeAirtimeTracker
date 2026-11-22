@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { ScheduleGrid } from "@/components/schedule/ScheduleGrid";
 import { ScheduleDayList } from "@/components/schedule/ScheduleList";
+import { MonthCalendar } from "@/components/schedule/MonthCalendar";
 import { DayTabs, ScheduleLegend, WeekNav } from "@/components/schedule/ScheduleNav";
 import { Disclosure, SegmentedLinks, SelectField } from "@/components/ui/controls";
 import { FilterForm } from "@/components/ui/FilterForm";
@@ -30,6 +31,7 @@ import {
   type RawSearchParams
 } from "@/lib/search-params";
 import { getSchedule } from "@/server/queries/schedule";
+import { coverageDates } from "@/server/queries/status";
 
 import styles from "./schedule.module.css";
 
@@ -46,7 +48,7 @@ export default function SchedulePage({ searchParams }: PageProps<"/schedule">) {
     <div className="container">
       <PageHeader
         title="週間番組表"
-        lead="対象局のアニメ放送。時刻はアニメ時刻（5時切替、25:30 = 翌1:30）。"
+        lead="対象局のアニメ放送（時刻は5時切替のアニメ時刻）"
       />
       <Suspense fallback={<SkeletonBlock rows={10} label="番組表を読み込み中" />}>
         <ScheduleContent searchParams={searchParams} />
@@ -107,16 +109,22 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
   const dayItems = byDay[activeDay] ?? [];
   const href = (overrides: Record<string, string | null>) => buildHref(PATH, current, overrides);
   const season = seasonOfAnimeDate(activeDate);
+  const range = await coverageDates();
 
   return (
     <div className={styles.layout}>
       <div className={styles.toolbar}>
-        <WeekNav
-          weekStart={weekStart}
-          isCurrentWeek={isCurrentWeek}
-          seasonLabel={formatSeason(season)}
-          hrefForWeek={(week) => href({ week: week, day: null })}
-        />
+        <div className={styles.weekPicker}>
+          <WeekNav
+            weekStart={weekStart}
+            isCurrentWeek={isCurrentWeek}
+            seasonLabel={formatSeason(season)}
+            hrefForWeek={(week) => href({ week: week, day: null })}
+          />
+          <Disclosure summary="カレンダーから選ぶ">
+            <MonthCalendar today={today} selectedWeek={weekStart} min={range.min} max={range.max} params={current} />
+          </Disclosure>
+        </div>
         <SegmentedLinks
           label="表示形式"
           options={[

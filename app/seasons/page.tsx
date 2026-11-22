@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 export default function SeasonsPage() {
   return (
     <div className="container">
-      <PageHeader title="クール別の新作" lead="クールごとに第1話が放送された作品。" />
+      <PageHeader title="クール別の新作" lead="クールごとに第1話が放送された作品" />
       <Suspense fallback={<SkeletonBlock rows={6} label="クールを読み込み中" />}>
         <SeasonsContent />
       </Suspense>

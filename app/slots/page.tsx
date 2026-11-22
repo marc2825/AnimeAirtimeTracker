@@ -24,7 +24,7 @@ export default function SlotsPage({ searchParams }: PageProps<"/slots">) {
     <div className="container">
       <PageHeader
         title="放送枠"
-        lead="局・曜日・時刻ごとの作品の移り変わり。"
+        lead="局・曜日・時刻ごとの作品の移り変わり"
       />
       <Suspense fallback={<SkeletonBlock rows={6} label="放送枠を読み込み中" />}>
         <SlotsContent searchParams={searchParams} />
@@ -90,7 +90,7 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
       ) : null}
 
       {labelled.length > 0 ? (
-        <Section id="labelled" title="名前のある枠" description="出典の作品備考に「〜枠で放送」と記載された枠。">
+        <Section id="labelled" title="名前のある枠" description="出典の作品備考に「〜枠で放送」と記載された枠">
           <ul role="list" className={styles.grid}>
             {labelled.map((slot) => (
               <SlotCard key={slot.slug} slot={slot} stripEnd={stripEnd} stripTitles={stripTitles[slot.slug]} />
@@ -103,7 +103,7 @@ async function SlotsContent({ searchParams }: { searchParams: Promise<RawSearchP
         <Section
           id="inferred"
           title="推定枠"
-          description="同じ局・曜日・時刻に新作が続いた位置（3クール・3作品以上）。"
+          description="同じ局・曜日・時刻に新作が続いた位置（3クール・3作品以上）"
           details="枠の公式な存在を示すものではありません。局ごとに位置を時刻順に並べています。"
         >
           <div className={styles.channelGroups}>
