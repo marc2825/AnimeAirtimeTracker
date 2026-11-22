@@ -79,6 +79,9 @@ export function ScheduleGrid({ items, channels, animeDate, clock }: { items: Sch
                   const position = placed.get(item.id)!;
                   const episode = episodeText(item.episodeNumber, item.episodeLabel);
                   const compact = position.height < 44;
+                  // A one-line cell sharing its column has no room for time and title: the title is shown, the
+                  // time stays readable to screen readers and in the tooltip (the cell's position gives it too).
+                  const narrow = compact && position.lanes > 1;
                   // Fit whole lines only: padding 8 + time row 15, title lines 16px, episode row 14.
                   const available = position.height - 2 - 8 - 15;
                   const showEpisode = Boolean(episode) && available >= 16 * 2 + 14;
@@ -97,7 +100,7 @@ export function ScheduleGrid({ items, channels, animeDate, clock }: { items: Sch
                       }}
                       title={`${formatStartTime(item.animeStartMinute, clock)} ${channel.shortName} ${item.titleName}${episode ? ` ${episode}` : ""}${item.subtitle ? `「${item.subtitle}」` : ""}`}
                     >
-                      <span className={styles.cellTime}>
+                      <span className={narrow ? "visually-hidden" : styles.cellTime}>
                         {formatStartTime(item.animeStartMinute, clock)}
                         <FlagBadges flagNew={item.flagNew} flagFinal={item.flagFinal} isRerun={item.isRerun} rerunBasis={item.rerunBasis} compact />
                       </span>
