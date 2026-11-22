@@ -1,6 +1,9 @@
 name: 不具合
 description: 表示が崩れる、エラーになる、操作できないなど
 body:
+  - type: markdown
+    attributes:
+      value: Issue は誰でも読めます。氏名・メールアドレス・住所などの個人情報は書かないでください。公開したくない内容は、新規作成画面の「セキュリティ上の問題・非公開の連絡」から非公開で送れます。
   - type: input
     id: url
     attributes:

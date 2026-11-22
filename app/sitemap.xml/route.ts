@@ -8,7 +8,7 @@ import { getRecentTitleSlugs } from "@/server/queries/sitemap";
 import { listSlots } from "@/server/queries/slots";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
 
-const STATIC_ROUTES = ["/", "/schedule", "/search", "/slots", "/seasons", "/channels", "/stats", "/about", "/status"];
+const STATIC_ROUTES = ["/", "/schedule", "/search", "/slots", "/seasons", "/channels", "/stats", "/about", "/status", "/privacy", "/terms"];
 
 /**
  * The sitemap is built per request from cached data, so `next build` never needs a database. When the

@@ -351,3 +351,17 @@ test("heatmap cells name their titles, and the range can be cropped and enlarged
   await page.keyboard.press("Escape");
   await expect(panel).toHaveCount(0);
 });
+
+test("privacy policy and terms are linked from every page and state how the site works", async ({ page }) => {
+  await page.goto("/");
+  const footer = page.getByRole("contentinfo");
+  await footer.getByRole("link", { name: "プライバシーポリシー" }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByRole("heading", { level: 1, name: "プライバシーポリシー" })).toBeVisible();
+  // The storage keys named on the page are the ones the code uses.
+  await expect(page.getByText("theme", { exact: true })).toBeVisible();
+  await expect(page.getByText("nowAiringHiddenUntil", { exact: true })).toBeVisible();
+  await page.getByRole("contentinfo").getByRole("link", { name: "利用規約・免責事項" }).click();
+  await expect(page).toHaveURL(/\/terms$/);
+  await expect(page.getByRole("heading", { name: "非公式のサイトです" })).toBeVisible();
+});
