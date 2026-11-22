@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeTitlePositions, deriveSlots, type SlotInputBroadcast } from "./slots";
-import { channelBreakdown, concurrencyProfile, delayBucket, regionalDelay, seasonTrend, weekdayHourMatrix, type StatAiring } from "./stats";
+import { channelBreakdown, concurrencyProfile, delayBucket, regionalDelay, seasonTrend, weekdayHourEntries, weekdayHourMatrix, type StatAiring } from "./stats";
 import { addDays, fromAnimeTime } from "./time";
 
 function airing(partial: Partial<StatAiring> & Pick<StatAiring, "titleId" | "animeDate" | "animeStartMinute">): StatAiring {
@@ -20,6 +20,32 @@ function airing(partial: Partial<StatAiring> & Pick<StatAiring, "titleId" | "ani
 function weekly(titleId: number, firstDate: string, minute: number, extra: Partial<StatAiring> = {}): StatAiring[] {
   return [0, 7, 14, 21].map((offset, index) => airing({ titleId, animeDate: addDays(firstDate, offset), animeStartMinute: minute, episodeNumber: index + 1, ...extra }));
 }
+
+describe("weekdayHourEntries", () => {
+  it("lists the titles and channels behind a cell, in start order, matching the title count", () => {
+    const data = [
+      ...weekly(2, "2026-10-05", 25 * 60 + 30),
+      ...weekly(1, "2026-10-05", 25 * 60),
+      ...weekly(1, "2026-10-05", 25 * 60 + 5, { channelId: 2 }),
+      ...weekly(3, "2026-10-06", 23 * 60)
+    ];
+    const entries = weekdayHourEntries(data);
+    const monday25 = entries[0 * 24 + (25 - 5)]!;
+    expect(monday25.map((e) => [e.titleId, e.channelId, e.startMinute, e.airings])).toEqual([
+      [1, 1, 1500, 4],
+      [1, 2, 1505, 4],
+      [2, 1, 1530, 4]
+    ]);
+    // Distinct titles in the cell equal the heatmap's title count for it.
+    expect(new Set(monday25.map((e) => e.titleId)).size).toBe(weekdayHourMatrix(data, "titles").cells[0]![25 - 5]);
+    expect(Object.keys(entries).map(Number).sort((a, b) => a - b)).toEqual([20, 24 + 18]);
+  });
+
+  it("uses the most frequent start minute when a title moved within the hour", () => {
+    const moved = weekly(1, "2026-10-05", 1500).map((a, index) => (index === 0 ? { ...a, animeStartMinute: 1510 } : a));
+    expect(weekdayHourEntries(moved)[20]).toEqual([{ titleId: 1, channelId: 1, startMinute: 1500, airings: 4 }]);
+  });
+});
 
 describe("weekdayHourMatrix", () => {
   const data = [...weekly(1, "2026-10-05", 25 * 60), ...weekly(2, "2026-10-05", 25 * 60 + 30), ...weekly(3, "2026-10-06", 23 * 60)];

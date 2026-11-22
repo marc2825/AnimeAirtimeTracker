@@ -1,7 +1,7 @@
 import { channelSlugsFor, TRACKED_CHANNELS, type NetworkKey, type RegionKey } from "@/domain/coverage";
 import { computeTitlePositions } from "@/domain/slots";
 import { seasonInstantRange, seasonOrdinal, seasonsBetween, type Season } from "@/domain/season";
-import { channelBreakdown, concurrencyProfile, regionalDelay, seasonTrend, weekdayHourMatrix, type CountUnit, type StatAiring } from "@/domain/stats";
+import { channelBreakdown, concurrencyProfile, regionalDelay, seasonTrend, weekdayHourEntries, weekdayHourMatrix, type CountUnit, type StatAiring } from "@/domain/stats";
 import { dbDateToIsoDate } from "@/domain/time";
 import { inTimeBand, TIME_BANDS, type LengthKey, type RerunMode, type TimeBand } from "@/lib/search-params";
 
@@ -42,12 +42,41 @@ export function concurrencyWindow(band: TimeBand | null): { fromMinute: number; 
   return { fromMinute: TIME_BANDS[band].from, toMinute: Math.min(29 * 60, TIME_BANDS[band].to + 120) };
 }
 
+/**
+ * The titles and channels behind each heatmap cell, for the hover panel. Names are stored once and cells
+ * point at them by index, so a season on every channel stays small.
+ */
+export interface HeatmapDetails {
+  titles: { name: string; slug: string }[];
+  channels: string[];
+  /** `weekday * 24 + hourIndex` → [title index, channel index, start minute, airings][] in start order. */
+  cells: Record<number, [number, number, number, number][]>;
+}
+
+async function heatmapDetails(airings: StatAiring[], channels: ChannelInfo[]): Promise<HeatmapDetails> {
+  const entries = weekdayHourEntries(airings);
+  const titleIds = [...new Set(airings.map((a) => a.titleId))];
+  const rows = titleIds.length ? await db().title.findMany({ where: { id: { in: titleIds } }, select: { id: true, name: true, slug: true } }) : [];
+  const titleIndex = new Map(rows.map((row, index) => [row.id, index]));
+  const usedChannels = channels.filter((channel) => airings.some((a) => a.channelId === channel.id));
+  const channelIndex = new Map(usedChannels.map((channel, index) => [channel.id, index]));
+  const cells: HeatmapDetails["cells"] = {};
+  for (const [cell, list] of Object.entries(entries)) {
+    cells[Number(cell)] = list.flatMap((entry) => {
+      const title = titleIndex.get(entry.titleId);
+      const channel = channelIndex.get(entry.channelId);
+      return title === undefined || channel === undefined ? [] : [[title, channel, entry.startMinute, entry.airings] as [number, number, number, number]];
+    });
+  }
+  return { titles: rows.map((row) => ({ name: row.name, slug: row.slug })), channels: usedChannels.map((channel) => channel.shortName), cells };
+}
+
 export async function getSeasonStats(season: Season, unit: CountUnit, filter: StatsFilter) {
   "use cache";
   datasetCacheProfile();
   const channels = await getTrackedChannels();
   const airings = await loadAirings(toAiringFilter(filter, { season }), channels);
-  const heatmap = weekdayHourMatrix(airings, unit);
+  const heatmap = { ...weekdayHourMatrix(airings, unit), details: await heatmapDetails(airings, channels) };
   const byChannel = channelBreakdown(airings).map((row) => ({ ...row, channel: channels.find((c) => c.id === row.channelId)! }));
   // Positions come from airings that start in the band; their full length is drawn, even past the band's end.
   const positions = computeTitlePositions(airings.map((a) => ({ ...a, isRerun: false, deleted: false }))).filter((p) => p.seasonOrdinal === seasonOrdinal(season));
