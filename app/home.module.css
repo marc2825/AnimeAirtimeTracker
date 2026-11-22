@@ -76,6 +76,20 @@
   text-decoration: none;
 }
 
+/* Today's listing beside the month calendar. */
+.today {
+  display: grid;
+  gap: var(--space-10);
+}
+
+.calendar {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: var(--rule);
+}
+
 /* Today's remaining first-run airings, as a listing column. */
 .onAir {
   align-self: start;
@@ -306,6 +320,11 @@
 
   .indexRow {
     border-bottom: 0;
+  }
+
+  .today {
+    grid-template-columns: minmax(0, 1fr) 19rem;
+    gap: var(--space-10);
   }
 
   /* Today's list in two newspaper columns, read top to bottom. */
