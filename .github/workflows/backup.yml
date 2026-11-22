@@ -1,7 +1,7 @@
 # Monthly database backup kept outside Neon (Neon Free only restores the last 6 hours).
-# The dump is restored into a throwaway PostgreSQL 18 and its row counts are compared with production, then it is
-# encrypted to .github/backup/backup-cert.pem. Only the owner's private key opens it, so keeping it as an artifact
-# of this public repository is safe. Restore steps: docs/operations.md, "Backup and restore".
+# The dump is restored into a throwaway PostgreSQL 18 and the row count of every table is compared with production.
+# It is then encrypted to .github/backup/backup-cert.pem. Only the owner's private key opens it, so keeping it as an
+# artifact of this public repository is safe. Restore steps: docs/operations.md, "Backup and restore".
 name: Backup
 
 on:
@@ -48,19 +48,32 @@ jobs:
           docker run --rm -e DIRECT_DATABASE_URL "$PG_IMAGE" sh -c 'pg_dump --format=custom --no-owner --no-privileges "$DIRECT_DATABASE_URL"' > backup.dump
           test "$(head -c 5 backup.dump)" = "PGDMP"
           ls -l backup.dump
-      - name: Restore into a throwaway database and compare row counts
+      - name: Restore into a throwaway database and compare every table
         run: |
           docker run --rm --network host -v "$PWD:/work" -e RESTORE_URL "$PG_IMAGE" sh -c 'pg_restore --no-owner --no-privileges --exit-on-error -d "$RESTORE_URL" /work/backup.dump'
-          # The URL is passed by name through the environment, never as a command-line argument.
-          psql18() { docker run --rm --network host -e "$1" "$PG_IMAGE" sh -c "psql \"\$$1\" -Atc '$2'"; }
+          # The URL is passed by name through the environment, never as a command-line argument; so is the query.
+          psql18() { docker run --rm --network host -e "$1" -e SQL="$2" "$PG_IMAGE" sh -c "psql \"\$$1\" -Atc \"\$SQL\""; }
+          # The tables come from the database itself, not a list kept here, so a table added by a later migration is
+          # checked too (a fixed list once left out TitleSubtitle). _prisma_migrations is included: the restored copy
+          # must know which migrations it has.
+          list="SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename COLLATE \"C\""
+          tables=$(psql18 DIRECT_DATABASE_URL "$list")
+          restored_tables=$(psql18 RESTORE_URL "$list")
+          [ -n "$tables" ] || { echo "::error::no tables found in production"; exit 1; }
           failed=0
-          for table in Channel Title Broadcast BroadcastRevision Slot SlotMembership SlotSeason ImportRun CoverageWindow; do
+          if [ "$tables" != "$restored_tables" ]; then
+            echo "::error::the restored database has different tables"
+            diff <(echo "$tables") <(echo "$restored_tables") || true
+            failed=1
+          fi
+          for table in $tables; do
             source=$(psql18 DIRECT_DATABASE_URL "SELECT count(*) FROM \"$table\"")
             restored=$(psql18 RESTORE_URL "SELECT count(*) FROM \"$table\"")
             echo "$table: production $source, restored $restored"
             [ "$source" = "$restored" ] || failed=1
           done
-          [ "$failed" = 0 ] || { echo "::error::row counts differ (an ingest run may have overlapped; re-run)"; exit 1; }
+          echo "$(echo "$tables" | wc -l) tables compared"
+          [ "$failed" = 0 ] || { echo "::error::the restored copy differs (an ingest run may have overlapped; re-run)"; exit 1; }
       - name: Encrypt for the owner's key
         run: |
           name="anime-airtime-tracker-$(date -u +%Y-%m-%d).dump.cms"

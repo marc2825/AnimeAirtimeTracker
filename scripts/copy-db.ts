@@ -16,6 +16,7 @@ import { normalizeSslMode } from "@/server/prisma";
 const TABLES = [
   "Channel",
   "Title",
+  "TitleSubtitle",
   "ImportRun",
   "Broadcast",
   "BroadcastRevision",
@@ -47,6 +48,11 @@ async function main() {
   await source.connect();
   await target.connect();
   try {
+    // A table missing from TABLES would be left out of the copy and the check without any error.
+    const listed = new Set<string>(TABLES);
+    const actual = await source.query<{ tablename: string }>("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'");
+    const unlisted = actual.rows.map((row) => row.tablename).filter((table) => !listed.has(table));
+    if (unlisted.length > 0) throw new Error(`Not in TABLES (add them, parents first): ${unlisted.join(", ")}`);
     for (const table of TABLES) {
       const existing = await target.query(`SELECT 1 FROM "${table}" LIMIT 1`);
       if (existing.rowCount) throw new Error(`Target table "${table}" is not empty; refusing to copy.`);
