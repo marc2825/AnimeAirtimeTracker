@@ -8,21 +8,26 @@ export interface StripTick {
   heading: string;
   /** Title names, or a note when there are none to show. */
   lines: string[];
+  /** Slug of the first title (the page a double-click opens), when names are known. */
+  slug: string | null;
 }
+
+export type StripSeasonTitles = Record<number, { name: string; slug: string }[]>;
 
 export const STRIP_NO_POSITION = "この枠での定時放送なし";
 /** A filled season whose title names are not stored yet (derived before names were kept). */
 export const STRIP_NAMES_UNKNOWN = "この枠で定時放送あり（作品名は未集計）";
 
 /** The `count` seasons ending at `end`, oldest first, each with what its tick should say. */
-export function stripTicks(ordinals: number[], end: Season, count: number, titles?: Record<number, string[]>): StripTick[] {
+export function stripTicks(ordinals: number[], end: Season, count: number, titles?: StripSeasonTitles): StripTick[] {
   const set = new Set(ordinals);
   return Array.from({ length: count }, (_, index) => {
     const season = shiftSeason(end, index - count + 1);
     const ordinal = seasonOrdinal(season);
     const on = set.has(ordinal);
-    const names = on ? (titles?.[ordinal] ?? []) : [];
-    return { ordinal, season, on, heading: formatSeason(season), lines: on ? (names.length > 0 ? names : [STRIP_NAMES_UNKNOWN]) : [STRIP_NO_POSITION] };
+    const list = on ? (titles?.[ordinal] ?? []) : [];
+    const lines = on ? (list.length > 0 ? list.map((title) => title.name) : [STRIP_NAMES_UNKNOWN]) : [STRIP_NO_POSITION];
+    return { ordinal, season, on, heading: formatSeason(season), lines, slug: list[0]?.slug ?? null };
   });
 }
 

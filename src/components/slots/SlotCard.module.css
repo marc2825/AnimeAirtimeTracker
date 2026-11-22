@@ -94,6 +94,17 @@
   overflow-wrap: anywhere;
 }
 
+.tooltipHint {
+  margin-top: var(--space-1);
+  font-size: var(--text-2xs);
+  opacity: 0.7;
+}
+
+/* A filled tick opens its title on double-click. */
+.tickOn[data-s] {
+  cursor: pointer;
+}
+
 .stats {
   display: grid;
   grid-template-columns: auto auto 1fr;
