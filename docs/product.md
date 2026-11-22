@@ -46,6 +46,7 @@ Out (not blocking launch): accounts, watch lists, notifications, streaming catal
 | `/channels`, `/channels/[slug]` | Channel index and per-channel trend, weekday × hour, slots |
 | `/stats` | Season statistics with scope selector (region, network, channel, time band, length), band trend, season comparison, table views |
 | `/about` | Sources, terms, coverage, time conventions, definitions, slot rules, limits, corrections |
+| `/terms`, `/privacy` | Terms and disclaimer (unofficial site, source and limits, code vs data licensing, requests); privacy policy (what the browser stores, hosting logs, contact data) |
 | `/status` | Real import history, coverage window, staleness warning |
 
 ## Product principles

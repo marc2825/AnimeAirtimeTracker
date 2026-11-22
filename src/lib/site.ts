@@ -4,6 +4,11 @@ export const SITE_DESCRIPTION =
   "日本のアニメ放送編成を、今週の番組表から過去の放送枠の変遷・編成統計まで横断して調べられるサイト。番組データはしょぼいカレンダーに基づきます。";
 export const REPOSITORY_URL = "https://github.com/marc2825/AnimeAirtimeTracker";
 export const ISSUES_URL = `${REPOSITORY_URL}/issues`;
+/** GitHub's private report form: the non-public channel for security issues and anything not to be posted in public. */
+export const PRIVATE_REPORT_URL = `${REPOSITORY_URL}/security/advisories/new`;
+export const CHANGELOG_URL = `${REPOSITORY_URL}/blob/main/CHANGELOG.md`;
+/** Date the privacy policy and terms were last changed (shown on both pages). */
+export const POLICIES_UPDATED = "2026年11月22日";
 export const SOURCE_NAME = "しょぼいカレンダー";
 export const SOURCE_URL = "https://cal.syoboi.jp/";
 

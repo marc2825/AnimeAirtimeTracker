@@ -5,7 +5,7 @@ import { ExternalLink, PageHeader } from "@/components/ui/primitives";
 import { ANIME_CATEGORIES, AREA_LABELS, MEDIUM_LABELS, REGIONS, REGION_KEYS, SPARSE_SOURCE_NOTE, SYOBOI_CATEGORY_LABELS, TRACKED_CHANNELS, channelsInRegion } from "@/domain/coverage";
 import { RERUN_AGE_THRESHOLD_MONTHS } from "@/domain/flags";
 import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, LABEL_MIN_TITLES, MIN_REGULAR_AIRINGS, SLOT_RULE_VERSION } from "@/domain/slots";
-import { ISSUES_URL, REPOSITORY_URL, SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
+import { ISSUES_URL, PRIVATE_REPORT_URL, REPOSITORY_URL, SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
 
 import styles from "./about.module.css";
 
@@ -66,6 +66,9 @@ export default function AboutPage() {
               <li>放送枠の判定・再放送の推定・統計は本サイトが算出したもので、出典の見解ではありません。</li>
               <li>作品画像は使用していません。</li>
             </ul>
+            <p>
+              掲載データの扱いと免責事項は<Link href="/terms">利用規約・免責事項</Link>、利用者の情報の扱いは<Link href="/privacy">プライバシーポリシー</Link>にまとめています。
+            </p>
           </section>
 
           <section id="coverage">
@@ -171,9 +174,9 @@ export default function AboutPage() {
             <p id="contact">
               運営者への連絡（データ取得についての連絡を含む）も
               <ExternalLink href={ISSUES_URL}>GitHub Issues</ExternalLink>
-              で受け付けます。公開したくない内容やセキュリティ上の問題は、
-              <ExternalLink href={`${REPOSITORY_URL}/security/advisories/new`}>GitHub の非公開の報告</ExternalLink>
-              を使ってください。本サイトの取得プログラムは、User-Agent でこのページを連絡先として示しています。
+              で受け付けます。Issues は公開されるため、個人情報は書かないでください。公開したくない内容、権利に関する申し出、セキュリティ上の問題は、
+              <ExternalLink href={PRIVATE_REPORT_URL}>GitHub の非公開の報告</ExternalLink>
+              を使ってください（どちらも GitHub のアカウントが必要です）。本サイトの取得プログラムは、User-Agent でこのページを連絡先として示しています。
             </p>
             <p>
               ソースコード: <ExternalLink href={REPOSITORY_URL}>{REPOSITORY_URL.replace("https://", "")}</ExternalLink>（MIT License。番組データには適用されません）

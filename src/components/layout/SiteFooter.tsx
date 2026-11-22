@@ -3,7 +3,7 @@ import { io } from "next/cache";
 import { Suspense } from "react";
 
 import { formatDateTime } from "@/lib/format";
-import { ISSUES_URL, REPOSITORY_URL, SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
+import { CHANGELOG_URL, REPOSITORY_URL, SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
 import { getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./SiteFooter.module.css";
@@ -47,8 +47,11 @@ export function SiteFooter() {
           <Link href="/about#method">方法論と定義</Link>
           <Link href="/about#limits">データの限界</Link>
           <Link href="/status">データ更新状況</Link>
-          <a href={ISSUES_URL} rel="noopener" target="_blank">
-            訂正・問い合わせ
+          <Link href="/about#corrections">訂正・問い合わせ</Link>
+          <Link href="/terms">利用規約・免責事項</Link>
+          <Link href="/privacy">プライバシーポリシー</Link>
+          <a href={CHANGELOG_URL} rel="noopener" target="_blank">
+            更新履歴
           </a>
           <a href={REPOSITORY_URL} rel="noopener" target="_blank">
             ソースコード

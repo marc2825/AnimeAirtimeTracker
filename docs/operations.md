@@ -107,6 +107,20 @@ Actions logs of a public repository are public: the workflows mask the database 
 
 Until then, failures are noticed through GitHub's Actions notifications and the stale-data notice on the site.
 
+## Contact channels
+
+Current channels, all on GitHub: public Issues (corrections, questions; the templates warn against posting personal data) and the private report form (`/security/advisories/new`: security issues, rights claims, anything not for public view). Both need a GitHub account.
+
+A channel without a GitHub account is an **owner decision** and is not set up. Options, if wanted:
+
+| Option | Cost | Notes |
+| --- | --- | --- |
+| A dedicated mail address (forwarding alias) | free with many providers | simplest; publish it on `/about#contact` and `/terms`; expect spam; never use the owner's personal address |
+| A hosted form (e.g. Google Forms) | free | no address to publish; the form provider stores the submissions, so `/privacy` must name it |
+| A form on this site | — | needs a backend that stores input and an admin view, which the architecture rules out (CLI-only operations) |
+
+When one is chosen, update `/about#contact`, `/terms#requests`, `/privacy#contact`, `SECURITY.md` and the issue template links together.
+
 ## Incident response
 
 The site is read-only and serves the last good data, so most incidents are about freshness, not data loss. Production changes (settings, secrets, plans, destructive database operations) need the owner.
@@ -144,4 +158,4 @@ Status 2026-11-21.
 - [x] Monthly encrypted backup with restore check (`backup.yml`; first successful run 2026-11-21: 9 tables matched after restore, artifact decrypted with the owner's key)
 - [x] TLS, `robots.txt`/`sitemap.xml` reachable on the Vercel domain
 - [ ] Open Graph preview checked; Search Console verified (optional)
-- [x] Privacy: no analytics/cookies are used; if added later, publish a privacy notice first
+- [x] Privacy policy (`/privacy`) and terms (`/terms`) published 2026-11-22, describing the site as built: no accounts, forms, cookies, analytics or ads; two localStorage keys; Vercel request logs. Update `/privacy` **before** adding anything that collects or sends visitor data (analytics, forms, embeds), and bump `POLICIES_UPDATED` in `src/lib/site.ts`. The wording was written from the code; the owner reviews legal wording.

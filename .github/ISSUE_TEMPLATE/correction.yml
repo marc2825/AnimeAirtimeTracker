@@ -3,6 +3,9 @@ description: 放送枠の判定、再放送の推定、統計、番組表の表�
 body:
   - type: markdown
     attributes:
+      value: Issue は誰でも読めます。氏名・メールアドレス・住所などの個人情報は書かないでください。公開したくない内容は、新規作成画面の「セキュリティ上の問題・非公開の連絡」から非公開で送れます。
+  - type: markdown
+    attributes:
       value: 放送データ（放送日時・話数・タイトル）自体の誤りは、しょぼいカレンダーで修正されると次回の取得で反映されます。
   - type: input
     id: url
