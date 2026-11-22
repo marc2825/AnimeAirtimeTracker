@@ -65,7 +65,7 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 
 ## Accessibility
 
-Skip link; landmarks; one H1 per page; focus-visible ring; tab order follows reading order; segmented controls are links with `aria-current`; charts have `role="img"` summaries plus table twins; flags and kinds have text/shape; contrast ≥ 4.5:1 for text; reduced motion respected; tested keyboard flow in E2E.
+Skip link; landmarks; one H1 per page; focus-visible ring; tab order follows reading order; segmented controls are links with `aria-current`; charts have `role="img"` summaries plus table twins; flags and kinds have text/shape; contrast ≥ 4.5:1 for text; reduced motion respected; tested keyboard flow in E2E. Horizontally scrolling tables and charts are labelled `role="region"` with `tabIndex={0}` so they can be scrolled from the keyboard; links in the schedule grid are at least 24 px tall (WCAG 2.2 target size), and a short programme gets its own lane rather than being covered by the next. `e2e/a11y.spec.ts` runs axe-core (WCAG 2.0–2.2 A/AA rules) on 13 main pages in both themes on desktop and mobile in every CI run; it catches what can be checked mechanically, not reading order or wording.
 
 ## Review checklist
 
