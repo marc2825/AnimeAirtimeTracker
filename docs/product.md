@@ -45,6 +45,7 @@ Out (by policy, not just for launch): general title introductions, reviews, watc
 | `/slots`, `/slots/[slug]` | Slot index (labelled cards, inferred positions per channel) and chronicle pages |
 | `/seasons`, `/seasons/[season]` | Season index and the season's new series (first-episode airings) by weekday |
 | `/channels`, `/channels/[slug]` | Channel index and per-channel trend, weekday × hour, slots |
+| (figures) | 書き出し row under exportable charts: CSV / SVG / PNG with source, site, scope, URL and data time; a share link with every condition explicit |
 | `/analysis`, `/analysis/[slug]` | Analyses from a typed registry (`src/analysis/`): shared frame with scope, unit, source, data time, definitions, limits, reproduce links |
 | `/stats` | Season statistics with scope selector (region, network, channel, time band, length), band trend, season comparison, table views |
 | `/about` | Sources, terms, coverage, time conventions, definitions, slot rules, limits, corrections |
