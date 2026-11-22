@@ -6,6 +6,7 @@
  * Only syntax and fixed lists are checked: a well-formed ID that is not in the database still reaches the
  * page, which renders not-found (200 + noindex). The proxy must not query the database.
  */
+import { isAnalysisSlug } from "@/analysis/slugs";
 import { FIRST_SEASON, TRACKED_CHANNELS } from "@/domain/coverage";
 import { currentSeason, parseSeasonId, seasonOrdinal, shiftSeason } from "@/domain/season";
 
@@ -32,7 +33,7 @@ export function isSeasonInScope(value: string, now: Date = new Date()): boolean 
 
 /** `false` when the URL alone shows that the page cannot exist. Unknown paths are left to the router. */
 export function routeExists(pathname: string, now: Date = new Date()): boolean {
-  const match = /^\/(titles|seasons|channels)\/([^/]+)\/?$/.exec(pathname);
+  const match = /^\/(titles|seasons|channels|analysis)\/([^/]+)\/?$/.exec(pathname);
   if (!match) return true;
   const value = segment(match[2]!);
   if (value === null) return false;
@@ -43,6 +44,8 @@ export function routeExists(pathname: string, now: Date = new Date()): boolean {
       return isSeasonInScope(value, now);
     case "channels":
       return CHANNEL_SLUGS.has(value);
+    case "analysis":
+      return isAnalysisSlug(value);
     default:
       return true;
   }

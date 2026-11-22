@@ -27,6 +27,12 @@ describe("routeExists", () => {
     expect(isSeasonInScope("2026-autumn", NOW)).toBe(true);
   });
 
+  it("knows the published analyses", () => {
+    expect(routeExists("/analysis/late-night", NOW)).toBe(true);
+    expect(routeExists("/analysis/nope", NOW)).toBe(false);
+    expect(routeExists("/analysis", NOW)).toBe(true);
+  });
+
   it("leaves index pages, slots and other routes to the router", () => {
     for (const path of ["/titles", "/seasons", "/channels", "/slots/anything", "/slots/%E3%83%8E", "/stats", "/titles/1/extra"]) {
       expect(routeExists(path, NOW), path).toBe(true);

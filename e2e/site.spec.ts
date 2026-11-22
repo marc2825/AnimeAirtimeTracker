@@ -365,3 +365,17 @@ test("privacy policy and terms are linked from every page and state how the site
   await expect(page).toHaveURL(/\/terms$/);
   await expect(page.getByRole("heading", { name: "非公式のサイトです" })).toBeVisible();
 });
+
+test("analysis pages state their scope and are reachable from the index", async ({ page, request }) => {
+  await page.goto("/analysis");
+  await page.getByRole("link", { name: "深夜アニメの長期的な変遷" }).click();
+  await expect(page).toHaveURL(/\/analysis\/late-night$/);
+  await expect(page.getByRole("heading", { level: 1, name: "深夜アニメの長期的な変遷" })).toBeVisible();
+  // The frame states what is counted before any figure, and how to reproduce it after.
+  for (const term of ["対象", "単位", "出典", "データ"]) await expect(page.getByRole("term").filter({ hasText: new RegExp(`^${term}$`) })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "定義" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "確かめる" })).toBeVisible();
+  // One recorded day cannot be compared across years: the page says so instead of inventing a result.
+  await expect(page.getByText("比べられる年がまだありません")).toBeVisible();
+  expect((await request.get("/analysis/no-such-analysis")).status()).toBe(404);
+});

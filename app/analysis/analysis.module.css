@@ -1,0 +1,95 @@
+.list {
+  display: grid;
+  border-top: var(--border-strong);
+}
+
+.item {
+  display: grid;
+  gap: var(--space-1);
+  padding-block: var(--space-4);
+  border-bottom: var(--border);
+}
+
+.itemTitle {
+  width: fit-content;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-black);
+  color: var(--color-accent);
+}
+
+.itemSummary {
+  font-size: var(--text-base);
+}
+
+.itemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+/* Analysis page: what is counted, above the findings. */
+.facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-1-5) var(--space-4);
+  max-width: 52rem;
+  padding-block: var(--space-3);
+  border-top: var(--border-strong);
+  border-bottom: var(--border);
+  font-size: var(--text-sm);
+}
+
+.facts dt {
+  font-weight: var(--weight-bold);
+}
+
+.facts dd {
+  min-width: 0;
+  color: var(--color-ink-2);
+}
+
+.notes {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 46rem;
+  padding-left: 1.25rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+
+.definitions {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 46rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+}
+
+.definitions dt {
+  font-weight: var(--weight-bold);
+}
+
+.definitions dd {
+  margin-bottom: var(--space-1);
+  color: var(--color-ink-2);
+}
+
+.breadcrumb {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
+@media (max-width: 40rem) {
+  .facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .facts dd {
+    margin-bottom: var(--space-1);
+  }
+}

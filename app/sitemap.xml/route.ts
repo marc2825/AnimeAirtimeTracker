@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 
+import { ANALYSIS_SLUGS } from "@/analysis/slugs";
 import { TRACKED_CHANNELS } from "@/domain/coverage";
 import { currentSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { siteUrl } from "@/lib/site";
@@ -8,7 +9,7 @@ import { getRecentTitleSlugs } from "@/server/queries/sitemap";
 import { listSlots } from "@/server/queries/slots";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
 
-const STATIC_ROUTES = ["/", "/schedule", "/search", "/slots", "/seasons", "/channels", "/stats", "/about", "/status", "/privacy", "/terms"];
+const STATIC_ROUTES = ["/", "/schedule", "/search", "/slots", "/seasons", "/channels", "/stats", "/about", "/status", "/privacy", "/terms", "/analysis", ...ANALYSIS_SLUGS.map((slug) => `/analysis/${slug}`)];
 
 /**
  * The sitemap is built per request from cached data, so `next build` never needs a database. When the

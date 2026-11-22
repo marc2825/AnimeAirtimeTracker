@@ -455,7 +455,8 @@
   background: var(--viz-bar-muted);
 }
 
-.columnHighlight .columnBar {
+.columnHighlight .columnBar,
+.columnsPlain .columnBar {
   background: var(--viz-bar);
 }
 

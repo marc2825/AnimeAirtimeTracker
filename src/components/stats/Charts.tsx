@@ -137,11 +137,24 @@ export function BarList({ rows, unit, max: maxOverride }: { rows: { key: string;
   );
 }
 
-export function ColumnChart({ columns, unit }: { columns: { key: string; label: string; sublabel?: string; value: number; highlight?: boolean }[]; unit: string }) {
+/**
+ * Columns over an ordered axis. With a highlighted column the others are muted so it stands out; without one,
+ * every column is drawn in the full series colour.
+ */
+export function ColumnChart({
+  columns,
+  unit,
+  label = "クール別のグラフ（左が古く、右が新しい）"
+}: {
+  columns: { key: string; label: string; sublabel?: string; value: number; highlight?: boolean }[];
+  unit: string;
+  label?: string;
+}) {
   const max = Math.max(1, ...columns.map((column) => column.value));
+  const plain = !columns.some((column) => column.highlight);
   return (
-    <ScrollToEnd className={styles.columnsWrap} label="クール別のグラフ（左が古く、右が新しい）">
-      <ol role="list" className={styles.columns} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
+    <ScrollToEnd className={styles.columnsWrap} label={label}>
+      <ol role="list" className={`${styles.columns} ${plain ? styles.columnsPlain : ""}`} style={{ gridTemplateColumns: `repeat(${columns.length}, minmax(2.25rem, 1fr))` }}>
         {columns.map((column) => (
           <li key={column.key} className={`${styles.column} ${column.highlight ? styles.columnHighlight : ""}`} title={`${column.label}: ${column.value}${unit}`}>
             <span className={styles.columnValue}>{column.value}</span>
