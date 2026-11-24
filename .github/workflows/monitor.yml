@@ -38,7 +38,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for workflow in ingest.yml monitor.yml backup.yml audit.yml codeql.yml; do
+          for workflow in ingest.yml monitor.yml backup.yml audit.yml codeql.yml db-role.yml; do
             gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/enable"
             echo "enabled $workflow"
           done

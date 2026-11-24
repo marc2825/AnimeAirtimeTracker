@@ -23,6 +23,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:fixtures": "tsx scripts/import-fixtures.ts",
+    "db:role": "tsx scripts/db-role.ts",
     "ingest": "tsx scripts/ingest.ts",
     "postinstall": "prisma generate"
   },

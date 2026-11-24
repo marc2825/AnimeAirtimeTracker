@@ -1,0 +1,51 @@
+# Audit (read-only) or apply the web role's database privileges (src/server/web-role.ts, scripts/db-role.ts).
+# Manual runs choose the action; the weekly audit runs once the repository variable WEB_DB_ROLE names the role.
+# Applying changes production privileges: the owner decides when (docs/operations.md → Security).
+name: DB role
+
+on:
+  schedule:
+    - cron: "41 4 * * 3" # Wednesdays, away from the ingest schedule
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "audit (read-only) or apply"
+        type: choice
+        options: [audit, apply]
+        default: audit
+      role:
+        description: "Role name (default: WEB_DB_ROLE, else web_readonly)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  role:
+    if: github.event_name == 'workflow_dispatch' || vars.WEB_DB_ROLE != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+      WEB_DB_ROLE: ${{ inputs.role || vars.WEB_DB_ROLE || 'web_readonly' }}
+      ACTION: ${{ inputs.action || 'audit' }}
+    steps:
+      # Logs of a public repository are public; see ingest.yml.
+      - name: Mask database host
+        run: node -e 'try { const h = new URL(process.env.DIRECT_DATABASE_URL).hostname; console.log(`::add-mask::${h}`); console.log(`::add-mask::${h.split(".")[0]}`); } catch {}'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # No job pushes; keep the token out of .git/config.
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Audit or apply
+        run: |
+          if [ "$ACTION" = "apply" ]; then npm run db:role -- apply --yes; else npm run db:role -- audit; fi
