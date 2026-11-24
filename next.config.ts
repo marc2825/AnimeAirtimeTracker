@@ -12,6 +12,8 @@ const isDev = process.env.NODE_ENV === "development";
 const contentSecurityPolicy = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval' https://va.vercel-scripts.com" : ""}`,
+  // 'unsafe-inline' above is for <script> elements only: inline event-handler attributes (onclick=…) stay blocked.
+  "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "font-src 'self'",
@@ -20,6 +22,8 @@ const contentSecurityPolicy = [
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",
+  // The site embeds no frames.
+  "frame-src 'none'",
   ...(isDev ? [] : ["upgrade-insecure-requests"])
 ].join("; ");
 

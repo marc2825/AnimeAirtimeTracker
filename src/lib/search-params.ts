@@ -69,6 +69,12 @@ export function parseRerunMode(value: string | undefined, fallback: RerunMode): 
   return value === "exclude" || value === "include" || value === "only" ? value : fallback;
 }
 
+/**
+ * Deepest search result page served (100 × 30 = 3,000 results). Each page re-runs the full text match and count,
+ * and a deep OFFSET adds to it, so later pages answer with a notice and no query; narrowing is the way on.
+ */
+export const MAX_SEARCH_PAGE = 100;
+
 export function parsePage(value: string | undefined): number {
   const page = Number(value);
   return Number.isInteger(page) && page >= 1 && page <= 10_000 ? page : 1;
@@ -82,8 +88,9 @@ export function parseIsoDateParam(value: string | undefined): IsoDate | null {
   return value && isIsoDate(value) ? value : null;
 }
 
+/** Search text as matched and as cached: NFKC, runs of whitespace collapsed, at most 80 characters. */
 export function parseQuery(value: string | undefined): string {
-  return (value ?? "").normalize("NFKC").trim().slice(0, 80);
+  return (value ?? "").normalize("NFKC").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 /** `%query%` for ILIKE with the query's own `%`, `_` and `\` taken literally (PostgreSQL's default escape is `\`). */

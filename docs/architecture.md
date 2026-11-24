@@ -32,7 +32,7 @@ Next.js 16 App Router — Server Components; client components only for interact
   - A well-formed ID that is not in the database streams the not-found UI with `noindex` (soft 404).
   - A database failure is never shown as "not found" or as empty data: data components show a "読み込めませんでした" notice or throw to `app/error.tsx` (which adds `noindex`), and `generateMetadata` falls back to a neutral, `noindex` title. Route handlers that are not streamed answer `503`: `/api/health`, and `/sitemap.xml` (with `Retry-After`, so crawlers keep the last good sitemap instead of a shortened one).
 - **Stale data.** When the last successful import is older than 48 h (`src/domain/freshness.ts`), every page shows a notice under the header with the time of the last update; pages keep serving the last good data. `/status` and `/api/health` use the same threshold.
-- **Limits.** Search text ≤ 80 characters (LIKE wildcards in it are matched literally), page ≤ 10,000, slugs validated; the web's database client cancels any statement after 15 s (`src/server/db.ts`; ingestion and migrations have no limit). `/slots` caches its rendered list per filter, since rendering 866 slots cost more than the cached reads.
+- **Limits.** Search text ≤ 80 characters (LIKE wildcards in it are matched literally, whitespace runs collapsed), search pages ≤ 100 (`MAX_SEARCH_PAGE`; later pages answer with a notice without querying), slugs validated; the web's database client cancels any statement after 15 s (`src/server/db.ts`; ingestion and migrations have no limit). `/slots` caches its rendered list per filter, since rendering 866 slots cost more than the cached reads.
 
 ## Key decisions
 
