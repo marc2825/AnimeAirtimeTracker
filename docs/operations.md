@@ -93,7 +93,7 @@ Actions logs of a public repository are public: the workflows mask the database 
 - `/status`: last success, coverage window, last 12 runs, staleness warning after 48 h.
 - `/api/health`: `200` while the last successful import is at most 48 h old, `503` when older or when the database cannot be read (JSON: `ok`, `lastSuccessAt`, `ageHours`; no internal detail).
 - `monitor.yml` (daily 03:17 UTC): fails when `/api/health` is not `200`, and keeps the scheduled workflows enabled. Set the repository variable `SITE_URL` if the site moves off the Vercel domain.
-- GitHub Actions failure notifications for `ingest.yml`, `monitor.yml` and `backup.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings). All three are kept enabled by the `monitor.yml` keepalive.
+- GitHub Actions failure notifications for `ingest.yml`, `monitor.yml`, `backup.yml` and `audit.yml` (sent to the account that last changed their `schedule`; enable "Actions" notifications in GitHub settings). These and `codeql.yml` are kept enabled by the `monitor.yml` keepalive.
 - Every page shows a notice under the header when the data is older than 48 h (same threshold as `/status` and `/api/health`).
 - Hosting provider logs for 5xx: Vercel → project → Logs (runtime logs are kept only briefly on Hobby; check the current retention on Vercel's pricing page).
 
@@ -139,12 +139,13 @@ To stop measuring: remove `<Analytics />` and the package, update `/privacy`, th
 
 ## Security
 
-State checked 2026-11-22:
+State checked 2026-11-22 (alerts and workflows re-checked 2026-11-24: no open code scanning, Dependabot or secret scanning alerts):
 
 - Repository settings: secret scanning with push protection, Dependabot alerts and security updates, private vulnerability reporting (`SECURITY.md`) are on. The default workflow token is read-only; first-time contributors' PRs need approval before workflows run.
 - Audit: no credentials in the git history (all refs, including closed PRs), the current files or sampled Actions logs; the database host is masked in logs; `npm audit` reports 0 vulnerabilities. `.github/backup/backup-cert.pem` is a public certificate; the private key was never committed.
-- Workflows: actions are pinned to commit SHAs (Dependabot's monthly `github-actions` updates bump the pins); top-level permissions are `contents: read`; no `pull_request_target`; PR-triggered jobs receive no secrets; dispatch inputs reach scripts only through `env`. CodeQL (`codeql.yml`, `security-extended`) runs on PRs, `main` and weekly.
-- Headers (`next.config.ts`): CSP limited to `'self'` with `frame-ancestors 'none'`, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`. `script-src` keeps `'unsafe-inline'` because the inline RSC payloads differ per request (no hashes) and nonces would give up prerendered shells. The only script not built with the site is Vercel Web Analytics, served from the site's own domain (see Web Analytics).
+- Workflows: actions are pinned to commit SHAs (Dependabot's monthly `github-actions` updates bump the pins) and the PostgreSQL service images to a digest (`ci.yml`, `backup.yml`; update both together, Dependabot does not); checkouts use `persist-credentials: false` (no job pushes); top-level permissions are `contents: read`; no `pull_request_target`; PR-triggered jobs receive no secrets; dispatch inputs reach scripts only through `env`. CodeQL (`codeql.yml`, `security-extended`) runs on PRs, `main` and weekly.
+- Dependencies: `audit.yml` runs `npm audit --audit-level=high` (direct and indirect, dev included, since the ingest, migration and backup jobs run dev tooling with production secrets) and `npm audit signatures` every Monday and when `package.json`/`package-lock.json` change. Packages Next.js bundles under `next/dist/compiled` are not in the lockfile; they are covered by Next.js's advisories, so keep `next` current (Dependabot).
+- Headers (`next.config.ts`): CSP limited to `'self'` with `frame-ancestors 'none'`, `frame-src 'none'` and `script-src-attr 'none'` (inline event-handler attributes blocked; an E2E test visits the main pages and fails on any CSP violation), HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `Cross-Origin-Opener-Policy`. `script-src` keeps `'unsafe-inline'` because the inline RSC payloads differ per request (no hashes) and nonces would give up prerendered shells. The only script not built with the site is Vercel Web Analytics, served from the site's own domain (see Web Analytics).
 - Database: the web uses the read-only `web_readonly` role; previews share it, so a preview cannot write. Fork PRs do not get Vercel environment variables (Git Fork Protection).
 - External text and links: titles and comments from the source are rendered as text by React (no HTML injection); outbound links use `rel="noopener"`.
 
@@ -200,7 +201,7 @@ After an incident, note what happened and the fix in the PR or Issue that resolv
 
 Measured 2026-11-22 against a full local copy (production build, PostgreSQL 18 on the same machine, 326,151 airings): uncached renders of the heaviest pages (`/`, `/stats` for all channels, `/slots`, `/sitemap.xml`) took ≤ 0.5 s, others ≤ 0.15 s; cached repeats 0.01–0.04 s, except `/slots` (0.16 s, a 4.7 MB page). Production runs further from the database (Vercel `sin1` ↔ Neon Singapore, Free compute), so expect a few times more on a cold cache.
 
-Safeguards in code (docs/architecture.md → Rendering and caching): input bounds (search text 80 characters, page ≤ 10,000, validated slugs), 15 s statement timeout on web queries, a 15-minute data cache per instance, `/slots` rendered once per filter, real 404s for impossible URLs before any rendering.
+Safeguards in code (docs/architecture.md → Rendering and caching): input bounds (search text 80 characters with whitespace collapsed, so equivalent queries share one cache entry; search pages ≤ 100, i.e. 3,000 results, later pages answer with a notice and no query; validated slugs), 15 s statement timeout on web queries, a 15-minute data cache per instance, `/slots` rendered once per filter, real 404s for impossible URLs before any rendering.
 
 Not measured: concurrent load against production (it would use up the shared Free-plan resources; do not run load tests against production). If abusive traffic appears, the owner can add a rate-limiting rule in Vercel's Firewall for `/search` and `/stats`.
 

@@ -283,8 +283,25 @@ test("security headers are sent", async ({ request }) => {
   const response = await request.get("/about");
   const headers = response.headers();
   expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(headers["content-security-policy"]).toContain("script-src-attr 'none'");
+  expect(headers["content-security-policy"]).not.toContain("unsafe-eval");
   expect(headers["x-content-type-options"]).toBe("nosniff");
   expect(headers["x-powered-by"]).toBeUndefined();
+});
+
+test("no page breaks the content security policy", async ({ page }) => {
+  await page.addInitScript(() => {
+    document.addEventListener("securitypolicyviolation", (event) => {
+      const store = window as unknown as { __csp?: string[] };
+      (store.__csp ??= []).push(`${event.violatedDirective} ${event.blockedURI}`);
+    });
+  });
+  const routes = ["/", FIXTURE_WEEK, "/search?season=all", "/search?view=airings&season=all", "/slots", "/stats", "/seasons", "/channels", "/analysis", "/compare/slots", "/compare/channels", "/about", "/privacy", "/terms", "/status"];
+  for (const route of routes) {
+    await page.goto(route);
+    await page.waitForLoadState("networkidle");
+    expect(await page.evaluate(() => (window as unknown as { __csp?: string[] }).__csp ?? []), route).toEqual([]);
+  }
 });
 
 test("search past the last page says where the results are", async ({ page }) => {
@@ -293,6 +310,15 @@ test("search past the last page says where the results are", async ({ page }) =>
   await expect(page.getByText(/結果は1ページまでです/)).toBeVisible();
   await page.getByRole("link", { name: "1ページ目へ" }).click();
   await expect(page).not.toHaveURL(/page=/);
+});
+
+test("search pages beyond the limit answer with a notice instead of running the search", async ({ page }) => {
+  for (const view of ["", "&view=airings"]) {
+    await page.goto(`/search?season=all${view}&page=101`);
+    await expect(page.getByText("101ページ目以降は表示していません")).toBeVisible();
+    await page.getByRole("link", { name: "1ページ目へ" }).click();
+    await expect(page).not.toHaveURL(/page=/);
+  }
 });
 
 test("health endpoint reports fresh data without internal detail", async ({ request }) => {

@@ -66,6 +66,8 @@ describe("URL state", () => {
     expect(parseIsoDateParam("2026-02-30")).toBeNull();
     expect(parseQuery("  ＰＳＹＲＥＮ ")).toBe("PSYREN");
     expect(parseQuery("x".repeat(200))).toHaveLength(80);
+    // One cache entry per meaning: full-width spaces, tabs and runs of spaces become one space.
+    expect(parseQuery(" ノイタミナ　\t  枠 ")).toBe("ノイタミナ 枠");
   });
 
   it("builds shareable URLs, dropping empty values and resetting the page", () => {

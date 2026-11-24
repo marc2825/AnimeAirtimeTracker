@@ -11,7 +11,7 @@ import { NETWORKS, NETWORK_KEYS, REGIONS, REGION_KEYS, channelSlugsFor } from "@
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatSeasonOrdinal } from "@/lib/format";
-import { buildHref, flattenParams, LENGTH_OPTIONS, LENGTHS, parseCommonFilters, parsePage, parseQuery, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, flattenParams, LENGTH_OPTIONS, LENGTHS, MAX_SEARCH_PAGE, parseCommonFilters, parsePage, parseQuery, single, TIME_BAND_OPTIONS, TIME_BANDS, type RawSearchParams } from "@/lib/search-params";
 import { isUnfiltered, matchSlotPosition, type SlotCriteria } from "@/lib/slot-search";
 import { getTrackedChannels } from "@/server/queries/common";
 import { listSlots } from "@/server/queries/slots";
@@ -201,6 +201,7 @@ type Href = (overrides: Record<string, string | null>) => string;
 type Filter = Parameters<typeof searchTitles>[0];
 
 async function TitleResults({ filter, query, sort, page, href, channelName }: { filter: Filter; query: string; sort: TitleSort; page: number; href: Href; channelName: (id: number) => string }) {
+  if (page > MAX_SEARCH_PAGE) return <BeyondLimit href={href} />;
   const result = await searchTitles(filter, query, sort, page, PAGE_SIZE);
   const totalPages = Math.ceil(result.total / PAGE_SIZE);
   return (
@@ -242,12 +243,13 @@ async function TitleResults({ filter, query, sort, page, href, channelName }: { 
           ))}
         </ol>
       )}
-      <Pagination page={page} totalPages={totalPages} hrefFor={(p) => href({ page: p === 1 ? null : String(p) })} />
+      <ResultPages page={page} totalPages={totalPages} href={href} />
     </section>
   );
 }
 
 async function AiringResults({ filter, query, order, page, href, channelName }: { filter: Filter; query: string; order: "asc" | "desc"; page: number; href: Href; channelName: (id: number) => string }) {
+  if (page > MAX_SEARCH_PAGE) return <BeyondLimit href={href} />;
   const result = await searchBroadcasts(filter, query, order, page, PAGE_SIZE);
   const totalPages = Math.ceil(result.total / PAGE_SIZE);
   return (
@@ -307,7 +309,7 @@ async function AiringResults({ filter, query, order, page, href, channelName }: 
           </table>
         </div>
       )}
-      <Pagination page={page} totalPages={totalPages} hrefFor={(p) => href({ page: p === 1 ? null : String(p) })} />
+      <ResultPages page={page} totalPages={totalPages} href={href} />
     </section>
   );
 }
@@ -362,10 +364,41 @@ async function SlotResults({ query, criteria, seasonLabel, ignoresAiringOnly }: 
   );
 }
 
+/** Page links up to MAX_SEARCH_PAGE, with a note when the results go on beyond it. */
+function ResultPages({ page, totalPages, href }: { page: number; totalPages: number; href: Href }) {
+  const shown = Math.min(totalPages, MAX_SEARCH_PAGE);
+  return (
+    <>
+      <Pagination page={page} totalPages={shown} hrefFor={(p) => href({ page: p === 1 ? null : String(p) })} />
+      {totalPages > MAX_SEARCH_PAGE ? (
+        <p className={styles.resultsNote}>
+          表示は{MAX_SEARCH_PAGE}ページ（{MAX_SEARCH_PAGE * PAGE_SIZE}件）までです。その先は条件を絞り込むか、並び順を変えてください。
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+function BeyondLimit({ href }: { href: Href }) {
+  return (
+    <section aria-labelledby="results-title" className={styles.results}>
+      <h2 id="results-title" className="visually-hidden">
+        検索結果
+      </h2>
+      <EmptyState title={`${MAX_SEARCH_PAGE + 1}ページ目以降は表示していません`} icon="search">
+        条件を絞り込むか、並び順を変えてください。
+        <Link href={href({ page: null })} className="inline-link">
+          1ページ目へ
+        </Link>
+      </EmptyState>
+    </section>
+  );
+}
+
 function OutOfRange({ totalPages, href }: { totalPages: number; href: Href }) {
   return (
     <EmptyState title="このページには結果がありません" icon="search">
-      結果は{totalPages}ページまでです。
+      結果は{Math.min(totalPages, MAX_SEARCH_PAGE)}ページまでです。
       <Link href={href({ page: null })} className="inline-link">
         1ページ目へ
       </Link>
