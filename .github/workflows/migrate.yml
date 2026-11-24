@@ -3,12 +3,15 @@
 # is "true"; a manual run (workflow_dispatch) is itself the opt-in. Needs the secret
 # DIRECT_DATABASE_URL (owner role, non-pooled). Keep migrations additive
 # (expand → deploy code → contract) because Vercel deploys the app in parallel.
+# When the repository variable WEB_DB_ROLE names the web's database role, its privileges are brought back to
+# src/server/web-role.ts after every migration (idempotent) and audited, so a new table is never readable by the
+# web unless that file lists it. Unset: the role is left alone.
 name: Migrate
 
 on:
   push:
     branches: [main]
-    paths: ["prisma/migrations/**", "prisma/schema.prisma"]
+    paths: ["prisma/migrations/**", "prisma/schema.prisma", "src/server/web-role.ts"]
   workflow_dispatch:
 
 permissions:
@@ -39,3 +42,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run db:deploy
+      - name: Limit the web role to the site's tables
+        if: vars.WEB_DB_ROLE != ''
+        env:
+          WEB_DB_ROLE: ${{ vars.WEB_DB_ROLE }}
+        run: npm run db:role -- apply --yes

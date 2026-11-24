@@ -7,6 +7,9 @@ if (existsSync(".env")) process.loadEnvFile(".env");
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 // E2E runs against the disposable test database filled with recorded fixtures (see e2e/global-setup.ts).
 const DATABASE_URL = process.env.E2E_DATABASE_URL ?? process.env.TEST_DATABASE_URL;
+// The server can connect as a role limited like production's web role (globalSetup creates it; CI sets this), so a
+// page that reads a table outside src/server/web-role.ts fails here first.
+const WEB_DATABASE_URL = process.env.E2E_WEB_DATABASE_URL ?? DATABASE_URL;
 
 export default defineConfig({
   testDir: "e2e",
@@ -35,6 +38,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/robots.txt`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { DATABASE_URL: DATABASE_URL ?? "", SITE_URL: `http://localhost:${PORT}` }
+    env: { DATABASE_URL: WEB_DATABASE_URL ?? "", SITE_URL: `http://localhost:${PORT}` }
   }
 });
