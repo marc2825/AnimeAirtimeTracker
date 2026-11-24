@@ -35,7 +35,7 @@ import { getCoveredSeasonOrdinals, getDatasetStatus, getSeasonCoverage } from "@
 import styles from "./stats.module.css";
 
 export const metadata: Metadata = {
-  title: "編成統計",
+  title: "アニメの編成統計（曜日・時間帯・放送局）",
   description: "アニメ放送編成の統計。曜日×時間帯の分布、同時放送数、放送局別の本数、クール別・時間帯別の推移、クール間の比較、関東と関西の放送時差を、集計単位と対象範囲を明示して示します。",
   alternates: { canonical: "/stats" }
 };

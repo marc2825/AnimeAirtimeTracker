@@ -30,7 +30,12 @@ export async function GET() {
         .filter((ordinal) => ordinal <= now + 1)
         .map((ordinal) => ({ url: url(`/seasons/${seasonId(seasonFromOrdinal(ordinal))}`), changeFrequency: ordinal >= now ? ("daily" as const) : ("monthly" as const) })),
       ...TRACKED_CHANNELS.map((channel) => ({ url: url(`/channels/${channel.slug}`), changeFrequency: "weekly" as const })),
-      ...slots.map((slot) => ({ url: url(`/slots/${encodeURIComponent(slot.slug)}`), changeFrequency: "weekly" as const })),
+      // The slot's latest airing day (JST): its page changes when a season is added or extended.
+      ...slots.map((slot) => ({
+        url: url(`/slots/${encodeURIComponent(slot.slug)}`),
+        lastModified: slot.lastAnimeDate ? new Date(`${slot.lastAnimeDate}T00:00:00+09:00`) : undefined,
+        changeFrequency: "weekly" as const
+      })),
       ...titles.map((title) => ({ url: url(`/titles/${title.slug}`), lastModified: title.updatedAt, changeFrequency: "weekly" as const }))
     ];
   } catch {

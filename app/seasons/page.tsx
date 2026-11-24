@@ -12,7 +12,7 @@ import { getCoveredSeasonOrdinals } from "@/server/queries/status";
 import styles from "./seasons.module.css";
 
 export const metadata: Metadata = {
-  title: "クール別の新作アニメ",
+  title: "クール別の新作アニメ一覧",
   description: "取得済みの各クール（冬・春・夏・秋）に始まったテレビアニメの新作一覧への入口。曜日・時刻・放送局ごとに見られます。",
   alternates: { canonical: "/seasons" }
 };

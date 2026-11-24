@@ -36,7 +36,7 @@ import { coverageDates } from "@/server/queries/status";
 import styles from "./schedule.module.css";
 
 export const metadata: Metadata = {
-  title: "週間番組表",
+  title: "アニメ週間番組表",
   description: "関東・関西・BS・CSのアニメ放送を曜日と時刻で一覧できる週間番組表。深夜25時台などのアニメ時刻表記と実時刻を切り替えられます。",
   alternates: { canonical: "/schedule" }
 };

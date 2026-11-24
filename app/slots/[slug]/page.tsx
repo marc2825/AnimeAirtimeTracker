@@ -10,6 +10,8 @@ import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, MIN_REGULAR_AIRINGS } from "
 import { WEEKDAY_LABELS, formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
 import { formatDateTime, formatSeasonOrdinal } from "@/lib/format";
 import { getSlotDetail, type SlotDetail } from "@/server/queries/slots";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 import styles from "./slot.module.css";
 
@@ -70,6 +72,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
 
   return (
     <article>
+      <JsonLd data={breadcrumbJsonLd([{ name: "放送枠", path: "/slots" }, { name: slot.name, path: `/slots/${encodeURIComponent(slot.slug)}` }])} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/slots">放送枠</Link>
         <span aria-hidden="true">/</span>

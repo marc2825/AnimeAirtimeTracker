@@ -13,7 +13,7 @@ import { getCoveredSeasonOrdinals } from "@/server/queries/status";
 import styles from "./channels.module.css";
 
 export const metadata: Metadata = {
-  title: "放送局",
+  title: "放送局別のアニメ放送",
   description: "対象20局（関東・関西の地上波、NHK、BS、CS）ごとのアニメの放送本数・時間帯・放送枠への入口。",
   alternates: { canonical: "/channels" }
 };

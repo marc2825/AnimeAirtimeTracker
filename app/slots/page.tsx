@@ -15,7 +15,7 @@ import { getSlotStripTitles, listSlots, type SlotSummary, type StripTitles } fro
 import styles from "./slots.module.css";
 
 export const metadata: Metadata = {
-  title: "放送枠",
+  title: "アニメの放送枠一覧と年表",
   description: "アニメの放送枠を、出典に記載された枠名と、同じ局・曜日・時刻に新作が続いた推定枠の両方から一覧。各枠の年表で作品の変遷を確認できます。",
   alternates: { canonical: "/slots" }
 };

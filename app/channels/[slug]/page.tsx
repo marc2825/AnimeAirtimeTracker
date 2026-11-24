@@ -15,6 +15,8 @@ import { absoluteUrl } from "@/lib/site";
 import { listSlots } from "@/server/queries/slots";
 import { getSeasonStats, getSeasonTrend, statsFilter, TREND_BANDS } from "@/server/queries/stats";
 import { getCoveredSeasonOrdinals, getDatasetStatus } from "@/server/queries/status";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 import styles from "../channels.module.css";
 
@@ -77,6 +79,7 @@ async function ChannelContent({ params }: { params: Promise<{ slug: string }> })
 
   return (
     <article className={styles.layout}>
+      <JsonLd data={breadcrumbJsonLd([{ name: "放送局", path: "/channels" }, { name: channel.name, path: `/channels/${channel.slug}` }])} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/channels">放送局</Link>
         <span aria-hidden="true">/</span>

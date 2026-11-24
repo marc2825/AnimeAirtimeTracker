@@ -11,6 +11,8 @@ import { formatIsoDateJa } from "@/domain/time";
 import { formatDateTime } from "@/lib/format";
 import { SITE_NAME, SOURCE_NAME, SOURCE_URL } from "@/lib/site";
 import { getDatasetStatus } from "@/server/queries/status";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd, datasetJsonLd } from "@/lib/seo";
 
 import styles from "../analysis.module.css";
 
@@ -45,6 +47,8 @@ export default async function AnalysisPage({ params }: PageProps<"/analysis/[slu
   const { meta, Content } = analysis;
   return (
     <article className="container">
+      <JsonLd data={breadcrumbJsonLd([{ name: "分析", path: "/analysis" }, { name: meta.title, path: `/analysis/${meta.slug}` }])} />
+      <JsonLd data={datasetJsonLd({ name: meta.title, description: `${meta.summary}。対象: ${meta.scope}。単位: ${meta.unit}。`, path: `/analysis/${meta.slug}` })} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/analysis">分析</Link>
         <span aria-hidden="true">/</span>

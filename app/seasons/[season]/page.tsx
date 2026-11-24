@@ -12,6 +12,8 @@ import { formatDateShort } from "@/lib/format";
 import { buildHref, flattenParams, single, type RawSearchParams } from "@/lib/search-params";
 import { getSeasonPremieres } from "@/server/queries/seasons";
 import { getCoveredSeasonOrdinals } from "@/server/queries/status";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd, quarterMonths } from "@/lib/seo";
 
 import styles from "../seasons.module.css";
 
@@ -19,8 +21,8 @@ export async function generateMetadata({ params }: PageProps<"/seasons/[season]"
   const season = parseSeasonId((await params).season);
   if (!season) return { title: "クールが見つかりません" };
   return {
-    title: `${formatSeason(season)}の新作アニメ（曜日別）`,
-    description: `${formatSeason(season)}に始まったテレビアニメの新作を、曜日・放送開始時刻・放送局ごとに一覧。データ出典: しょぼいカレンダー。`,
+    title: `${formatSeason(season)}アニメ一覧（新作・曜日別）`,
+    description: `${formatSeason(season)}（${season.year}年${quarterMonths(season.quarter)}）に始まったテレビアニメの新作を、曜日・放送開始日時・放送局ごとに一覧。データ出典: しょぼいカレンダー。`,
     alternates: { canonical: `/seasons/${seasonId(season)}` }
   };
 }
@@ -61,6 +63,7 @@ async function SeasonContent({ params, searchParams }: { params: Promise<{ seaso
 
   return (
     <>
+      <JsonLd data={breadcrumbJsonLd([{ name: "クール別の新作", path: "/seasons" }, { name: formatSeason(season), path: `/seasons/${seasonId(season)}` }])} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/seasons">クール別の新作</Link>
         <span aria-hidden="true">/</span>
