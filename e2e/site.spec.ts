@@ -220,6 +220,12 @@ test("sitemap lists the season and channel pages", async ({ request }) => {
   const xml = await (await request.get("/sitemap.xml")).text();
   expect(xml).toContain("/seasons/2026-autumn");
   expect(xml).toContain("/channels/mx");
+  // robots.txt keeps crawlers off query-string variants; every URL the sitemap offers must stay allowed.
+  const robots = await (await request.get("/robots.txt")).text();
+  expect(robots).toContain("Disallow: /*?");
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]!);
+  expect(urls.length).toBeGreaterThan(10);
+  expect(urls.filter((url) => url.includes("?") || new URL(url).pathname.startsWith("/api/"))).toEqual([]);
 });
 
 test("slots, about and status pages render honestly with limited data", async ({ page }) => {
