@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { applyWebRole, auditWebRole, WEB_TABLES, webRoleStatements, type Queryable } from "./web-role";
+import { applyWebRole, auditWebRole, blockingProblems, rollbackWebRole, WEB_TABLES, webRoleStatements, type Queryable } from "./web-role";
 
 const url = process.env.TEST_DATABASE_URL;
 const ROLE = "web_role_dbtest";
@@ -99,6 +99,20 @@ describe("web role (PostgreSQL)", () => {
     const audit = await auditWebRole(db(), ROLE);
     expect(audit.problems).toEqual(expect.arrayContaining(["can write to Title", "can read FetchLog (the site does not need it)", "cannot read Slot (the site reads it)", "has the CREATEDB attribute"]));
     await owner.query(`ALTER ROLE ${ROLE} NOCREATEDB`);
+    await applyWebRole(db(), ROLE);
+    expect((await auditWebRole(db(), ROLE)).problems).toEqual([]);
+  });
+
+  it("rolls back to reading every table (as before apply) without ever allowing writes, and apply works again", async () => {
+    await applyWebRole(db(), ROLE);
+    await rollbackWebRole(db(), ROLE);
+    const audit = await auditWebRole(db(), ROLE);
+    expect(audit.problems).toEqual(expect.arrayContaining(["can read FetchLog (the site does not need it)", expect.stringMatching(/default privileges .* future tables/)]));
+    expect(blockingProblems(audit)).toEqual([]);
+    await asRole(async (client) => {
+      await expect(client.query('SELECT count(*) FROM "FetchLog"')).resolves.toBeDefined();
+      await expect(client.query('DELETE FROM "FetchLog"')).rejects.toThrow(/permission denied/);
+    });
     await applyWebRole(db(), ROLE);
     expect((await auditWebRole(db(), ROLE)).problems).toEqual([]);
   });
