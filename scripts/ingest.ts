@@ -137,7 +137,8 @@ async function main() {
     }
     if (command === "derive") {
       await withLock(async () => {
-        const { stats } = await withImportRun(prisma, "derive", {}, async () => ({ stats: await deriveAll(prisma, { log }) }));
+        // Asked for by hand: rebuild even when the inputs look unchanged.
+        const { stats } = await withImportRun(prisma, "derive", {}, async () => ({ stats: await deriveAll(prisma, { log, force: true }) }));
         log(`derive done: ${JSON.stringify(stats)}`);
       });
       return;

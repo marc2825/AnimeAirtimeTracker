@@ -1,13 +1,14 @@
+import type { PrismaClient } from "@/generated/prisma/client";
 import { channelSlugsFor, TRACKED_CHANNELS, type NetworkKey, type RegionKey } from "@/domain/coverage";
 import { computeTitlePositions } from "@/domain/slots";
 import { seasonInstantRange, seasonOrdinal, seasonsBetween, type Season } from "@/domain/season";
-import { channelBreakdown, concurrencyProfile, regionalDelay, seasonTrend, weekdayHourEntries, weekdayHourMatrix, type CountUnit, type StatAiring } from "@/domain/stats";
+import { channelBreakdown, concurrencyProfile, regionalDelay, seasonTrendFromGroups, weekdayHourEntries, weekdayHourMatrix, type CountUnit, type StatAiring, type TrendGroup } from "@/domain/stats";
 import { dbDateToIsoDate } from "@/domain/time";
 import { inTimeBand, TIME_BANDS, type LengthKey, type RerunMode, type TimeBand } from "@/lib/search-params";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
-import { airingWhere, getTrackedChannels, type AiringFilter, type ChannelInfo } from "./common";
+import { airingSqlWhere, airingWhere, getTrackedChannels, type AiringFilter, type ChannelInfo } from "./common";
 import { getCoveredSeasonOrdinals } from "./status";
 
 /** Conditions shared by every figure on /stats. The time band is judged on the start time (see /about). */
@@ -143,15 +144,7 @@ export async function getSeasonTrend(filter: StatsFilter, from: Season, to: Seas
   datasetCacheProfile();
   const channels = await getTrackedChannels();
   const range = { start: seasonInstantRange(from).start, end: seasonInstantRange(to).end };
-  // Only the three columns the trend needs: this query spans every covered season.
-  const rows = await db().broadcast.findMany({
-    where: airingWhere(toAiringFilter(filter, { range }), channels),
-    select: { titleId: true, animeDate: true, animeStartMinute: true }
-  });
-  const trend = seasonTrend(
-    rows.map((row) => ({ ...row, animeDate: dbDateToIsoDate(row.animeDate) })),
-    TREND_BANDS
-  );
+  const trend = seasonTrendFromGroups(await trendGroups(toAiringFilter(filter, { range }), channels), TREND_BANDS);
   // Covered seasons without matching airings are zero rows (a real zero); seasons not fetched yet are left out.
   const covered = new Set(await getCoveredSeasonOrdinals());
   const byOrdinal = new Map(trend.map((row) => [row.seasonOrdinal, row]));
@@ -168,6 +161,20 @@ export async function getSeasonTrend(filter: StatsFilter, from: Season, to: Seas
         bandTitles: Object.fromEntries(TREND_BANDS.map((group) => [group.key, 0]))
       }
   );
+}
+
+/**
+ * Airings grouped by title, season and start minute, counted in the database: this query spans every covered season,
+ * and the groups are ≈ 1/10 of the airings (same airings as `airingWhere`, see common.db.test.ts).
+ */
+export async function trendGroups(filter: AiringFilter, channels: ChannelInfo[], client: Pick<PrismaClient, "$queryRaw"> = db()): Promise<TrendGroup[]> {
+  return client.$queryRaw<TrendGroup[]>`
+    SELECT b."titleId" AS "titleId",
+      EXTRACT(YEAR FROM b."animeDate")::int * 10 + (EXTRACT(MONTH FROM b."animeDate")::int - 1) / 3 + 1 AS "seasonOrdinal",
+      b."animeStartMinute" AS "animeStartMinute", count(*)::int AS count
+    FROM "Broadcast" AS b JOIN "Title" AS t ON t.id = b."titleId"
+    WHERE ${airingSqlWhere(filter, channels)}
+    GROUP BY 1, 2, 3`;
 }
 
 /** Channel names in scope, for the scope line under every figure. */

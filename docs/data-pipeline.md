@@ -44,7 +44,7 @@ User-Agent: configured via `SYOBOI_USER_AGENT`; the CLI refuses to run unless it
 4. **Normalize** (`normalize.ts`): JST → instant, anime date/weekday/minute, flags, episode number vs label, comments; semantic content hash.
 5. **Import** (`importer.ts`): per window in one transaction; creates/updates with revisions; touches unchanged rows; marks `missingSince` only for complete windows; applies overrides.
 6. **Record** `CoverageWindow` for complete windows; `ImportRun` status/stats.
-7. **Derive** (`derive.ts`): rerun reclassification and full slot rebuild.
+7. **Derive** (`derive.ts`): rerun reclassification and full slot rebuild. Both work inside the database, because Neon bills the data it sends out and derive runs after every scheduled import: reclassification is one SQL `UPDATE` with the same rule as `classifyRerun`, and the slot rebuild reads airing groups (title × channel × season × weekday × start × duration, with counts and first/last start) that the database aggregates, ≈ 40k rows instead of ≈ 230k airings. The rebuild is skipped when a fingerprint of all its inputs (groups, slot titles, tracked channels, registry, overrides, rule version, commit), hashed in the database, matches the last rebuild (`SyncCursor` `derive:slot-inputs`); the manual `derive` command always rebuilds. Measured on a copy of production (2026-11-24): 41.7 MB and ≈ 5 s per run before; 4.2 MB and ≈ 3.5 s when the inputs changed, a few hundred bytes and ≈ 0.7 s when they did not, with identical results (all 326,151 rerun classifications; 866 slots, 10,470 memberships, 15,532 seasons).
 
 Re-running any command is safe (idempotent). An interrupted run keeps committed windows; just run it again. Overlapping runs are prevented by a PostgreSQL advisory lock.
 

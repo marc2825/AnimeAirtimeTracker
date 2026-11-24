@@ -173,7 +173,28 @@ Both providers are on free plans (see Deployment for the figures known at setup)
 | Vercel Web Analytics (Hobby) | events: 50,000 per month, 1-month reporting window (checked 2026-11-22) | Vercel → Usage | collection pauses at the limit until the next cycle; Hobby is never charged |
 | GitHub Actions | free for public repositories; artifact storage (one ≈ 52 MB backup per month, kept 90 days) | repository → Actions | failed runs notify the account that last changed the schedule |
 
-Network transfer is the tightest Neon limit. Each scheduled ingest run (5 a day) ends with `derive`, which reads every airing (≈ 40–50 MB), so ingestion alone is ≈ 0.2 GB a day, about 6 GB over a full month. A backup dump adds a few hundred MB; run manual backups or copies early in a billing period, not near its end.
+Free-plan limits that apply (checked 2026-11-24 on the providers' pages):
+
+| Limit | Allowance | Use and estimate | What happens at the limit |
+| --- | --- | --- | --- |
+| Neon network transfer (egress) | 5 GB per billing period | ≈ 1.1–1.3 GB/month after 2026-11-24 (was ≈ 6.7–7.3 GB/month) — see the budget below | compute suspended until the next period: site down |
+| Neon compute | 100 CU-hours per month (scale to zero after 5 min, fixed) | ≈ 1 CU-hour/day observed (2026-11-19 → 24, including the backfill) ≈ 30/month | compute suspended until the next period |
+| Neon storage | 1 GB (logical size) | 390 MB on 2026-11-24; growth ≈ 0.1 GB/year (airings, their `CREATED` revisions, raw payloads) | inserts and updates fail; reads keep working |
+| Vercel Active CPU | 4 hours per month | not readable from the CLI; check Vercel → Usage | Hobby project paused for 30 days, no automatic resume |
+| Vercel Fast Origin Transfer | 10 GB per month | dynamic page parts streamed from the function; `/slots` is the largest (≈ 330 KB compressed) | same |
+| Vercel function invocations / edge requests | 1M / 1M per month | far below at current traffic | same |
+| Vercel Runtime Cache (`use cache: remote`) | 1M reads / 200K writes per month, items ≤ 2 MB | not used | cache paused, not the site |
+
+Network transfer budget per month:
+
+| Source | Before 2026-11-24 | After (measured on a copy of production) |
+| --- | --- | --- |
+| `derive` after each scheduled import (5 a day) | 41.7 MB × 150 ≈ 6.3 GB | 4.2 MB when inputs changed, ≈ 0 when not: ≤ 0.63 GB |
+| Imports (rows of the fetched windows, titles) | ≈ 0.1 GB | ≈ 0.1 GB |
+| Monthly backup (`pg_dump` of ≈ 0.28 GB of row text) | ≈ 0.3 GB | ≈ 0.3 GB |
+| Web: database reads on cache misses | 18.3 MB per cold read of the 20 main pages | 3.8 MB; ≈ 0.1–0.3 GB at current traffic |
+
+Thresholds and next steps if traffic or data grow: the web is the part that scales with visitors. About 240 KB of database reads per uncached page view were observed before the change (≈ 50 KB after, on average); with ≈ 3.5 GB of the allowance left for the web, that is roughly 70,000 uncached page views a month. If the Neon usage (`neon projects get` → `data_transfer_bytes`, or Neon → Usage) passes 3 GB in a period: (1) raise the `dataset` revalidate from 15 to 30–60 minutes (fewer refills and fewer compute wake-ups; data changes only at the 5 daily imports); (2) put small, hot entries (tracked channels, dataset status) in `use cache: remote`; (3) aggregate the per-season stats in SQL too (`/stats` still reads 0.7–1.5 MB per refill). Run manual backups or copies early in a billing period, not near its end.
 
 Any plan change, billing setting or production setting is the owner's decision. Commercial use (ads, affiliate links) is not allowed on Vercel Hobby.
 
