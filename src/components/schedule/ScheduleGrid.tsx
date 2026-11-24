@@ -41,7 +41,7 @@ export function ScheduleGrid({ items, channels, animeDate, clock }: { items: Sch
           {segments.map((segment) =>
             segment.kind === "gap" ? (
               <div key={segment.from} className={styles.axisGap} style={{ top: segment.top, height: segment.height }}>
-                <span>{formatAnimeMinute(segment.from)}–{formatAnimeMinute(segment.to)}</span>
+                <span>{gapLabel(segment.from, segment.to)}</span>
               </div>
             ) : (
               Array.from({ length: (segment.to - segment.from) / 60 }, (_, index) => {
@@ -116,4 +116,9 @@ export function ScheduleGrid({ items, channels, animeDate, clock }: { items: Sch
       </div>
     </div>
   );
+}
+
+/** Label of a collapsed hour range in the narrow time column: `9–21時`, or full times when not on the hour. */
+function gapLabel(from: number, to: number): string {
+  return from % 60 === 0 && to % 60 === 0 ? `${from / 60}–${to / 60}時` : `${formatAnimeMinute(from)}–${formatAnimeMinute(to)}`;
 }

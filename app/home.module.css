@@ -71,6 +71,13 @@
   font-weight: var(--weight-bold);
 }
 
+/* Weekday links carry the weekday's chip, square and centred. */
+.indexLink :global(.wd) {
+  min-width: 1.75rem;
+  padding-block: 0.15em;
+  text-align: center;
+}
+
 .indexLink:hover {
   background: var(--state-hover);
   text-decoration: none;

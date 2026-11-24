@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { SegmentedLinks } from "@/components/ui/controls";
-import { EmptyState, Notice, PageHeader, SkeletonBlock } from "@/components/ui/primitives";
+import { EmptyState, Notice, PageHeader, SkeletonBlock, WeekdayChip } from "@/components/ui/primitives";
 import { REGIONS, REGION_KEYS, SOURCE_COMPLETE_FROM_YEAR, SPARSE_SOURCE_NOTE, parseRegionKey } from "@/domain/coverage";
 import { formatSeason, parseSeasonId, seasonId, seasonOrdinal, shiftSeason } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
@@ -107,7 +107,7 @@ async function SeasonContent({ params, searchParams }: { params: Promise<{ seaso
             items.length === 0 ? null : (
               <section key={weekday} className={styles.weekday} aria-labelledby={`weekday-${weekday}`}>
                 <h2 id={`weekday-${weekday}`} className={styles.weekdayHeading}>
-                  <span className={weekday === 5 ? "sat" : weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[weekday]}曜</span>
+                  <WeekdayChip weekday={weekday} />
                   <span className={styles.weekdayCount}>{items.length}作品</span>
                 </h2>
                 <ol role="list" className={styles.premieres}>

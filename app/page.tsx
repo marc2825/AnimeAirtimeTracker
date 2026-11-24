@@ -10,7 +10,7 @@ import { StripTooltip } from "@/components/slots/StripTooltip";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
 import { ButtonLink } from "@/components/ui/controls";
 import { CountUp } from "@/components/ui/CountUp";
-import { FlagBadges, MoreInfo, Notice, Skeleton, SkeletonBlock } from "@/components/ui/primitives";
+import { FlagBadges, MoreInfo, Notice, Skeleton, SkeletonBlock, WeekdayChip } from "@/components/ui/primitives";
 import { REGIONS, REGION_KEYS } from "@/domain/coverage";
 import { currentSeason, formatSeason } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, currentAnimeDate, formatIsoDateJa, toAnimeTime, weekdayOf } from "@/domain/time";
@@ -33,11 +33,11 @@ export default function HomePage() {
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
           <h1 id="hero-title" className={styles.heroTitle}>
-            <span className="marker">TVアニメの番組表・放送枠・編成統計</span>
+            <span className="marker">TVアニメの放送枠・編成統計・番組表</span>
           </h1>
           <MoreInfo summary="このサイトについて">
             <p>
-              日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです。今週の番組表を入口に、ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計、長期の変化を調べた分析を載せています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠・統計・分析は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
+              日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです。ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計、長期の変化を調べた分析と、それらの元になる番組表を載せています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠・統計・分析は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
             </p>
             <p>
               <Link href="/about" className="inline-link">
@@ -47,25 +47,28 @@ export default function HomePage() {
           </MoreInfo>
           <div className={styles.heroBar}>
             <div className={styles.heroActions}>
-              <ButtonLink href="/schedule" variant="primary" icon="arrowRight">
-                今週の番組表
-              </ButtonLink>
-              <Link href="/seasons" className={styles.textLink}>
-                クール別の新作
-              </Link>
-              <Link href="/slots" className={styles.textLink}>
+              <ButtonLink href="/slots" variant="primary" icon="arrowRight">
                 放送枠の年表
+              </ButtonLink>
+              <Link href="/stats" className={styles.textLink}>
+                編成統計
               </Link>
               <Link href="/analysis" className={styles.textLink}>
                 分析
               </Link>
+              <Link href="/schedule" className={styles.textLink}>
+                今週の番組表
+              </Link>
+              <Link href="/seasons" className={styles.textLink}>
+                クール別の新作
+              </Link>
             </div>
             <div className={styles.index}>
-              <nav className={styles.indexRow} aria-label="曜日から探す">
+              <nav className={styles.indexRow} aria-label="曜日から番組表へ">
                 <span className={styles.indexLabel}>曜日</span>
                 {WEEKDAY_LABELS.map((label, index) => (
-                  <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={`${styles.indexLink} ${index === 5 ? "sat" : index === 6 ? "sun" : ""}`}>
-                    {label}
+                  <Link key={label} href={`/schedule?day=${WEEKDAY_KEYS[index]}`} className={styles.indexLink} aria-label={`${label}曜の番組表`}>
+                    <WeekdayChip weekday={index} suffix="" />
                   </Link>
                 ))}
               </nav>
@@ -130,7 +133,7 @@ async function OnAirPanel() {
     <aside className={styles.onAir} aria-labelledby="onair-title">
       <div className={styles.onAirHead}>
         <h2 id="onair-title" className={styles.onAirTitle}>
-          <span className="marker">今日のこれからの新作</span>
+          今日のこれからの新作
         </h2>
         <span className={styles.onAirMeta}>
           {formatIsoDateJa(today, { withWeekday: true })}・関東地上波
@@ -178,7 +181,7 @@ async function CalendarPanel() {
   return (
     <aside className={styles.calendar} aria-labelledby="calendar-title">
       <h2 id="calendar-title" className={styles.onAirTitle}>
-        <span className="marker">日付から番組表へ</span>
+        日付から番組表へ
       </h2>
       <MonthCalendar today={today} min={range.min} max={range.max} />
     </aside>
@@ -212,7 +215,7 @@ async function FeaturedSlots() {
       <div className={styles.blockHead}>
         <div>
           <h2 id="featured-title" className={styles.blockTitle}>
-            <span className="marker">放送枠の年表</span>
+            放送枠の年表
           </h2>
           <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品</p>
         </div>
@@ -252,7 +255,7 @@ async function StatsPreview() {
       <div className={styles.blockHead}>
         <div>
           <h2 id="stats-title" className={styles.blockTitle}>
-            <span className="marker">{formatSeason(season)}の編成</span>
+            {formatSeason(season)}の編成
           </h2>
           <p className={styles.blockLead}>関東地上波・新作のみ</p>
         </div>

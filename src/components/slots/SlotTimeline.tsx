@@ -3,6 +3,7 @@ import Link from "next/link";
 import { QUARTER_LABELS } from "@/domain/season";
 import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
 import type { TimelineSeason } from "@/server/queries/slots";
+import { WeekdayChip } from "@/components/ui/primitives";
 
 import { ScrollToEnd } from "./ScrollToEnd";
 import styles from "./SlotTimeline.module.css";
@@ -31,7 +32,7 @@ export function SlotTimeline({ seasons }: { seasons: TimelineSeason[] }) {
                 {entry.position ? (
                   <>
                     <span className={styles.positionTime}>
-                      <span className={entry.position.weekday === 5 ? "sat" : entry.position.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[entry.position.weekday]}</span>{" "}
+                      <WeekdayChip weekday={entry.position.weekday} suffix="" />{" "}
                       {formatAnimeMinute(entry.position.minute)}
                     </span>
                     {entry.moved ? <span className={styles.moved}>開始変更</span> : null}
