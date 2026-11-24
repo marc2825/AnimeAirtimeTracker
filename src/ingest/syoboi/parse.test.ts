@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { extractOfficialUrl, extractSlotLabels, normalizeProgram, normalizeTitle, parseEpisodeSubtitles, toSeriesKey } from "./normalize";
-import { parseChGroupLookup, parseChLookup, parseProgLookup, parseTitleLookup, SyoboiResultError } from "./parse";
+import { MAX_ITEMS_PER_RESPONSE, MAX_TEXT_LENGTH, parseChGroupLookup, parseChLookup, parseProgLookup, parseTitleLookup, SyoboiResultError } from "./parse";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "__fixtures__", name), "utf8");
 
@@ -134,5 +134,39 @@ describe("episode subtitles", () => {
   it("is empty when the list is missing or blank", () => {
     expect(parseEpisodeSubtitles(null)).toEqual([]);
     expect(parseEpisodeSubtitles("   ")).toEqual([]);
+  });
+});
+
+describe("XML limits (synthetic responses)", () => {
+  const envelope = (items: string) =>
+    `<?xml version="1.0" encoding="UTF-8"?><TitleLookupResponse><Result><Code>200</Code><Message></Message></Result><TitleItems>${items}</TitleItems></TitleLookupResponse>`;
+  const title = (tid: number, comment = "") => `<TitleItem id="${tid}"><TID>${tid}</TID><Title>作品${tid}</Title><Comment>${comment}</Comment></TitleItem>`;
+
+  it("decodes the five XML entities and keeps Japanese text; character references stay as written", () => {
+    // No stored title or airing contains a character reference (checked 2026-11); decoding them would change
+    // stored values and their hashes, so the behaviour is pinned here.
+    const { items } = parseTitleLookup(envelope(title(1, "A&amp;B &lt;C&gt; &quot;D&quot; &apos;E&apos; 日本語 &#12354;")));
+    expect(items[0]!.Comment).toBe(`A&B <C> "D" 'E' 日本語 &#12354;`);
+  });
+
+  it("refuses a DOCTYPE, so no entity can be defined or expanded", () => {
+    const body = envelope(title(1, "&b;")).replace("?>", '?><!DOCTYPE TitleLookupResponse [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">]>');
+    expect(() => parseTitleLookup(body)).toThrow(/DOCTYPE/);
+    expect(() => parseTitleLookup(envelope(title(1)).replace("?>", "?><!doctype TitleLookupResponse>"))).toThrow(/DOCTYPE/);
+  });
+
+  it("rejects nesting far deeper than the response format", () => {
+    expect(() => parseTitleLookup(envelope(title(1, "<x>".repeat(40) + "</x>".repeat(40))))).toThrow(SyoboiResultError);
+  });
+
+  it("rejects a response with more items than any real one", () => {
+    const items = Array.from({ length: MAX_ITEMS_PER_RESPONSE + 1 }, (_, i) => `<TitleItem><TID>${i + 1}</TID><Title>t</Title></TitleItem>`).join("");
+    expect(() => parseTitleLookup(envelope(items))).toThrow(/items \(limit/);
+  });
+
+  it("quarantines a record with an oversized field and keeps the others", () => {
+    const result = parseTitleLookup(envelope(title(1, "a".repeat(MAX_TEXT_LENGTH + 1)) + title(2, "普通の備考")));
+    expect(result.items.map((item) => item.TID)).toEqual(["2"]);
+    expect(result.rejected).toHaveLength(1);
   });
 });

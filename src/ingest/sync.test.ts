@@ -4,7 +4,7 @@ import { parseJstDateTime } from "@/domain/time";
 
 import { halveWindow, splitRange, toLastUpdateSinceParam, toRangeParam } from "./plan";
 import { fetchProgramWindow } from "./sync";
-import type { SyoboiClient } from "./syoboi/client";
+import { SyoboiHttpError, type SyoboiClient } from "./syoboi/client";
 
 function progXml(rows: number): string {
   const items = Array.from(
@@ -53,6 +53,19 @@ describe("fetchProgramWindow", () => {
     expect(result).toHaveLength(2);
     expect(result[0]!.window.start).toEqual(window.start);
     expect(result[1]!.window.end).toEqual(window.end);
+  });
+
+  it("fails the window instead of treating a refused or oversized response as an empty one", async () => {
+    // An empty window would count as complete and could mark airings as missing; the last good data must stay.
+    const window = { start: parseJstDateTime("2026-11-16 05:00:00"), end: parseJstDateTime("2026-11-17 05:00:00") };
+    const oversized = {
+      get: async () => {
+        throw new SyoboiHttpError("Response too large (over 1000 bytes)", 200, false);
+      }
+    } as unknown as SyoboiClient;
+    await expect(fetchProgramWindow({ client: oversized, log: () => {} }, window, ["19"])).rejects.toThrow(/too large/);
+    const doctype = { get: async () => progXml(1).replace("?>", "?><!DOCTYPE ProgLookupResponse>") } as unknown as SyoboiClient;
+    await expect(fetchProgramWindow({ client: doctype, log: () => {} }, window, ["19"])).rejects.toThrow(/DOCTYPE/);
   });
 
   it("gives up rather than returning a truncated small window", async () => {

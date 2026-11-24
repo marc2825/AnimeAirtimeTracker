@@ -5,14 +5,19 @@
  * - identifying User-Agent `AppName/version (+URL)`; never rotate UA/IP to dodge limits
  * - honour 429 + Retry-After; back off exponentially with jitter on transient errors; cap retries, then stop
  * - reuse responses within their Cache-Control max-age instead of re-requesting
+ * Resource limits (one time limit for headers and body, a byte cap counted while reading, no redirects, a cap on
+ * waiting between retries) keep a misbehaving response from stalling or exhausting the ingest job.
  */
 
 export const SYOBOI_DB_ENDPOINT = "https://cal.syoboi.jp/db.php";
 export const MIN_INTERVAL_FLOOR_MS = 1000;
-const MAX_BODY_BYTES = 30 * 1024 * 1024;
+/** Largest response accepted, counted in bytes while reading. Real responses are under 0.3 MB (2026-11). */
+export const MAX_BODY_BYTES = 30 * 1024 * 1024;
+/** A Retry-After longer than this is not waited out: the request stops and a later scheduled run tries again. */
+export const MAX_RETRY_AFTER_MS = 10 * 60 * 1000;
 const USER_AGENT_RE = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+ \(\+https?:\/\/[^\s)]+\)/;
 
-export type FetchImpl = (url: string, init: { headers: Record<string, string>; signal: AbortSignal }) => Promise<Response>;
+export type FetchImpl = (url: string, init: { headers: Record<string, string>; signal: AbortSignal; redirect: "manual" }) => Promise<Response>;
 
 export interface FetchAttemptLog {
   requestKey: string;
@@ -35,8 +40,12 @@ export interface SyoboiClientOptions {
   userAgent: string;
   minIntervalMs?: number;
   maxRetries?: number;
+  /** Time limit for one attempt, from sending the request to the end of the body. */
   timeoutMs?: number;
   baseBackoffMs?: number;
+  /** Upper bound on the total time one request may spend waiting between attempts. */
+  maxRetryWaitMs?: number;
+  maxBodyBytes?: number;
   fetchImpl?: FetchImpl;
   sleep?: (ms: number) => Promise<void>;
   now?: () => Date;
@@ -84,12 +93,66 @@ export function parseRetryAfter(header: string | null, now: Date): number | null
   return Number.isNaN(date) ? null : Math.max(0, date - now.getTime());
 }
 
+/** Settles with `promise`, or rejects as soon as `signal` aborts, even when the promise itself ignores the signal. */
+function untilAborted<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", onAbort);
+        reject(error);
+      }
+    );
+  });
+}
+
+/** Read the body as UTF-8, counting bytes as they arrive; past `limit` (or on abort) the transfer is cancelled. */
+async function readBody(response: Response, limit: number, signal: AbortSignal): Promise<{ text: string; bytes: number }> {
+  const declared = Number(response.headers.get("content-length") ?? Number.NaN);
+  if (declared > limit) {
+    void response.body?.cancel().catch(() => undefined);
+    throw new SyoboiHttpError(`Response too large (Content-Length ${declared} bytes, limit ${limit})`, response.status, false);
+  }
+  if (!response.body) return { text: "", bytes: 0 };
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytes = 0;
+  try {
+    for (;;) {
+      const { done, value } = await untilAborted(reader.read(), signal);
+      if (done) break;
+      bytes += value.byteLength;
+      if (bytes > limit) throw new SyoboiHttpError(`Response too large (over ${limit} bytes)`, response.status, false);
+      chunks.push(value);
+    }
+  } catch (error) {
+    // Not awaited: a source that never answers the cancel must not hold the job.
+    void reader.cancel(error).catch(() => undefined);
+    throw error;
+  }
+  const body = new Uint8Array(bytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return { text: new TextDecoder().decode(body), bytes };
+}
+
 export class SyoboiClient {
   private readonly userAgent: string;
   private readonly minIntervalMs: number;
   private readonly maxRetries: number;
   private readonly timeoutMs: number;
   private readonly baseBackoffMs: number;
+  private readonly maxRetryWaitMs: number;
+  private readonly maxBodyBytes: number;
   private readonly fetchImpl: FetchImpl;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => Date;
@@ -111,6 +174,8 @@ export class SyoboiClient {
     this.maxRetries = options.maxRetries ?? 4;
     this.timeoutMs = options.timeoutMs ?? 60_000;
     this.baseBackoffMs = options.baseBackoffMs ?? 10_000;
+    this.maxRetryWaitMs = options.maxRetryWaitMs ?? 15 * 60 * 1000;
+    this.maxBodyBytes = options.maxBodyBytes ?? MAX_BODY_BYTES;
     this.fetchImpl = options.fetchImpl ?? ((url, init) => fetch(url, init));
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.now = options.now ?? (() => new Date());
@@ -148,10 +213,11 @@ export class SyoboiClient {
   private async fetchWithRetry(url: string, requestKey: string): Promise<string> {
     const cached = this.cache ? await this.cache.get(url, this.now()) : null;
     if (cached !== null) {
-      await this.onAttempt?.({ requestKey, url, attempt: 0, httpStatus: null, durationMs: 0, bytes: cached.length, fromCache: true, error: null, body: cached });
+      await this.onAttempt?.({ requestKey, url, attempt: 0, httpStatus: null, durationMs: 0, bytes: Buffer.byteLength(cached), fromCache: true, error: null, body: cached });
       return cached;
     }
 
+    let waited = 0;
     for (let attempt = 1; ; attempt += 1) {
       await this.waitForSlot();
       const started = this.now().getTime();
@@ -159,31 +225,40 @@ export class SyoboiClient {
       let retryAfterMs: number | null = null;
       try {
         this.networkRequestCount += 1;
+        // One time limit for the whole exchange (headers and body); the timer is always cleared.
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-        let response: Response;
+        const timer = setTimeout(() => controller.abort(new Error(`Timed out after ${this.timeoutMs} ms`)), this.timeoutMs);
+        let body: string;
+        let bytes: number;
+        let cacheMaxAge = 0;
         try {
-          response = await this.fetchImpl(url, {
-            headers: { "User-Agent": this.userAgent, Accept: "text/xml, application/xml" },
-            signal: controller.signal
-          });
+          const response = await untilAborted(
+            this.fetchImpl(url, {
+              headers: { "User-Agent": this.userAgent, Accept: "text/xml, application/xml" },
+              signal: controller.signal,
+              // The endpoint does not redirect; a redirect would lead outside the address checked here.
+              redirect: "manual"
+            }),
+            controller.signal
+          );
+          status = response.status;
+          retryAfterMs = parseRetryAfter(response.headers.get("retry-after"), this.now());
+          cacheMaxAge = parseMaxAge(response.headers.get("cache-control"));
+          if (status >= 300 && status < 400) {
+            void response.body?.cancel().catch(() => undefined);
+            throw new SyoboiHttpError(`Unexpected redirect (HTTP ${status})`, status, false);
+          }
+          ({ text: body, bytes } = await readBody(response, this.maxBodyBytes, controller.signal));
         } finally {
           clearTimeout(timer);
         }
-        status = response.status;
-        retryAfterMs = parseRetryAfter(response.headers.get("retry-after"), this.now());
-        const body = await response.text();
         this.lastResponseAt = this.now().getTime();
-        if (body.length > MAX_BODY_BYTES) {
-          throw new SyoboiHttpError(`Response too large (${body.length} bytes)`, status, false);
-        }
-        if (!response.ok) {
+        if (status < 200 || status >= 300) {
           const retryable = status === 429 || status >= 500;
           throw new SyoboiHttpError(`HTTP ${status}`, status, retryable);
         }
-        await this.onAttempt?.({ requestKey, url, attempt, httpStatus: status, durationMs: this.lastResponseAt - started, bytes: body.length, fromCache: false, error: null, body });
-        const maxAge = parseMaxAge(response.headers.get("cache-control"));
-        if (this.cache && maxAge > 0) await this.cache.set(url, body, maxAge, this.now());
+        await this.onAttempt?.({ requestKey, url, attempt, httpStatus: status, durationMs: this.lastResponseAt - started, bytes, fromCache: false, error: null, body });
+        if (this.cache && cacheMaxAge > 0) await this.cache.set(url, body, cacheMaxAge, this.now());
         return body;
       } catch (error) {
         this.lastResponseAt = this.now().getTime();
@@ -195,7 +270,14 @@ export class SyoboiClient {
         if (!httpError.retryable || attempt > this.maxRetries) {
           throw httpError;
         }
+        if (retryAfterMs !== null && retryAfterMs > MAX_RETRY_AFTER_MS) {
+          throw new SyoboiHttpError(`${httpError.message}; Retry-After ${Math.round(retryAfterMs / 1000)} s exceeds ${MAX_RETRY_AFTER_MS / 1000} s, stopping`, status, false);
+        }
         const delay = Math.max(retryAfterMs ?? 0, this.backoffDelay(attempt));
+        if (waited + delay > this.maxRetryWaitMs) {
+          throw new SyoboiHttpError(`${httpError.message}; retries would wait over ${this.maxRetryWaitMs / 1000} s in total, stopping`, status, false);
+        }
+        waited += delay;
         await this.sleep(delay);
       }
     }
