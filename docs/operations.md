@@ -141,7 +141,9 @@ To stop measuring: remove `<Analytics />` and the package, update `/privacy`, th
 
 State checked 2026-11-22 (alerts and workflows re-checked 2026-11-24: no open code scanning, Dependabot or secret scanning alerts):
 
-- Repository settings: secret scanning with push protection, Dependabot alerts and security updates, private vulnerability reporting (`SECURITY.md`) are on. The default workflow token is read-only; first-time contributors' PRs need approval before workflows run.
+- Repository settings: secret scanning with push protection, Dependabot alerts and security updates, private vulnerability reporting (`SECURITY.md`) are on. The default workflow token is read-only; PRs from any outside contributor need approval before workflows run. Only GitHub-owned actions are allowed, pinned to full commit SHAs (enforced). Merging is squash-only and merged branches are deleted.
+- `main` (rulesets, 2026-11-24): deletion and force pushes are blocked for everyone; changes arrive through pull requests with the `Lint, typecheck, unit tests, build` and `DB integration + E2E` checks passing (repository admins can bypass this second ruleset in an emergency).
+- The jobs that use the owner connection string (`ingest.yml`, `migrate.yml`, `backup.yml`, `db-role.yml`) run in the `production` environment, which only `main` can use; a secret stored there takes precedence over a repository secret of the same name.
 - Audit: no credentials in the git history (all refs, including closed PRs), the current files or sampled Actions logs; the database host is masked in logs; `npm audit` reports 0 vulnerabilities. `.github/backup/backup-cert.pem` is a public certificate; the private key was never committed.
 - Workflows: actions are pinned to commit SHAs (Dependabot's monthly `github-actions` updates bump the pins) and the PostgreSQL service images to a digest (`ci.yml`, `backup.yml`; update both together, Dependabot does not); checkouts use `persist-credentials: false` (no job pushes); top-level permissions are `contents: read`; no `pull_request_target`; PR-triggered jobs receive no secrets; dispatch inputs reach scripts only through `env`. CodeQL (`codeql.yml`, `security-extended`) runs on PRs, `main` and weekly.
 - Dependencies: `audit.yml` runs `npm audit --audit-level=high` (direct and indirect, dev included, since the ingest, migration and backup jobs run dev tooling with production secrets) and `npm audit signatures` every Monday and when `package.json`/`package-lock.json` change. Packages Next.js bundles under `next/dist/compiled` are not in the lockfile; they are covered by Next.js's advisories, so keep `next` current (Dependabot).
@@ -153,11 +155,8 @@ State checked 2026-11-22 (alerts and workflows re-checked 2026-11-24: no open co
   - Rollback (if a page fails with `permission denied` after apply): **Actions → DB role → rollback** restores what the role had before (`SELECT` on every table, and on future tables through the owner's default privileges; never write access), then find the page and add its table to `WEB_TABLES`. Without Actions, run the same three statements as the owner in the Neon SQL editor: `GRANT USAGE ON SCHEMA public TO web_readonly; GRANT SELECT ON ALL TABLES IN SCHEMA public TO web_readonly; ALTER DEFAULT PRIVILEGES FOR ROLE neondb_owner IN SCHEMA public GRANT SELECT ON TABLES TO web_readonly;`. Unset `WEB_DB_ROLE` first, or the next migration applies the limits again.
 - External text and links: titles and comments from the source are rendered as text by React (no HTML injection); outbound links use `rel="noopener"`.
 
-Recommended settings that only the owner can change (not applied):
+Options for later (owner decisions):
 
-- A ruleset for `main`: block deletion and force pushes; optionally require a PR and the CI checks (this also blocks direct pushes).
-- Move `DIRECT_DATABASE_URL` from a repository secret into a `production` environment limited to `main`, and reference that environment from `ingest.yml`, `migrate.yml` and `backup.yml`.
-- Secret scanning: enable validity checks and non-provider patterns.
 - Separate database roles for ingestion (insert/update on source and derived tables, no DDL) and migrations (owner), each in its own secret, so a compromised ingest job cannot alter the schema or drop tables.
 - Previews: give the Preview environment its own Neon branch (and role) instead of the production read-only role, so previews never read production directly.
 - Vercel: keep usage e-mails on (Hobby cannot be charged and pauses at its limits, so no spend cap is needed); if abusive traffic appears, add a Firewall rate-limit rule for `/search` and `/stats` (see Capacity and limits).
