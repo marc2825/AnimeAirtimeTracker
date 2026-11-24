@@ -28,6 +28,9 @@ jobs:
   role:
     if: github.event_name == 'workflow_dispatch' || vars.WEB_DB_ROLE != ''
     runs-on: ubuntu-latest
+    # The owner connection string lives in this environment, which only main can use; until it is set there,
+    # the repository secret of the same name is used.
+    environment: production
     timeout-minutes: 10
     env:
       DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
