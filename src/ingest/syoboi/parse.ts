@@ -2,6 +2,10 @@
  * Parsers for db.php XML responses. HTTP 200 does not imply success: `Result/Code` must be checked
  * (200 = OK, 400 = bad parameter, 404 = no data, 500 = server error). Rows that fail validation are
  * returned as `rejected` instead of aborting the batch, so one malformed record cannot block an import.
+ *
+ * Limits: a DOCTYPE is refused (responses never have one), so no entity can be defined and expansion can never make
+ * the text larger than the input. Only the five XML entities are decoded (character references stay as written, as
+ * before), which keeps escaped Japanese text intact. Nesting, items per response and field lengths are capped far above real data.
  */
 import { XMLParser } from "fast-xml-parser";
 import { z } from "zod";
@@ -17,12 +21,21 @@ export class SyoboiResultError extends Error {
 }
 
 const ITEM_TAGS = new Set(["ChItem", "ChGroupItem", "TitleItem", "ProgItem"]);
+/** Responses nest four levels (response, list, item, field). */
+const MAX_NESTED_TAGS = 16;
+/** Items in one response. ProgLookup stops at 5,000; the most seen in any response is 365 (2026-11). */
+export const MAX_ITEMS_PER_RESPONSE = 20_000;
+/** Per field. Long-running series have subtitle lists of a few hundred thousand characters at most. */
+export const MAX_TEXT_LENGTH = 1_000_000;
+/** Names and other required one-line fields (the longest title is under 100 characters). */
+export const MAX_NAME_LENGTH = 10_000;
 
 const parser = new XMLParser({
   ignoreAttributes: true,
   parseTagValue: false,
   trimValues: false,
   processEntities: true,
+  maxNestedTags: MAX_NESTED_TAGS,
   isArray: (tagName) => ITEM_TAGS.has(tagName)
 });
 
@@ -41,6 +54,9 @@ export interface ParseResult<T> {
 type RawRecord = Record<string, unknown>;
 
 function parseEnvelope(xml: string, rootName: string, containerName: string, itemName: string): RawRecord[] {
+  if (/<!DOCTYPE/i.test(xml)) {
+    throw new SyoboiResultError(null, "Unexpected response: a DOCTYPE is not accepted");
+  }
   let document: Record<string, unknown>;
   try {
     document = parser.parse(xml) as Record<string, unknown>;
@@ -67,7 +83,11 @@ function parseEnvelope(xml: string, rootName: string, containerName: string, ite
     return [];
   }
   const items = container[itemName];
-  return Array.isArray(items) ? (items as RawRecord[]) : [];
+  if (!Array.isArray(items)) return [];
+  if (items.length > MAX_ITEMS_PER_RESPONSE) {
+    throw new SyoboiResultError(null, `Unexpected response: ${items.length} items (limit ${MAX_ITEMS_PER_RESPONSE})`);
+  }
+  return items as RawRecord[];
 }
 
 /** Coerce XML text: empty or whitespace-only → null. */
@@ -76,9 +96,9 @@ const text = z.preprocess((value) => {
   if (typeof value === "object") return null; // e.g. unexpected nested element
   const asString = String(value);
   return asString.trim() === "" ? null : asString;
-}, z.string().nullable());
+}, z.string().max(MAX_TEXT_LENGTH).nullable());
 
-const requiredText = z.preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string().min(1));
+const requiredText = z.preprocess((value) => (typeof value === "string" ? value.trim() : value), z.string().min(1).max(MAX_NAME_LENGTH));
 
 const optionalInt = z.preprocess((value) => {
   if (value === undefined || value === null) return null;
