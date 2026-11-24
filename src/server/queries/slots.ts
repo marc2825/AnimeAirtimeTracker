@@ -1,3 +1,4 @@
+import type { PrismaClient } from "@/generated/prisma/client";
 import { computeTitlePositions } from "@/domain/slots";
 import { seasonFromOrdinal, seasonsBetween, seasonOrdinal, type Season } from "@/domain/season";
 import { dbDateToIsoDate, type IsoDate } from "@/domain/time";
@@ -32,14 +33,47 @@ export interface SlotListItem extends SlotSummary {
 export async function listSlots(): Promise<SlotListItem[]> {
   "use cache";
   datasetCacheProfile();
-  const rows = await db().slot.findMany({
-    include: {
-      homeChannel: true,
-      // Explicit columns: pages keep working while a newer column is still being migrated (expand → deploy).
-      seasons: { orderBy: { seasonOrdinal: "desc" }, select: { ...SEASON_POSITION, channel: { select: { slug: true } } } }
-    },
-    orderBy: [{ seasonCount: "desc" }, { titleCount: "desc" }, { slug: "asc" }]
-  });
+  return loadSlotList(db());
+}
+
+interface SlotListRow {
+  slug: string;
+  name: string;
+  kind: SlotKind;
+  titleCount: number;
+  seasonCount: number;
+  firstAnimeDate: Date | null;
+  lastAnimeDate: Date | null;
+  homeSlug: string | null;
+  homeShortName: string | null;
+  homeName: string | null;
+  ordinals: number[];
+  weekdays: number[];
+  minutes: number[];
+  durations: number[];
+  channelSlugs: string[];
+}
+
+/**
+ * Every slot with its per-season positions, newest season first. Almost every page reads this list, so the
+ * database sends one row per slot with the seasons as arrays (≈ 1/3 of the bytes of one row per season).
+ */
+export async function loadSlotList(client: PrismaClient): Promise<SlotListItem[]> {
+  const rows = await client.$queryRaw<SlotListRow[]>`
+    SELECT s.slug, s.name, s.kind::text AS kind, s."titleCount" AS "titleCount", s."seasonCount" AS "seasonCount",
+      s."firstAnimeDate" AS "firstAnimeDate", s."lastAnimeDate" AS "lastAnimeDate",
+      hc.slug AS "homeSlug", hc."shortName" AS "homeShortName", hc.name AS "homeName",
+      coalesce(array_agg(ss."seasonOrdinal" ORDER BY ss."seasonOrdinal" DESC) FILTER (WHERE ss.id IS NOT NULL), '{}') AS ordinals,
+      coalesce(array_agg(ss."animeWeekday" ORDER BY ss."seasonOrdinal" DESC) FILTER (WHERE ss.id IS NOT NULL), '{}') AS weekdays,
+      coalesce(array_agg(ss."animeStartMinute" ORDER BY ss."seasonOrdinal" DESC) FILTER (WHERE ss.id IS NOT NULL), '{}') AS minutes,
+      coalesce(array_agg(ss."durationMinutes" ORDER BY ss."seasonOrdinal" DESC) FILTER (WHERE ss.id IS NOT NULL), '{}') AS durations,
+      coalesce(array_agg(c.slug ORDER BY ss."seasonOrdinal" DESC) FILTER (WHERE ss.id IS NOT NULL), '{}') AS "channelSlugs"
+    FROM "Slot" AS s
+    LEFT JOIN "Channel" AS hc ON hc.id = s."homeChannelId"
+    LEFT JOIN "SlotSeason" AS ss ON ss."slotId" = s.id
+    LEFT JOIN "Channel" AS c ON c.id = ss."channelId"
+    GROUP BY s.id, hc.id
+    ORDER BY s."seasonCount" DESC, s."titleCount" DESC, s.slug ASC`;
   return rows.map((row) => ({
     slug: row.slug,
     name: row.name,
@@ -48,12 +82,13 @@ export async function listSlots(): Promise<SlotListItem[]> {
     seasonCount: row.seasonCount,
     firstAnimeDate: row.firstAnimeDate ? dbDateToIsoDate(row.firstAnimeDate) : null,
     lastAnimeDate: row.lastAnimeDate ? dbDateToIsoDate(row.lastAnimeDate) : null,
-    channel: row.homeChannel ? { slug: row.homeChannel.slug, shortName: row.homeChannel.shortName ?? row.homeChannel.name, name: row.homeChannel.name } : null,
-    latest: row.seasons[0]
-      ? { seasonOrdinal: row.seasons[0].seasonOrdinal, weekday: row.seasons[0].animeWeekday, minute: row.seasons[0].animeStartMinute, durationMinutes: row.seasons[0].durationMinutes }
-      : null,
-    seasonOrdinals: row.seasons.map((season) => season.seasonOrdinal).reverse(),
-    positions: row.seasons.map((season) => ({ seasonOrdinal: season.seasonOrdinal, weekday: season.animeWeekday, minute: season.animeStartMinute, channelSlug: season.channel.slug }))
+    channel: row.homeSlug ? { slug: row.homeSlug, shortName: row.homeShortName ?? row.homeName!, name: row.homeName! } : null,
+    latest:
+      row.ordinals.length > 0
+        ? { seasonOrdinal: row.ordinals[0]!, weekday: row.weekdays[0]!, minute: row.minutes[0]!, durationMinutes: row.durations[0]! }
+        : null,
+    seasonOrdinals: [...row.ordinals].reverse(),
+    positions: row.ordinals.map((ordinal, i) => ({ seasonOrdinal: ordinal, weekday: row.weekdays[i]!, minute: row.minutes[i]!, channelSlug: row.channelSlugs[i]! }))
   }));
 }
 

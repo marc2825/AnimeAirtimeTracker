@@ -112,25 +112,52 @@ export interface TrendBand {
 
 type TrendAiring = Pick<StatAiring, "titleId" | "animeDate" | "animeStartMinute">;
 
-export function seasonTrend(airings: TrendAiring[], bands: readonly TrendBand[] = []): SeasonTrendRow[] {
-  const bySeason = new Map<number, TrendAiring[]>();
-  const firstSeasonOfTitle = new Map<number, number>();
+/**
+ * Airings of one title in one season at one start minute. The trend spans every covered season, so the database
+ * sends these groups (≈ 1/10 of the airings) instead of the airings; `groupTrendAirings` does the same in memory.
+ */
+export interface TrendGroup {
+  titleId: number;
+  seasonOrdinal: number;
+  animeStartMinute: number;
+  count: number;
+}
+
+export function groupTrendAirings(airings: TrendAiring[]): TrendGroup[] {
+  const groups = new Map<string, TrendGroup>();
   for (const airing of airings) {
     const ordinal = seasonOrdinal(seasonOfAnimeDate(airing.animeDate));
+    const key = `${airing.titleId}|${ordinal}|${airing.animeStartMinute}`;
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { titleId: airing.titleId, seasonOrdinal: ordinal, animeStartMinute: airing.animeStartMinute, count: 1 });
+  }
+  return [...groups.values()];
+}
+
+export function seasonTrend(airings: TrendAiring[], bands: readonly TrendBand[] = []): SeasonTrendRow[] {
+  return seasonTrendFromGroups(groupTrendAirings(airings), bands);
+}
+
+export function seasonTrendFromGroups(groups: TrendGroup[], bands: readonly TrendBand[] = []): SeasonTrendRow[] {
+  const bySeason = new Map<number, TrendGroup[]>();
+  const firstSeasonOfTitle = new Map<number, number>();
+  for (const group of groups) {
+    const ordinal = group.seasonOrdinal;
     const list = bySeason.get(ordinal);
-    if (list) list.push(airing);
-    else bySeason.set(ordinal, [airing]);
-    const first = firstSeasonOfTitle.get(airing.titleId);
-    if (first === undefined || ordinal < first) firstSeasonOfTitle.set(airing.titleId, ordinal);
+    if (list) list.push(group);
+    else bySeason.set(ordinal, [group]);
+    const first = firstSeasonOfTitle.get(group.titleId);
+    if (first === undefined || ordinal < first) firstSeasonOfTitle.set(group.titleId, ordinal);
   }
   return [...bySeason.entries()]
     .sort(([a], [b]) => a - b)
     .map(([ordinal, list]) => {
       const titleStarts = new Map<number, Map<number, number>>();
-      for (const airing of list) {
-        const counts = titleStarts.get(airing.titleId) ?? new Map<number, number>();
-        counts.set(airing.animeStartMinute, (counts.get(airing.animeStartMinute) ?? 0) + 1);
-        titleStarts.set(airing.titleId, counts);
+      for (const group of list) {
+        const counts = titleStarts.get(group.titleId) ?? new Map<number, number>();
+        counts.set(group.animeStartMinute, (counts.get(group.animeStartMinute) ?? 0) + group.count);
+        titleStarts.set(group.titleId, counts);
       }
       let late = 0;
       const bandTitles: Record<string, number> = Object.fromEntries(bands.map((band) => [band.key, 0]));
@@ -144,7 +171,7 @@ export function seasonTrend(airings: TrendAiring[], bands: readonly TrendBand[] 
       return {
         seasonOrdinal: ordinal,
         titles,
-        broadcasts: list.length,
+        broadcasts: list.reduce((sum, group) => sum + group.count, 0),
         newTitles: [...titleStarts.keys()].filter((id) => firstSeasonOfTitle.get(id) === ordinal).length,
         lateNightShare: titles === 0 ? 0 : late / titles,
         bandTitles
