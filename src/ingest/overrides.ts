@@ -57,7 +57,8 @@ export const slotRegistrySchema = z.object({
         name: z.string().min(1),
         kind: z.enum(["OFFICIAL", "SOURCE_LABEL"]),
         description: z.string().optional(),
-        evidenceUrl: z.url().optional()
+        // Rendered as a link on the slot page: http(s) only, like officialUrl.
+        evidenceUrl: z.url({ protocol: /^https?$/ }).optional()
       })
       .refine((entry) => entry.kind !== "OFFICIAL" || Boolean(entry.evidenceUrl), {
         message: "OFFICIAL slots require evidenceUrl"

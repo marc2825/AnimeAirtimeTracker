@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { safeExternalUrl } from "@/lib/safe-url";
+
 import { CountUp } from "./CountUp";
 import { Icon, type IconName } from "./Icon";
 import styles from "./primitives.module.css";
@@ -216,9 +218,12 @@ export function KeyValue({ items }: { items: { label: string; value: ReactNode }
   );
 }
 
+/** Outbound link in a new tab without opener or referrer. A URL that is not absolute http(s) renders as text. */
 export function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
+  const safe = safeExternalUrl(href);
+  if (!safe) return <span>{children}</span>;
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className={styles.external}>
+    <a href={safe} target="_blank" rel="noopener noreferrer" className={styles.external}>
       {children}
       <Icon name="external" size={13} />
       <span className="visually-hidden">（外部サイト）</span>

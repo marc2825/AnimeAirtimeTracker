@@ -29,13 +29,27 @@ export interface ExportMeta {
 
 export const SOURCE_LINE = `出典: 番組データ ${SOURCE_NAME}（${SOURCE_URL}）／集計 ${SITE_NAME}`;
 
-const csvCell = (value: string | number | null) => {
-  if (value === null) return "";
-  const text = String(value);
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
+/**
+ * First characters that make a spreadsheet read a cell as a formula (OWASP "CSV Injection"), with their
+ * full-width forms. Labels can come from the source (channel and slot names), so text is never trusted.
+ */
+const FORMULA_START = /^[=+\-@\t\r\n＝＋－＠]/;
 
-/** CSV with `#` header lines (title, scope, source, URL, data time) and a BOM so spreadsheets read UTF-8. */
+/**
+ * One CSV field. Numbers stay numbers (negative ones too); text that a spreadsheet would run as a formula gets a
+ * leading apostrophe, and text with a quote, comma or line break is quoted.
+ */
+export function csvCell(value: string | number | null): string {
+  if (value === null) return "";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  const text = FORMULA_START.test(value) ? `'${value}` : value;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/**
+ * CSV with `#` header lines (title, scope, source, URL, data time) and a BOM so spreadsheets read UTF-8. Each
+ * header line is one field written by `csvCell`, so a comma in the scope or URL cannot split it into cells.
+ */
 export function toCsv(spec: ChartSpec, meta: ExportMeta): string {
   const header = [`# ${SITE_NAME}: ${meta.title}`, `# 対象: ${meta.scope}`, `# 単位: ${spec.unit}`, `# ${SOURCE_LINE}`, `# URL: ${meta.url}`];
   if (meta.dataTime) header.push(`# データ時点: ${meta.dataTime}`);
@@ -45,7 +59,7 @@ export function toCsv(spec: ChartSpec, meta: ExportMeta): string {
   } else {
     rows = [[spec.categoryLabel, ...spec.series.map((s) => s.name)], ...spec.categories.map((category, i) => [category, ...spec.series.map((s) => s.values[i] ?? null)])];
   }
-  return `﻿${[...header, ...rows.map((row) => row.map(csvCell).join(","))].join("\r\n")}\r\n`;
+  return `﻿${[...header.map(csvCell), ...rows.map((row) => row.map(csvCell).join(","))].join("\r\n")}\r\n`;
 }
 
 // ---- SVG ---------------------------------------------------------------------------------------------
@@ -60,7 +74,11 @@ const FONT = `"Noto Sans JP","Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Got
 const WIDTH = 960;
 const PAD = 32;
 
-const esc = (value: string) => value.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char]!);
+/** Text for SVG content and attributes: markup characters escaped, characters XML does not allow dropped. */
+const esc = (value: string) =>
+  value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "")
+    .replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
 const num = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(1));
 
 /** Visual width of a string in "em" (CJK and full-width ≈ 1, others ≈ 0.55). */
