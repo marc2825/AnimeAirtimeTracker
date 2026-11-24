@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       action:
-        description: "audit (read-only) or apply"
+        description: "audit (read-only), apply, or rollback (restores SELECT on every table, as before apply)"
         type: choice
-        options: [audit, apply]
+        options: [audit, apply, rollback]
         default: audit
       role:
         description: "Role name (default: WEB_DB_ROLE, else web_readonly)"
@@ -48,4 +48,7 @@ jobs:
       - run: npm ci
       - name: Audit or apply
         run: |
-          if [ "$ACTION" = "apply" ]; then npm run db:role -- apply --yes; else npm run db:role -- audit; fi
+          case "$ACTION" in
+            apply|rollback) npm run db:role -- "$ACTION" --yes ;;
+            *) npm run db:role -- audit ;;
+          esac

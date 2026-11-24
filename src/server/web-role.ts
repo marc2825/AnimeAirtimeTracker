@@ -4,7 +4,8 @@
  * The web reads only WEB_TABLES (src/server/queries; revisions for the "変更N" count on title pages). Fetch logs,
  * raw payloads, sync cursors and the migration history belong to ingestion and operations. `auditWebRole` checks a role against this and changes
  * nothing (any role can run it: it reads the catalogs only); `applyWebRole` brings a role to it in one
- * transaction. scripts/db-role.ts runs both; the E2E suite in CI serves the site as a role limited this way, so a
+ * transaction, and `rollbackWebRole` restores the broad read access the role had before (SELECT on every table,
+ * now and in future) if the site turns out to need more. scripts/db-role.ts runs both; the E2E suite in CI serves the site as a role limited this way, so a
  * page that starts reading another table fails there before it fails in production.
  */
 
@@ -160,4 +161,33 @@ export async function applyWebRole(db: Queryable, role: string): Promise<string[
     throw error;
   }
   return statements;
+}
+
+/**
+ * Undo `applyWebRole`: the state the setup script used to create (USAGE on public, SELECT on every table, and
+ * default privileges of the connected owner for future tables). Never grants anything that could write.
+ */
+export async function rollbackWebRole(db: Queryable, role: string): Promise<string[]> {
+  assertRoleName(role);
+  const r = quoteIdent(role);
+  const owner = String((await db.query("SELECT current_user AS name")).rows[0]?.name);
+  const statements = [
+    `GRANT USAGE ON SCHEMA public TO ${r}`,
+    `GRANT SELECT ON ALL TABLES IN SCHEMA public TO ${r}`,
+    `ALTER DEFAULT PRIVILEGES FOR ROLE ${quoteIdent(owner)} IN SCHEMA public GRANT SELECT ON TABLES TO ${r}`
+  ];
+  await db.query("BEGIN");
+  try {
+    for (const statement of statements) await db.query(statement);
+    await db.query("COMMIT");
+  } catch (error) {
+    await db.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  }
+  return statements;
+}
+
+/** Problems that would break the site or let it write; reading more than needed is not one of them. */
+export function blockingProblems(audit: RoleAudit): string[] {
+  return audit.problems.filter((problem) => /^(cannot |can write|can create|can use sequence|has the |role .* does not exist|table .* does not exist)/.test(problem));
 }
