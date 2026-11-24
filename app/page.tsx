@@ -1,8 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { io } from "next/cache";
 import { Suspense, type CSSProperties } from "react";
 
 import { MonthCalendar } from "@/components/schedule/MonthCalendar";
+import { JsonLd } from "@/components/seo/JsonLd";
 import { latestOrdinal, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
 import { StripTooltip } from "@/components/slots/StripTooltip";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
@@ -13,6 +15,7 @@ import { REGIONS, REGION_KEYS } from "@/domain/coverage";
 import { currentSeason, formatSeason } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, currentAnimeDate, formatIsoDateJa, toAnimeTime, weekdayOf } from "@/domain/time";
 import { episodeText, formatCoverage, formatDateTime, formatStartTime } from "@/lib/format";
+import { websiteJsonLd } from "@/lib/seo";
 import { getSchedule } from "@/server/queries/schedule";
 import { getSlotStripTitles, listSlots, type StripTitles } from "@/server/queries/slots";
 import { getSeasonStats, statsFilter } from "@/server/queries/stats";
@@ -20,9 +23,13 @@ import { coverageDates, getDatasetStatus } from "@/server/queries/status";
 
 import styles from "./home.module.css";
 
+/** The title and description come from the root layout; the home page names its canonical URL. */
+export const metadata: Metadata = { alternates: { canonical: "/" } };
+
 export default function HomePage() {
   return (
     <div className="container">
+      <JsonLd data={websiteJsonLd()} />
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
           <h1 id="hero-title" className={styles.heroTitle}>

@@ -7,9 +7,11 @@ import { Disclosure } from "@/components/ui/controls";
 import { Badge, EmptyState, ExternalLink, FlagBadges, KeyValue, PageHeader, Section, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
 import { MEDIUM_LABELS, type Medium } from "@/domain/coverage";
 import { formatSeason } from "@/domain/season";
-import { WEEKDAY_LABELS, formatAnimeSlot } from "@/domain/time";
+import { WEEKDAY_LABELS } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatStartTime, formatYearMonth } from "@/lib/format";
 import { getTitleDetail, type TitleChannelGroup } from "@/server/queries/titles";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbJsonLd, titlePageDescription, titlePageTitle } from "@/lib/seo";
 
 import styles from "./title.module.css";
 
@@ -23,11 +25,9 @@ export async function generateMetadata({ params }: PageProps<"/titles/[slug]">):
     return { title: "作品", robots: { index: false } };
   }
   if (!title) return { title: "作品が見つかりません" };
-  const firstGroup = title.groups[0];
-  const where = firstGroup?.regular ? `${firstGroup.channel.shortName} ${formatAnimeSlot(firstGroup.regular.weekday as 0, firstGroup.regular.minute)}` : "";
   return {
-    title: title.name,
-    description: `${title.name}の放送局別の放送日時・話数・放送枠の履歴。${where ? `${where}ほか。` : ""}データ出典: しょぼいカレンダー。`,
+    title: titlePageTitle(title.name),
+    description: titlePageDescription(title),
     alternates: { canonical: `/titles/${title.slug}` }
   };
 }
@@ -52,6 +52,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
 
   return (
     <article>
+      <JsonLd data={breadcrumbJsonLd([{ name: "作品を探す", path: "/search" }, { name: title.name, path: `/titles/${title.slug}` }])} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/search">作品を探す</Link>
         <span aria-hidden="true">/</span>

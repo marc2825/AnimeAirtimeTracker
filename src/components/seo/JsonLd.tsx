@@ -1,0 +1,6 @@
+import { jsonLdText } from "@/lib/seo";
+
+/** Structured data for search engines. Not executed by browsers; the text is escaped (src/lib/seo.ts). */
+export function JsonLd({ data }: { data: unknown }) {
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdText(data) }} />;
+}

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -47,6 +48,10 @@ const nextConfig: NextConfig = {
     dataset: { stale: 300, revalidate: 900, expire: 86_400 }
   },
   serverExternalPackages: ["pg"],
+  // Pages that read data stream their metadata into <body> for most visitors. Search engines document <head> as
+  // the place for rel=canonical, so Googlebot joins Next.js's default list of crawlers that get blocking metadata
+  // in <head> (Bingbot is already on it). The default list is imported, so it follows Next.js upgrades.
+  htmlLimitedBots: new RegExp(`${HTML_LIMITED_BOT_UA_RE.source}|Googlebot`, HTML_LIMITED_BOT_UA_RE.flags),
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   }

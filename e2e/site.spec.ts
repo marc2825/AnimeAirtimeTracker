@@ -310,6 +310,46 @@ test("no page breaks the content security policy", async ({ page }) => {
   }
 });
 
+test("search crawlers get the metadata of data pages in <head>", async ({ request }) => {
+  const head = async (userAgent: string) => {
+    const html = await (await request.get("/titles/8053", { headers: { "user-agent": userAgent } })).text();
+    return html.slice(0, html.indexOf("</head>"));
+  };
+  for (const crawler of ["Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)", "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"]) {
+    const html = await head(crawler);
+    expect(html, crawler).toMatch(/<link rel="canonical" href="[^"]*\/titles\/8053"/);
+    expect(html, crawler).toContain("PSYREN -サイレン-の放送日時・放送局");
+  }
+});
+
+test("search engines get a site name, breadcrumbs, datasets and descriptive titles", async ({ page }) => {
+  const jsonLd = async () =>
+    page.locator('script[type="application/ld+json"]').evaluateAll((scripts) => scripts.map((script) => JSON.parse(script.textContent ?? "null") as Record<string, unknown>));
+
+  await page.goto("/");
+  // Every canonical link names the home page (static shells can carry the build's and the request's copy).
+  const homeCanonicals = await page.locator('link[rel="canonical"]').evaluateAll((links) => links.map((link) => new URL(link.getAttribute("href") ?? "").pathname));
+  expect(homeCanonicals.length).toBeGreaterThan(0);
+  expect(new Set(homeCanonicals)).toEqual(new Set(["/"]));
+  expect(await jsonLd()).toContainEqual(expect.objectContaining({ "@type": "WebSite", name: "アニメ放送枠観測所", alternateName: "Anime Airtime Tracker" }));
+
+  // A title page: what people search for in the title, facts from the stored airings in the description.
+  await page.goto("/titles/8053");
+  await expect(page).toHaveTitle("PSYREN -サイレン-の放送日時・放送局 | アニメ放送枠観測所");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /^『PSYREN -サイレン-』.*のテレビ放送の記録。\d{4}年\d{1,2}月\d{1,2}日から.*で放送.*データ出典: しょぼいカレンダー。$/);
+  const crumbs = (await jsonLd()).find((data) => data["@type"] === "BreadcrumbList") as { itemListElement: { position: number; name: string; item: string }[] };
+  expect(crumbs.itemListElement.map((item) => [item.position, item.name, new URL(item.item).pathname])).toEqual([
+    [1, "アニメ放送枠観測所", "/"],
+    [2, "作品を探す", "/search"],
+    [3, "PSYREN -サイレン-", "/titles/8053"]
+  ]);
+
+  await page.goto("/analysis/late-night");
+  expect(await jsonLd()).toContainEqual(expect.objectContaining({ "@type": "Dataset", name: "深夜アニメの長期的な変遷" }));
+  await page.goto("/seasons/2026-autumn");
+  await expect(page).toHaveTitle("2026年秋アニメ一覧（新作・曜日別） | アニメ放送枠観測所");
+});
+
 test("search past the last page says where the results are", async ({ page }) => {
   await page.goto("/search?season=all&page=9");
   await expect(page.getByText("このページには結果がありません")).toBeVisible();
