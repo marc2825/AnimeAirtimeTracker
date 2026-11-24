@@ -366,6 +366,19 @@ test("privacy policy and terms are linked from every page and state how the site
   await expect(page.getByRole("heading", { name: "非公式のサイトです" })).toBeVisible();
 });
 
+test("outbound links open a new tab without an opener handle and use http(s) only", async ({ page }) => {
+  for (const path of ["/privacy", "/about", "/terms"]) {
+    await page.goto(path);
+    const links = await page.locator('a[target="_blank"]').evaluateAll((anchors) => anchors.map((a) => ({ href: a.getAttribute("href") ?? "", rel: a.getAttribute("rel") ?? "" })));
+    expect(links.length, path).toBeGreaterThan(0);
+    for (const link of links) {
+      expect(link.href, path).toMatch(/^https?:\/\//);
+      // noreferrer is optional: the footer's source and repository links send the origin (Referrer-Policy) on purpose.
+      expect(link.rel.split(" "), link.href).toContain("noopener");
+    }
+  }
+});
+
 test("web analytics: one same-origin script and one page view per page, without CSP errors", async ({ page }) => {
   const cspErrors: string[] = [];
   page.on("console", (message) => {
