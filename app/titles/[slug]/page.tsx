@@ -1,17 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { io } from "next/cache";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { Disclosure } from "@/components/ui/controls";
-import { Badge, EmptyState, ExternalLink, FlagBadges, KeyValue, PageHeader, Section, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
+import { Badge, EmptyState, ExternalLink, FlagBadges, KeyValue, PageHeader, Section, SkeletonBlock, SlotKindBadge, WeekdayChip } from "@/components/ui/primitives";
 import { MEDIUM_LABELS, type Medium } from "@/domain/coverage";
 import { formatSeason } from "@/domain/season";
-import { WEEKDAY_LABELS } from "@/domain/time";
+import { WEEKDAY_LABELS, formatIsoDateJa } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatStartTime, formatYearMonth } from "@/lib/format";
 import { getTitleDetail, type TitleChannelGroup } from "@/server/queries/titles";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, titlePageDescription, titlePageTitle } from "@/lib/seo";
+import { headlineSlots, nextAiring } from "@/lib/title-headline";
 
 import styles from "./title.module.css";
 
@@ -49,6 +51,10 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
 
   const firstRun = title.groups.filter((g) => g.firstRunCount > 0);
   const headline = firstRun[0] ?? title.groups[0];
+  // The next airing depends on the time of the request, after the cached title data.
+  await io();
+  const next = nextAiring(title.groups, new Date());
+  const slotLine = headlineSlots(title.slots, headline?.channel.shortName ?? null);
 
   return (
     <article>
@@ -79,15 +85,45 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
         }
       />
 
-      {headline?.regular ? (
-        <p className={styles.headline}>
-          <span className={styles.headlineChannel}>{headline.channel.name}</span>
-          <span className={styles.headlineTime}>
-            <span className={headline.regular.weekday === 5 ? "sat" : headline.regular.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[headline.regular.weekday]}曜</span>{" "}
-            {formatStartTime(headline.regular.minute, "anime")}
-          </span>
-          <span className={styles.headlineNote}>{firstRun.length > 0 ? "最も早い新作放送局での主な放送時刻" : "主な放送時刻"}</span>
-        </p>
+      {headline?.regular || next || slotLine.shown.length > 0 ? (
+        <div className={styles.headline}>
+          {headline?.regular ? (
+            <p className={styles.headlineMain}>
+              <span className={styles.headlineChannel}>{headline.channel.name}</span>
+              <span className={styles.headlineTime}>
+                <WeekdayChip weekday={headline.regular.weekday} /> {formatStartTime(headline.regular.minute, "anime")}
+              </span>
+              <span className={styles.headlineNote}>{firstRun.length > 0 ? "最も早い新作放送局での主な放送時刻" : "主な放送時刻"}</span>
+            </p>
+          ) : null}
+          {slotLine.shown.length > 0 ? (
+            <p className={styles.headlineFact}>
+              <span className={styles.headlineLabel}>放送枠</span>
+              {slotLine.shown.map((slot) => (
+                <span key={slot.slug} className={styles.headlineSlot}>
+                  <SlotKindBadge kind={slot.kind} />
+                  <Link href={`/slots/${encodeURIComponent(slot.slug)}`}>{slot.name}</Link>
+                </span>
+              ))}
+              {slotLine.more > 0 ? (
+                <a href="#slots" className="inline-link">
+                  ほか{slotLine.more}枠
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+          {next ? (
+            <p className={styles.headlineFact}>
+              <span className={styles.headlineLabel}>次回の放送</span>
+              <span>
+                {formatIsoDateJa(next.airing.animeDate, { withWeekday: true })} <span className="mono">{formatStartTime(next.airing.animeStartMinute, "anime")}</span>
+              </span>
+              <span>{next.group.channel.shortName}</span>
+              {episodeText(next.airing.episodeNumber, next.airing.episodeLabel) ? <span className="mono">{episodeText(next.airing.episodeNumber, next.airing.episodeLabel)}</span> : null}
+              <FlagBadges isRerun={next.airing.isRerun} />
+            </p>
+          ) : null}
+        </div>
       ) : null}
 
       <div className={styles.columns}>
@@ -234,7 +270,7 @@ function ChannelCard({ group }: { group: TitleChannelGroup }) {
       <p className={styles.channelCardTime}>
         {group.regular ? (
           <>
-            <span className={group.regular.weekday === 5 ? "sat" : group.regular.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[group.regular.weekday]}曜</span>{" "}
+            <WeekdayChip weekday={group.regular.weekday} />{" "}
             <span className="mono">{formatStartTime(group.regular.minute, "anime")}</span>
           </>
         ) : (

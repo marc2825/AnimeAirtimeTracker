@@ -200,6 +200,26 @@ hr {
   text-decoration-color: currentColor;
 }
 
+/* Weekday chip (WeekdayChip): a weekday as a programming position, on its colour from the colour bar. */
+.wd {
+  display: inline-block;
+  padding: 0 0.3em;
+  line-height: 1.4;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+  background: var(--wd-fill);
+  color: var(--weekday-ink);
+}
+
+.wd-0 { --wd-fill: var(--weekday-0); }
+.wd-1 { --wd-fill: var(--weekday-1); }
+.wd-2 { --wd-fill: var(--weekday-2); }
+.wd-3 { --wd-fill: var(--weekday-3); }
+.wd-4 { --wd-fill: var(--weekday-4); }
+.wd-5 { --wd-fill: var(--weekday-5); color: var(--weekday-ink-inverse); }
+.wd-6 { --wd-fill: var(--weekday-6); color: var(--weekday-ink-inverse); }
+
 .sat {
   color: var(--color-sat);
 }

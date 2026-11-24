@@ -9,7 +9,7 @@ const FIXTURE_WEEK = "/schedule?week=2026-11-16&day=mon";
 
 test("home renders the main entry points", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("TVアニメの番組表・放送枠・編成統計");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("TVアニメの放送枠・編成統計・番組表");
   await page.getByRole("link", { name: "今週の番組表" }).click();
   await expect(page).toHaveURL(/\/schedule/);
   await expect(page.getByRole("heading", { level: 1, name: "週間番組表" })).toBeVisible();

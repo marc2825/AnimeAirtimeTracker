@@ -1,10 +1,24 @@
 import type { ReactNode } from "react";
 
+import { WEEKDAY_LABELS, type Weekday } from "@/domain/time";
 import { safeExternalUrl } from "@/lib/safe-url";
 
 import { CountUp } from "./CountUp";
 import { Icon, type IconName } from "./Icon";
 import styles from "./primitives.module.css";
+
+/**
+ * A weekday as a programming position (`火曜 25:30`): the weekday's colour from the colour bar behind its name.
+ * The name is always written, so the colour never carries the meaning alone.
+ */
+export function WeekdayChip({ weekday, suffix = "曜" }: { weekday: number; suffix?: string }) {
+  return (
+    <span className={`wd wd-${weekday}`}>
+      {WEEKDAY_LABELS[weekday as Weekday]}
+      {suffix}
+    </span>
+  );
+}
 
 /** Secondary explanation, collapsed: the visible text stays one line, the rest is a click away. */
 export function MoreInfo({ summary = "詳しく", children }: { summary?: ReactNode; children: ReactNode }) {
@@ -72,7 +86,7 @@ export function Section({
       <div className={styles.sectionHeader}>
         <div className={styles.sectionHeading}>
           <Heading id={id ? `${id}-title` : undefined} className={level === 2 ? styles.sectionTitle : styles.subsectionTitle}>
-            {level === 2 ? <span className="marker">{title}</span> : title}
+            {title}
           </Heading>
           {description ? <p className={styles.sectionDescription}>{description}</p> : null}
           {details ? <MoreInfo>{details}</MoreInfo> : null}

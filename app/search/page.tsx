@@ -6,7 +6,7 @@ import { Suspense } from "react";
 import { Disclosure, FilterChips, Pagination, SegmentedLinks, SelectField, SubmitButton } from "@/components/ui/controls";
 import { FilterForm } from "@/components/ui/FilterForm";
 import { Icon } from "@/components/ui/Icon";
-import { EmptyState, FlagBadges, Notice, PageHeader, SkeletonBlock, SlotKindBadge } from "@/components/ui/primitives";
+import { EmptyState, FlagBadges, Notice, PageHeader, SkeletonBlock, SlotKindBadge, WeekdayChip } from "@/components/ui/primitives";
 import { NETWORKS, NETWORK_KEYS, REGIONS, REGION_KEYS, channelSlugsFor } from "@/domain/coverage";
 import { currentSeason, formatSeason, seasonFromOrdinal, seasonId, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
@@ -223,7 +223,7 @@ async function TitleResults({ filter, query, sort, page, href, channelName }: { 
           {result.rows.map((row) => (
             <li key={row.id} className={styles.titleRow}>
               <span className={styles.titlePosition}>
-                <span className={row.modalWeekday === 5 ? "sat" : row.modalWeekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[row.modalWeekday]}</span>
+                <WeekdayChip weekday={row.modalWeekday} suffix="" />
                 <span className="mono">{formatAnimeMinute(row.modalMinute)}</span>
               </span>
               <span className={styles.titleMain}>

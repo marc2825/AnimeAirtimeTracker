@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-import { SlotKindBadge } from "@/components/ui/primitives";
+import { SlotKindBadge, WeekdayChip } from "@/components/ui/primitives";
 import { seasonFromOrdinal, seasonOrdinal, shiftSeason, type Season } from "@/domain/season";
-import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
+import { formatAnimeMinute } from "@/domain/time";
 import { formatSeasonOrdinal } from "@/lib/format";
 import { stripTickLabel, stripTicks, type StripSeasonTitles } from "@/lib/season-strip";
 import type { SlotSummary } from "@/server/queries/slots";
@@ -41,7 +41,14 @@ export function SeasonStrip({ ordinals, end, count = 12, titles }: { ordinals: n
   );
 }
 
+/**
+ * A slot as a card: kind and home channel, name, latest position, the 12-season strip with its first and last
+ * season written under it, and the titles of the latest filled season in the strip (when their names are stored).
+ */
 export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; stripEnd: Season; stripTitles?: StripSeasonTitles }) {
+  const ticks = stripTicks(slot.seasonOrdinals, stripEnd, STRIP_SEASONS, stripTitles);
+  const latest = ticks.findLast((tick) => tick.on);
+  const latestTitles = latest ? (stripTitles?.[latest.ordinal] ?? []) : [];
   return (
     <li className={styles.card}>
       <div className={styles.head}>
@@ -54,7 +61,7 @@ export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; s
       <p className={styles.position}>
         {slot.latest ? (
           <>
-            <span className={slot.latest.weekday === 5 ? "sat" : slot.latest.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[slot.latest.weekday]}曜</span>{" "}
+            <WeekdayChip weekday={slot.latest.weekday} />{" "}
             <span className="mono">{formatAnimeMinute(slot.latest.minute)}</span>
             <span className={styles.positionNote}>（{formatSeasonOrdinal(slot.latest.seasonOrdinal)}時点）</span>
           </>
@@ -62,7 +69,22 @@ export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; s
           <span className="muted">対象局での定時放送なし</span>
         )}
       </p>
-      <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} titles={stripTitles} />
+      <div className={styles.stripWithAxis}>
+        <SeasonStrip ordinals={slot.seasonOrdinals} end={stripEnd} count={STRIP_SEASONS} titles={stripTitles} />
+        <span className={styles.stripAxis} aria-hidden="true">
+          <span>{ticks[0]?.heading}</span>
+          <span>{ticks.at(-1)?.heading}</span>
+        </span>
+      </div>
+      {latest && latestTitles.length > 0 ? (
+        <p className={styles.latestTitles}>
+          <span className={styles.latestSeason}>{latest.heading}</span>
+          <Link href={`/titles/${latestTitles[0]!.slug}`} className={styles.latestTitle}>
+            {latestTitles[0]!.name}
+          </Link>
+          {latestTitles.length > 1 ? <span className={styles.latestMore}>ほか{latestTitles.length - 1}作品</span> : null}
+        </p>
+      ) : null}
       <dl className={styles.stats}>
         <div>
           <dt>作品</dt>
@@ -80,6 +102,8 @@ export function SlotCard({ slot, stripEnd, stripTitles }: { slot: SlotSummary; s
     </li>
   );
 }
+
+const STRIP_SEASONS = 12;
 
 /** First season ordinal of a strip window ending at `end` (the range `getSlotStripTitles` reads). */
 export function stripStartOrdinal(end: Season, count = 12): number {

@@ -5,9 +5,9 @@ import { Suspense } from "react";
 
 import { SlotTimeline } from "@/components/slots/SlotTimeline";
 import { ButtonLink } from "@/components/ui/controls";
-import { Badge, EmptyState, ExternalLink, Notice, PageHeader, Section, SkeletonBlock, SlotKindBadge, SLOT_KIND_LABELS, StatGrid, StatTile } from "@/components/ui/primitives";
+import { Badge, EmptyState, ExternalLink, Notice, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS, SlotKindBadge, StatGrid, StatTile, WeekdayChip } from "@/components/ui/primitives";
 import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, MIN_REGULAR_AIRINGS } from "@/domain/slots";
-import { WEEKDAY_LABELS, formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
+import { formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
 import { formatDateTime, formatSeasonOrdinal } from "@/lib/format";
 import { getSlotDetail, type SlotDetail } from "@/server/queries/slots";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -91,7 +91,7 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
             {slot.channel ? <Badge>{slot.channel.name}</Badge> : null}
             {slot.latest ? (
               <span className={styles.latest}>
-                <span className={slot.latest.weekday === 5 ? "sat" : slot.latest.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[slot.latest.weekday]}曜</span>{" "}
+                <WeekdayChip weekday={slot.latest.weekday} />{" "}
                 <span className="mono">{formatAnimeMinute(slot.latest.minute)}</span>
                 <span className="muted">（{formatSeasonOrdinal(slot.latest.seasonOrdinal)}時点・{slot.latest.durationMinutes}分）</span>
               </span>

@@ -8,10 +8,10 @@ import { MonthCalendar } from "@/components/schedule/MonthCalendar";
 import { DayTabs, ScheduleLegend, WeekNav } from "@/components/schedule/ScheduleNav";
 import { Disclosure, SegmentedLinks, SelectField } from "@/components/ui/controls";
 import { FilterForm } from "@/components/ui/FilterForm";
-import { EmptyState, Notice, PageHeader, SkeletonBlock } from "@/components/ui/primitives";
+import { EmptyState, Notice, PageHeader, SkeletonBlock, WeekdayChip } from "@/components/ui/primitives";
 import { NETWORKS, NETWORK_KEYS, REGIONS, REGION_KEYS, TRACKED_CHANNELS, channelSlugsFor, parseNetworkKey, parseRegionKey, type RegionKey } from "@/domain/coverage";
 import { formatSeason, seasonOfAnimeDate } from "@/domain/season";
-import { WEEKDAY_KEYS, WEEKDAY_LABELS, addDays, animeWeekStart, currentAnimeDate, diffDays, formatIsoDateJa, parseWeekdayKey, type IsoDate } from "@/domain/time";
+import { WEEKDAY_KEYS, addDays, animeWeekStart, currentAnimeDate, diffDays, formatIsoDateJa, parseWeekdayKey, type IsoDate } from "@/domain/time";
 import type { ClockMode } from "@/lib/format";
 import {
   buildHref,
@@ -230,7 +230,7 @@ async function ScheduleContent({ searchParams }: { searchParams: Promise<RawSear
             return (
               <section key={date} className={styles.daySection} aria-labelledby={`day-${index}`}>
                 <h2 id={`day-${index}`} className={styles.dayHeading}>
-                  <span className={index === 5 ? "sat" : index === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[index]}曜</span>
+                  <WeekdayChip weekday={index} />
                   <span className={styles.dayHeadingDate}>{formatIsoDateJa(date)}</span>
                   {date === today ? <span className={styles.todayBadge}>今日</span> : null}
                   <span className={styles.dayHeadingCount}>{items.length}件</span>

@@ -6,8 +6,8 @@ import Link from "next/link";
 import { latestOrdinal, SeasonStrip, SlotCard, stripStartOrdinal } from "@/components/slots/SlotCard";
 import { StripTooltip } from "@/components/slots/StripTooltip";
 import { ButtonLink, Disclosure, SegmentedLinks } from "@/components/ui/controls";
-import { EmptyState, MoreInfo, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS } from "@/components/ui/primitives";
-import { WEEKDAY_LABELS, formatAnimeMinute } from "@/domain/time";
+import { EmptyState, MoreInfo, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS, WeekdayChip } from "@/components/ui/primitives";
+import { formatAnimeMinute } from "@/domain/time";
 import { buildHref, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
 import { datasetCacheProfile } from "@/server/cache";
 import { getSlotStripTitles, listSlots, type SlotSummary, type StripTitles } from "@/server/queries/slots";
@@ -147,7 +147,7 @@ async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; 
                             <Link href={`/slots/${encodeURIComponent(slot.slug)}`} className={styles.positionLink}>
                               {slot.latest ? (
                                 <>
-                                  <span className={slot.latest.weekday === 5 ? "sat" : slot.latest.weekday === 6 ? "sun" : undefined}>{WEEKDAY_LABELS[slot.latest.weekday]}曜</span>{" "}
+                                  <WeekdayChip weekday={slot.latest.weekday} />{" "}
                                   <span className="mono">{formatAnimeMinute(slot.latest.minute)}</span>
                                 </>
                               ) : (

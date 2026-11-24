@@ -38,6 +38,47 @@
   font-weight: var(--weight-regular);
 }
 
+.stripWithAxis {
+  display: grid;
+  gap: var(--space-0-5, 0.125rem);
+}
+
+/* First and last season of the strip, so the ticks can be read without hovering. */
+.stripAxis {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-2xs);
+  color: var(--color-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What the slot aired in its latest filled season. */
+.latestTitles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+}
+
+.latestSeason {
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-bold);
+  color: var(--color-ink-2);
+}
+
+.latestTitle {
+  font-weight: var(--weight-bold);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.latestMore {
+  font-size: var(--text-xs);
+  color: var(--color-ink-3);
+}
+
 .strip {
   display: grid;
   grid-auto-flow: column;

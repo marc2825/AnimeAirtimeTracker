@@ -266,6 +266,22 @@ async function StatsContent({ searchParams }: { searchParams: Promise<RawSearchP
         />
       </StatGrid>
 
+      <nav className={styles.toc} aria-label="このページの図">
+        {[
+          ["heatmap", "曜日×時間帯"],
+          ["concurrency", "同時放送"],
+          ["channels", "放送局別"],
+          ["trend", "クール別の推移"],
+          ["bands", "時間帯別の推移"],
+          ...(compare && compareStats ? [["compare", "クール間の比較"]] : []),
+          ["regional", "関東と関西"]
+        ].map(([id, label]) => (
+          <a key={id} href={`#${id}`}>
+            {label}
+          </a>
+        ))}
+      </nav>
+
       <Section id="heatmap" title="曜日×時間帯の分布" description="どの曜日のどの時間帯にアニメが集中しているか">
         <ChartFrame
           title={`曜日×時間帯（${unit === "titles" ? "作品本数" : "放送件数"}）`}

@@ -1,3 +1,21 @@
+/* The colour bar along the top: the seven weekday colours, Monday to Sunday (tokens.css). */
+.header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--weekday-0) 0 14.29%,
+    var(--weekday-1) 0 28.57%,
+    var(--weekday-2) 0 42.86%,
+    var(--weekday-3) 0 57.14%,
+    var(--weekday-4) 0 71.43%,
+    var(--weekday-5) 0 85.71%,
+    var(--weekday-6) 0
+  );
+}
+
 .header {
   position: sticky;
   top: 0;
