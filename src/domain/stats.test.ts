@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { computeTitlePositions, deriveSlots, type SlotInputBroadcast } from "./slots";
+import { computeTitlePositions, deriveSlots, groupAirings, type SlotInputBroadcast } from "./slots";
 import { channelBreakdown, concurrencyProfile, delayBucket, regionalDelay, seasonTrend, weekdayHourEntries, weekdayHourMatrix, type StatAiring } from "./stats";
 import { addDays, fromAnimeTime } from "./time";
 
@@ -191,7 +191,7 @@ describe("slots", () => {
         { id: 10, slug: "mx", shortName: "MX", sortOrder: 1 },
         { id: 20, slug: "bs11", shortName: "BS11", sortOrder: 2 }
       ],
-      broadcasts,
+      airingGroups: groupAirings(broadcasts),
       registry: [],
       membershipOverrides: [{ slot: "mx-mon-2500", titleExternalId: "3", action: "remove", reason: "test" }]
     });
@@ -219,7 +219,7 @@ describe("slots", () => {
       ...weekly(4, "2026-10-05", 1380, { channelId: 10 })
     ].map((a) => toSlotInput(a));
     const titles = [1, 2, 3, 4].map((id) => ({ id, externalId: String(id), slotLabels: ["ブロック"], evidence: {} }));
-    const [slot] = deriveSlots({ titles, channels: [{ id: 10, slug: "ntv", shortName: "日テレ", sortOrder: 1 }], broadcasts, registry: [], membershipOverrides: [] });
+    const [slot] = deriveSlots({ titles, channels: [{ id: 10, slug: "ntv", shortName: "日テレ", sortOrder: 1 }], airingGroups: groupAirings(broadcasts), registry: [], membershipOverrides: [] });
     expect(slot!.seasons.map((s) => [s.animeStartMinute, s.durationMinutes])).toEqual([
       [1380, 60],
       [1380, 60]
@@ -236,7 +236,7 @@ describe("slots", () => {
     const slots = deriveSlots({
       titles: [{ id: 1, externalId: "1", slotLabels: ["単独枠"], evidence: {} }],
       channels: [{ id: 10, slug: "mx", shortName: "MX", sortOrder: 1 }],
-      broadcasts: weekly(1, "2026-10-05", 1500, { channelId: 10 }).map((a) => toSlotInput(a)),
+      airingGroups: groupAirings(weekly(1, "2026-10-05", 1500, { channelId: 10 }).map((a) => toSlotInput(a))),
       registry: [],
       membershipOverrides: []
     });

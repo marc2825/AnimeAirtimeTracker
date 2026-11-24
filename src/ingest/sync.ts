@@ -192,6 +192,16 @@ export async function titlesNeedingSubtitles(prisma: PrismaClient, limit: number
   return rows.map((row) => row.externalId);
 }
 
+/** How many titles `titlesNeedingSubtitles` would still return, counted in the database (no ids sent). */
+export async function countTitlesNeedingSubtitles(prisma: PrismaClient): Promise<number> {
+  const [row] = await prisma.$queryRaw<{ n: number }[]>`
+    SELECT count(*)::int AS n FROM "Title" t
+    WHERE t.source = ${SOURCE_SYOBOI} AND t."subtitlesFetchedAt" IS NULL
+      AND EXISTS (SELECT 1 FROM "Broadcast" b WHERE b."titleId" = t.id AND b.deleted = false)
+  `;
+  return row?.n ?? 0;
+}
+
 /**
  * One step of the subtitle backfill: re-read the details (now including the SubTitles list) of up to `limit`
  * titles that do not have it yet. Titles the source no longer returns are marked as read too, so they are
@@ -204,8 +214,7 @@ export async function backfillSubtitles(ctx: IngestContext, limit: number): Prom
     fetched = (await fetchTitles(ctx, tids)).fetched;
     await ctx.prisma.title.updateMany({ where: { source: SOURCE_SYOBOI, externalId: { in: tids }, subtitlesFetchedAt: null }, data: { subtitlesFetchedAt: ctx.now() } });
   }
-  const remaining = (await titlesNeedingSubtitles(ctx.prisma, 100_000)).length;
-  return { titles: tids.length, fetched, remaining };
+  return { titles: tids.length, fetched, remaining: await countTitlesNeedingSubtitles(ctx.prisma) };
 }
 
 function normalizeAll(programs: SyoboiProgram[], log: (message: string) => void): { broadcasts: NormalizedBroadcast[]; errors: number } {

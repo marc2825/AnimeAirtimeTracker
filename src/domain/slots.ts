@@ -61,6 +61,23 @@ export interface MembershipOverride {
   reason: string;
 }
 
+/**
+ * Regular-airing counts of one title on one channel in one season, at one weekday, start minute and duration.
+ * Grouping first is what lets the database send ≈ 40k groups instead of every airing; `groupAirings` does the
+ * same grouping in memory (tests, small inputs), so both paths feed the same position rules.
+ */
+export interface AiringGroup {
+  titleId: number;
+  channelId: number;
+  seasonOrdinal: number;
+  weekday: number;
+  startMinute: number;
+  durationMinutes: number;
+  count: number;
+  firstStartAt: Date;
+  lastStartAt: Date;
+}
+
 export interface TitlePosition {
   titleId: number;
   channelId: number;
@@ -127,37 +144,93 @@ function mode<T>(values: T[], key: (value: T) => string): { value: T; count: num
   return best ? { value: best.value, count: best.count } : null;
 }
 
-export function computeTitlePositions(broadcasts: SlotInputBroadcast[]): TitlePosition[] {
-  const groups = new Map<string, SlotInputBroadcast[]>();
-  for (const broadcast of broadcasts) {
-    if (broadcast.isRerun || broadcast.deleted) continue;
-    const ordinal = seasonOrdinal(seasonOfAnimeDate(broadcast.animeDate));
-    const key = `${broadcast.titleId}|${broadcast.channelId}|${ordinal}`;
-    const list = groups.get(key);
-    if (list) list.push(broadcast);
-    else groups.set(key, [broadcast]);
+/** In-memory equivalent of the database grouping in src/ingest/derive.ts (reruns and deleted airings skipped). */
+export function groupAirings(broadcasts: SlotInputBroadcast[]): AiringGroup[] {
+  const groups = new Map<string, AiringGroup>();
+  for (const b of broadcasts) {
+    if (b.isRerun || b.deleted) continue;
+    const ordinal = seasonOrdinal(seasonOfAnimeDate(b.animeDate));
+    const key = `${b.titleId}|${b.channelId}|${ordinal}|${b.animeWeekday}|${b.animeStartMinute}|${b.durationMinutes}`;
+    const group = groups.get(key);
+    if (group) {
+      group.count += 1;
+      if (b.startAt < group.firstStartAt) group.firstStartAt = b.startAt;
+      if (b.startAt > group.lastStartAt) group.lastStartAt = b.startAt;
+    } else {
+      groups.set(key, {
+        titleId: b.titleId,
+        channelId: b.channelId,
+        seasonOrdinal: ordinal,
+        weekday: b.animeWeekday,
+        startMinute: b.animeStartMinute,
+        durationMinutes: b.durationMinutes,
+        count: 1,
+        firstStartAt: b.startAt,
+        lastStartAt: b.startAt
+      });
+    }
+  }
+  return [...groups.values()];
+}
+
+/** The entry with the highest weight; ties go to the smallest key, so the result never depends on order. */
+function heaviest<T>(entries: Iterable<[string, T]>, weight: (value: T) => number): { key: string; value: T } | null {
+  let best: { key: string; value: T; weight: number } | null = null;
+  for (const [key, value] of entries) {
+    const w = weight(value);
+    if (!best || w > best.weight || (w === best.weight && key < best.key)) best = { key, value, weight: w };
+  }
+  return best;
+}
+
+/**
+ * A title's regular position per channel and season: the weekday and start minute with the most airings (at least
+ * MIN_REGULAR_AIRINGS), the most common duration there, and the first and last airing at that position.
+ */
+export function positionsFromGroups(groups: AiringGroup[]): TitlePosition[] {
+  const bySeason = new Map<string, AiringGroup[]>();
+  for (const group of groups) {
+    const key = `${group.titleId}|${group.channelId}|${group.seasonOrdinal}`;
+    const list = bySeason.get(key);
+    if (list) list.push(group);
+    else bySeason.set(key, [group]);
   }
   const positions: TitlePosition[] = [];
-  for (const [key, list] of groups) {
-    const modal = mode(list, (b) => `${b.animeWeekday}|${String(b.animeStartMinute).padStart(4, "0")}`);
-    if (!modal || modal.count < MIN_REGULAR_AIRINGS) continue;
-    const atPosition = list.filter((b) => b.animeWeekday === modal.value.animeWeekday && b.animeStartMinute === modal.value.animeStartMinute);
-    const duration = mode(atPosition, (b) => String(b.durationMinutes).padStart(4, "0"))?.value.durationMinutes ?? modal.value.durationMinutes;
-    const times = atPosition.map((b) => b.startAt.getTime());
-    const [titleId, channelId, ordinal] = key.split("|").map(Number) as [number, number, number];
+  for (const list of bySeason.values()) {
+    const atPositions = new Map<string, AiringGroup[]>();
+    for (const group of list) {
+      const key = `${group.weekday}|${String(group.startMinute).padStart(4, "0")}`;
+      const atPosition = atPositions.get(key);
+      if (atPosition) atPosition.push(group);
+      else atPositions.set(key, [group]);
+    }
+    const total = (items: AiringGroup[]) => items.reduce((sum, item) => sum + item.count, 0);
+    const modal = heaviest(atPositions, total);
+    if (!modal || total(modal.value) < MIN_REGULAR_AIRINGS) continue;
+    const durations = new Map<string, number>();
+    for (const group of modal.value) {
+      const key = String(group.durationMinutes).padStart(4, "0");
+      durations.set(key, (durations.get(key) ?? 0) + group.count);
+    }
+    const duration = Number(heaviest(durations, (count) => count)!.key);
+    const first = modal.value[0]!;
     positions.push({
-      titleId,
-      channelId,
-      seasonOrdinal: ordinal,
-      weekday: modal.value.animeWeekday as Weekday,
-      startMinute: modal.value.animeStartMinute,
+      titleId: first.titleId,
+      channelId: first.channelId,
+      seasonOrdinal: first.seasonOrdinal,
+      weekday: first.weekday as Weekday,
+      startMinute: first.startMinute,
       durationMinutes: duration,
-      count: modal.count,
-      firstStartAt: new Date(Math.min(...times)),
-      lastStartAt: new Date(Math.max(...times))
+      count: total(modal.value),
+      firstStartAt: new Date(Math.min(...modal.value.map((group) => group.firstStartAt.getTime()))),
+      lastStartAt: new Date(Math.max(...modal.value.map((group) => group.lastStartAt.getTime())))
     });
   }
   return positions.sort((a, b) => a.titleId - b.titleId || a.channelId - b.channelId || a.seasonOrdinal - b.seasonOrdinal);
+}
+
+export function computeTitlePositions(broadcasts: SlotInputBroadcast[]): TitlePosition[] {
+  return positionsFromGroups(groupAirings(broadcasts));
 }
 
 function membershipFromPositions(
@@ -235,15 +308,16 @@ export function inferredSlotName(channelShortName: string, weekday: Weekday, sta
 }
 
 export function deriveSlots(input: {
+  /** Titles with slot labels, plus any title a membership override names (others add nothing). */
   titles: SlotInputTitle[];
   channels: SlotInputChannel[];
-  broadcasts: SlotInputBroadcast[];
+  /** Regular-airing groups (`groupAirings`, or the same grouping done by the database). */
+  airingGroups: AiringGroup[];
   registry: SlotRegistryEntry[];
   membershipOverrides: MembershipOverride[];
 }): DerivedSlot[] {
   const channelById = new Map(input.channels.map((channel) => [channel.id, channel]));
-  const trackedBroadcasts = input.broadcasts.filter((b) => channelById.has(b.channelId));
-  const positions = computeTitlePositions(trackedBroadcasts);
+  const positions = positionsFromGroups(input.airingGroups.filter((group) => channelById.has(group.channelId)));
   const positionsByTitle = new Map<number, TitlePosition[]>();
   for (const position of positions) {
     const list = positionsByTitle.get(position.titleId);
