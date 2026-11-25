@@ -23,15 +23,21 @@ const themeScript = `(function(){var d=document.documentElement,m=window.matchMe
 
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
-  title: { default: `${SITE_NAME} — テレビアニメの放送枠と編成のデータベース`, template: `%s | ${SITE_NAME}` },
+  title: { default: `${SITE_NAME} — TVアニメの放送枠一覧・年表と編成統計`, template: `%s | ${SITE_NAME}` },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
   openGraph: { type: "website", siteName: SITE_NAME, locale: "ja_JP" },
   twitter: { card: "summary_large_image" },
   formatDetection: { telephone: false },
-  // Search Console ownership via the HTML-tag method (a *.vercel.app domain cannot be verified through DNS).
-  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined
+  // Search Console / Bing Webmaster Tools ownership via the HTML-tag method (a *.vercel.app domain cannot be
+  // verified through DNS). Each tag is rendered only when its variable is set.
+  verification: siteVerification(process.env.GOOGLE_SITE_VERIFICATION, process.env.BING_SITE_VERIFICATION)
 };
+
+function siteVerification(google: string | undefined, bing: string | undefined): Metadata["verification"] {
+  if (!google && !bing) return undefined;
+  return { ...(google ? { google } : {}), ...(bing ? { other: { "msvalidate.01": bing } } : {}) };
+}
 
 export const viewport: Viewport = {
   themeColor: [

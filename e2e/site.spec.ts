@@ -9,7 +9,10 @@ const FIXTURE_WEEK = "/schedule?week=2026-11-16&day=mon";
 
 test("home renders the main entry points", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("TVアニメの放送枠・編成統計・番組表");
+  // The site name and what it lists are in the h1; the description is always shown, not folded away.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("アニメ放送枠観測所 TVアニメの放送枠一覧と年表・編成統計");
+  await expect(page).toHaveTitle("アニメ放送枠観測所 — TVアニメの放送枠一覧・年表と編成統計");
+  await expect(page.getByText(/放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです/)).toBeVisible();
   await page.getByRole("link", { name: "今週の番組表" }).click();
   await expect(page).toHaveURL(/\/schedule/);
   await expect(page.getByRole("heading", { level: 1, name: "週間番組表" })).toBeVisible();
@@ -216,16 +219,39 @@ test("channel pages summarise a channel and link to filtered views", async ({ pa
   await expect(page.getByText("ページが見つかりません")).toBeVisible();
 });
 
-test("sitemap lists the season and channel pages", async ({ request }) => {
-  const xml = await (await request.get("/sitemap.xml")).text();
-  expect(xml).toContain("/seasons/2026-autumn");
-  expect(xml).toContain("/channels/mx");
-  // robots.txt keeps crawlers off query-string variants; every URL the sitemap offers must stay allowed.
+test("sitemap index lists child sitemaps for pages, seasons and channels, slots and titles", async ({ request }) => {
+  const locs = (xml: string) => [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]!);
+  const index = await request.get("/sitemap.xml");
+  expect(index.headers()["content-type"]).toContain("application/xml");
+  const indexXml = await index.text();
+  expect(indexXml).toContain("<sitemapindex");
+  const children = locs(indexXml).map((url) => new URL(url).pathname);
+  expect(children).toEqual(["/sitemaps/static.xml", "/sitemaps/seasons.xml", "/sitemaps/slots.xml", "/sitemaps/titles.xml"]);
+
+  const xml: Record<string, string> = {};
+  for (const path of children) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(200);
+    expect(response.headers()["content-type"], path).toContain("application/xml");
+    xml[path] = await response.text();
+  }
+  const pages = locs(xml["/sitemaps/static.xml"]!).map((url) => new URL(url).pathname);
+  expect(pages).toEqual(expect.arrayContaining(["/", "/slots", "/stats", "/schedule", "/about"]));
+  // Kept out so that they do not outrank the home page for the site's own name (the pages themselves stay).
+  for (const path of ["/terms", "/privacy", "/status", "/search"]) expect(pages).not.toContain(path);
+  expect(xml["/sitemaps/seasons.xml"]).toContain("/seasons/2026-autumn");
+  expect(xml["/sitemaps/seasons.xml"]).toContain("/channels/mx");
+
+  // robots.txt keeps crawlers off query-string variants; every URL the sitemaps offer must stay allowed.
   const robots = await (await request.get("/robots.txt")).text();
   expect(robots).toContain("Disallow: /*?");
-  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]!);
+  const urls = Object.values(xml).flatMap(locs);
   expect(urls.length).toBeGreaterThan(10);
   expect(urls.filter((url) => url.includes("?") || new URL(url).pathname.startsWith("/api/"))).toEqual([]);
+  // A lastmod is the last change to the data: never in the future.
+  const lastmods = Object.values(xml).flatMap((text) => [...text.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((match) => Date.parse(match[1]!)));
+  expect(lastmods.length).toBeGreaterThan(0);
+  expect(lastmods.filter((time) => Number.isNaN(time) || time > Date.now())).toEqual([]);
 });
 
 test("slots, about and status pages render honestly with limited data", async ({ page }) => {
@@ -331,7 +357,9 @@ test("search engines get a site name, breadcrumbs, datasets and descriptive titl
   const homeCanonicals = await page.locator('link[rel="canonical"]').evaluateAll((links) => links.map((link) => new URL(link.getAttribute("href") ?? "").pathname));
   expect(homeCanonicals.length).toBeGreaterThan(0);
   expect(new Set(homeCanonicals)).toEqual(new Set(["/"]));
-  expect(await jsonLd()).toContainEqual(expect.objectContaining({ "@type": "WebSite", name: "アニメ放送枠観測所", alternateName: "Anime Airtime Tracker" }));
+  const website = (await jsonLd()).find((data) => data["@type"] === "WebSite");
+  expect(website).toMatchObject({ name: "アニメ放送枠観測所", alternateName: "Anime Airtime Tracker", potentialAction: { "@type": "SearchAction" } });
+  expect((website as { potentialAction: { target: { urlTemplate: string } } }).potentialAction.target.urlTemplate).toMatch(/\/search\?q=\{search_term_string\}$/);
 
   // A title page: what people search for in the title, facts from the stored airings in the description.
   await page.goto("/titles/8053");
@@ -343,6 +371,11 @@ test("search engines get a site name, breadcrumbs, datasets and descriptive titl
     [2, "作品を探す", "/search"],
     [3, "PSYREN -サイレン-", "/titles/8053"]
   ]);
+  // The work itself, from stored source facts only (category アニメ → TVSeries; the source page as sameAs).
+  const work = (await jsonLd()).find((data) => data["@type"] === "TVSeries") as { name: string; url: string; sameAs: string[] };
+  expect(work.name).toBe("PSYREN -サイレン-");
+  expect(new URL(work.url).pathname).toBe("/titles/8053");
+  expect(work.sameAs).toContain("https://cal.syoboi.jp/tid/8053");
 
   await page.goto("/analysis/late-night");
   expect(await jsonLd()).toContainEqual(expect.objectContaining({ "@type": "Dataset", name: "深夜アニメの長期的な変遷" }));

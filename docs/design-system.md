@@ -60,7 +60,7 @@ Theme: the pre-hydration script in `app/layout.tsx` resolves `data-theme` (store
 
 ## Page patterns
 
-- **Header → controls → content → footnote.** H1 (heavy gothic with the marker) + a one-line lead saying what the page is (a phrase, no trailing 「。」); details collapsed under 「詳しく」; no eyebrow label, no tagline. The home page opens with a plain description and the entry points in one ruled bar (the slot chronicle first, then statistics, analysis and the guide), with today's first-run airings beside the calendar; the slot cards and the season's programming follow.
+- **Header → controls → content → footnote.** H1 (heavy gothic with the marker) + a one-line lead saying what the page is (a phrase, no trailing 「。」); details collapsed under 「詳しく」; no eyebrow label, no tagline. The home page opens with the site name and page title in one `<h1>`, a description that is always shown, and the entry points in one ruled bar (the slot chronicle first, then statistics, analysis and the guide), with today's first-run airings beside the calendar. Next come cards for the eight longest-running named slots on air, the other named slots on air as text links, and the season's programming.
 - **Title page headline**: under the title, one ruled block states the regular position, the slots the title belongs to (named slots first) and the next airing in the stored schedule.
 - **Long data pages** (`/stats`) list their figures as jump links under the key numbers.
 - **Data sections** stream under `<Suspense>` with skeletons sized like the content; errors render a `Notice`, empty results an `EmptyState` with a next step.

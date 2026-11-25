@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { io } from "next/cache";
-import { Suspense, type CSSProperties } from "react";
+import { Fragment, Suspense, type CSSProperties } from "react";
 
 import { MonthCalendar } from "@/components/schedule/MonthCalendar";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -10,12 +10,14 @@ import { StripTooltip } from "@/components/slots/StripTooltip";
 import { WeekdayHourHeatmap } from "@/components/stats/Charts";
 import { ButtonLink } from "@/components/ui/controls";
 import { CountUp } from "@/components/ui/CountUp";
-import { FlagBadges, MoreInfo, Notice, Skeleton, SkeletonBlock, WeekdayChip } from "@/components/ui/primitives";
+import { FlagBadges, Notice, Skeleton, SkeletonBlock, WeekdayChip } from "@/components/ui/primitives";
 import { REGIONS, REGION_KEYS } from "@/domain/coverage";
-import { currentSeason, formatSeason } from "@/domain/season";
+import { currentSeason, formatSeason, seasonOrdinal } from "@/domain/season";
 import { WEEKDAY_KEYS, WEEKDAY_LABELS, currentAnimeDate, formatIsoDateJa, toAnimeTime, weekdayOf } from "@/domain/time";
+import { pickFeaturedSlots } from "@/lib/featured-slots";
 import { episodeText, formatCoverage, formatDateTime, formatStartTime } from "@/lib/format";
 import { websiteJsonLd } from "@/lib/seo";
+import { SITE_NAME } from "@/lib/site";
 import { getSchedule } from "@/server/queries/schedule";
 import { getSlotStripTitles, listSlots, type StripTitles } from "@/server/queries/slots";
 import { getSeasonStats, statsFilter } from "@/server/queries/stats";
@@ -33,18 +35,15 @@ export default function HomePage() {
       <section className={styles.hero} aria-labelledby="hero-title">
         <div className={styles.heroText}>
           <h1 id="hero-title" className={styles.heroTitle}>
-            <span className="marker">TVアニメの放送枠・編成統計・番組表</span>
+            <span className={styles.heroSite}>{SITE_NAME}</span>{" "}
+            <span className="marker">TVアニメの放送枠一覧と年表・編成統計</span>
           </h1>
-          <MoreInfo summary="このサイトについて">
-            <p>
-              日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです。ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計、長期の変化を調べた分析と、それらの元になる番組表を載せています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠・統計・分析は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。
-            </p>
-            <p>
-              <Link href="/about" className="inline-link">
-                取得元と判定・集計のルール
-              </Link>
-            </p>
-          </MoreInfo>
+          <p className={styles.heroLead}>
+            日本のテレビアニメの放送枠と放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです。ノイタミナのような放送枠での作品の移り変わり、曜日×時間帯の編成統計、長期の変化を調べた分析と、それらの元になる番組表を載せています。番組データはしょぼいカレンダー（有志による手入力データ）の公開データを取得・保存したもので、放送枠・統計・分析は本サイトが算出しています。本サイトが番組データを独自に入力することはありません。{" "}
+            <Link href="/about" className="inline-link">
+              取得元と判定・集計のルール
+            </Link>
+          </p>
           <div className={styles.heroBar}>
             <div className={styles.heroActions}>
               <ButtonLink href="/slots" variant="primary" icon="arrowRight">
@@ -202,9 +201,9 @@ async function FeaturedSlots() {
       </section>
     );
   }
-  const featured = slots.filter((slot) => slot.kind !== "INFERRED" && slot.seasonCount > 0).slice(0, 4);
-  if (featured.length === 0) return null;
   const stripEnd = latestOrdinal(slots);
+  const { featured, more } = pickFeaturedSlots(slots, seasonOrdinal(stripEnd));
+  if (featured.length === 0) return null;
   // Names behind the strip ticks are a nicety: the cards still render if they cannot be read.
   const titles: StripTitles = await getSlotStripTitles(
     stripStartOrdinal(stripEnd),
@@ -217,7 +216,7 @@ async function FeaturedSlots() {
           <h2 id="featured-title" className={styles.blockTitle}>
             放送枠の年表
           </h2>
-          <p className={styles.blockLead}>出典に枠名が記載された主な枠と、直近12クールの作品</p>
+          <p className={styles.blockLead}>放送中の主な枠（公式枠・出典記載枠を、続いたクール数の多い順に）と、直近12クールの作品</p>
         </div>
         <ButtonLink href="/slots" variant="ghost" icon="arrowRight">
           すべての放送枠
@@ -228,6 +227,19 @@ async function FeaturedSlots() {
           <SlotCard key={slot.slug} slot={slot} stripEnd={stripEnd} stripTitles={titles[slot.slug]} />
         ))}
       </ul>
+      {more.length > 0 ? (
+        <p className={styles.slotMore}>
+          <span className={styles.slotMoreLabel}>このほかに放送中の枠</span>
+          {more.map((slot, index) => (
+            <Fragment key={slot.slug}>
+              {index > 0 ? "、" : null}
+              <Link href={`/slots/${encodeURIComponent(slot.slug)}`} className="inline-link">
+                {slot.name}
+              </Link>
+            </Fragment>
+          ))}
+        </p>
+      ) : null}
       <StripTooltip />
     </section>
   );
