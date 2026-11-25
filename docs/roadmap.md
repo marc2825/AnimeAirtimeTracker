@@ -49,7 +49,10 @@
 
 所有者の作業（任意。手順は [operations.md](operations.md)）:
 
-- Google Search Console への登録（所有者の Google アカウントが必要）
+- 検索エンジン（#52 のデプロイ後）:
+  - Search Console で、トップページのURL検査とインデックス登録のリクエスト、`/sitemap.xml`（サイトマップインデックス）の再送信。
+  - Bing Webmaster Tools への登録（Search Console からのインポート、または `BING_SITE_VERIFICATION`）と、サイトマップの送信。
+  - 2〜4週間後に、サイト名・一般語での検索順位と「クロール済み - インデックス未登録」の内訳を再確認する。
 - GitHub Actions から独立した外部監視（`/api/health` を監視するサービスのアカウントが必要）
 - GitHub アカウントなしで連絡できる窓口（専用メールまたはフォーム。選択肢と、決めたときに直す箇所は operations.md）
 - 推奨設定: `main` のルールセット、`DIRECT_DATABASE_URL` を `production` 環境へ移すこと

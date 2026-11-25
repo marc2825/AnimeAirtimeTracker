@@ -12,7 +12,7 @@ import { WEEKDAY_LABELS, formatIsoDateJa } from "@/domain/time";
 import { episodeText, formatDateShort, formatDateTime, formatStartTime, formatYearMonth } from "@/lib/format";
 import { getTitleDetail, type TitleChannelGroup } from "@/server/queries/titles";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { breadcrumbJsonLd, titlePageDescription, titlePageTitle } from "@/lib/seo";
+import { breadcrumbJsonLd, titleJsonLd, titlePageDescription, titlePageTitle } from "@/lib/seo";
 import { headlineSlots, nextAiring } from "@/lib/title-headline";
 
 import styles from "./title.module.css";
@@ -59,6 +59,7 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <article>
       <JsonLd data={breadcrumbJsonLd([{ name: "作品を探す", path: "/search" }, { name: title.name, path: `/titles/${title.slug}` }])} />
+      <JsonLd data={titleJsonLd(title)} />
       <nav className={styles.breadcrumb} aria-label="パンくず">
         <Link href="/search">作品を探す</Link>
         <span aria-hidden="true">/</span>

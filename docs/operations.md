@@ -14,6 +14,7 @@ Production runs on option A below (Vercel Hobby + Neon Free + GitHub Actions) si
 | `TEST_DATABASE_URL` | dev/CI | disposable DB for `test:db` and E2E (name must contain `test`) |
 | `APP_ENV` | optional | set `production` in production; fixture import refuses to run |
 | `GOOGLE_SITE_VERIFICATION` | web (optional) | Search Console HTML-tag token; rendered as `<meta name="google-site-verification">` |
+| `BING_SITE_VERIFICATION` | web (optional) | Bing Webmaster Tools HTML-tag token; rendered as `<meta name="msvalidate.01">` |
 
 Secrets are configured in the hosting provider / GitHub Actions secrets, never in the repository.
 
@@ -60,7 +61,12 @@ Region: Neon does not list Tokyo, so use **AWS Asia Pacific (Singapore) `aws-ap-
 5. **Vercel project** from the GitHub repository (Git integration: `main` → production, PRs → previews). Environment variables for Production and Preview: `DATABASE_URL` = `web_readonly` **pooled** URL, `APP_ENV=production`, optionally `SITE_URL` (defaults to the Vercel production domain). The web app never writes, so previews can safely share the read-only role. Keep **Git Fork Protection** on (default): the repository is public, and a fork PR must not build with these variables unreviewed.
 6. **GitHub** secrets `DIRECT_DATABASE_URL`, `SYOBOI_USER_AGENT`; variables `INGEST_ENABLED=true` (scheduled ingestion) and `MIGRATE_ON_PUSH=true` (`migrate.yml` applies migrations when they change on `main`; keep them additive because Vercel deploys in parallel). `migrate.yml` is the only workflow that applies migrations: on push when `MIGRATE_ON_PUSH=true`, or by a manual run (Actions → Migrate → Run workflow) regardless of the variable. `ingest.yml` only checks `prisma migrate status` and fails while migrations are pending. Workflows that receive these secrets run only on `main`/manual dispatch, never on `pull_request`.
 7. **Verify** `/status`, `/sitemap.xml`, `/robots.txt`, security headers (`curl -I`), both themes on a phone, and the first scheduled `update` run.
-8. **Search Console** (optional): add a URL-prefix property for the production URL, choose the HTML-tag method, set `GOOGLE_SITE_VERIFICATION` on Vercel (Production), redeploy, verify, then submit `/sitemap.xml`. Afterwards: Pages (indexing) report for excluded URLs, Enhancements for Breadcrumbs and Datasets, and URL inspection to request indexing of the home page and the current season page. Bing Webmaster Tools can import the property from Search Console.
+8. **Search Console** (optional): add a URL-prefix property for the production URL, choose the HTML-tag method, set `GOOGLE_SITE_VERIFICATION` on Vercel (Production), redeploy, verify, then submit `/sitemap.xml`. Afterwards: Pages (indexing) report for excluded URLs, Enhancements for Breadcrumbs and Datasets, and URL inspection to request indexing of the home page and the current season page. `/sitemap.xml` is a sitemap index; submitting it covers the four child sitemaps. After a change to what the sitemaps list (#52), resubmit `/sitemap.xml` and request indexing of the home page again.
+
+   Bing Webmaster Tools:
+   - Import the property from Search Console, or verify with the HTML-tag method by setting `BING_SITE_VERIFICATION` on Vercel (Production) and redeploying.
+   - Then submit `/sitemap.xml`.
+   - IndexNow is not wired up: the update job does not know which pages changed, and it would need a key in both GitHub and Vercel.
 
 ## Scheduled ingestion
 

@@ -24,7 +24,13 @@ export function websiteJsonLd(base: URL = siteUrl()) {
     alternateName: SITE_NAME_EN,
     url: new URL("/", base).toString(),
     inLanguage: "ja",
-    description: SITE_DESCRIPTION
+    description: SITE_DESCRIPTION,
+    // The title search (/search?q=…), so search engines can send a query straight to it.
+    potentialAction: {
+      "@type": "SearchAction",
+      target: { "@type": "EntryPoint", urlTemplate: `${new URL("/search", base).toString()}?q={search_term_string}` },
+      "query-input": "required name=search_term_string"
+    }
   };
 }
 
@@ -54,6 +60,81 @@ export function datasetJsonLd(input: { name: string; description: string; path: 
     creator: { "@type": "Organization", name: SITE_NAME, url: new URL("/", base).toString() },
     isBasedOn: SOURCE_URL,
     spatialCoverage: { "@type": "Place", name: "日本" }
+  };
+}
+
+/** Stored facts about a title (a source title entry); nothing else goes into its JSON-LD. */
+export interface TitleJsonLdFacts {
+  slug: string;
+  name: string;
+  shortName: string | null;
+  nameEn: string | null;
+  sourceCategory: number | null;
+  firstYear: number | null;
+  firstMonth: number | null;
+  firstEndYear: number | null;
+  firstEndMonth: number | null;
+  officialUrl: string | null;
+  /** The title's page at the source. */
+  sourceUrl: string;
+}
+
+/** Source categories with a matching schema.org type (アニメ and アニメ（放送終了） are TV series, 映画 a movie). */
+const TITLE_TYPES: Record<number, "TVSeries" | "Movie"> = { 1: "TVSeries", 10: "TVSeries", 8: "Movie" };
+
+function yearMonth(year: number | null, month: number | null): string | undefined {
+  if (year === null || year < 1900 || year > 2100) return undefined;
+  return month !== null && month >= 1 && month <= 12 ? `${year}-${String(month).padStart(2, "0")}` : String(year);
+}
+
+function httpUrl(value: string | null): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * A title as a creative work, from stored source facts only: names, the source's category (as TVSeries / Movie /
+ * CreativeWork), the source's first and last broadcast year and month for TV series, and the official site and
+ * the source page as `sameAs`. Facts the source does not give (studio, genre, episode count…) are not added.
+ */
+export function titleJsonLd(title: TitleJsonLdFacts, base: URL = siteUrl()) {
+  const type = (title.sourceCategory !== null ? TITLE_TYPES[title.sourceCategory] : undefined) ?? "CreativeWork";
+  const alternateNames = [...new Set([title.nameEn, title.shortName].map((value) => value?.trim()).filter((value): value is string => !!value && value !== title.name))];
+  const sameAs = [httpUrl(title.officialUrl), httpUrl(title.sourceUrl)].filter((value): value is string => value !== undefined);
+  const startDate = type === "TVSeries" ? yearMonth(title.firstYear, title.firstMonth) : undefined;
+  const endDate = type === "TVSeries" ? yearMonth(title.firstEndYear, title.firstEndMonth) : undefined;
+  return {
+    "@context": "https://schema.org",
+    "@type": type,
+    name: title.name,
+    url: new URL(`/titles/${title.slug}`, base).toString(),
+    ...(alternateNames.length === 0 ? {} : { alternateName: alternateNames.length === 1 ? alternateNames[0] : alternateNames }),
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
+    ...(sameAs.length === 0 ? {} : { sameAs })
+  };
+}
+
+/** The titles of a slot as a list, in the order the slot page shows them (newest first). */
+export function slotItemListJsonLd(slot: { slug: string; name: string; members: { slug: string; name: string }[] }, base: URL = siteUrl()) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${slot.name}の所属作品`,
+    url: new URL(`/slots/${encodeURIComponent(slot.slug)}`, base).toString(),
+    numberOfItems: slot.members.length,
+    itemListOrder: "https://schema.org/ItemListOrderDescending",
+    itemListElement: slot.members.map((member, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: member.name,
+      url: new URL(`/titles/${member.slug}`, base).toString()
+    }))
   };
 }
 

@@ -24,6 +24,23 @@
   line-height: 1.4;
 }
 
+/* The site name above the page title: part of the h1 (search engines read it), set small. */
+.heroSite {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-jp);
+  color: var(--color-ink-2);
+}
+
+.heroLead {
+  max-width: 46rem;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  color: var(--color-ink-2);
+}
+
 .heroActions {
   display: flex;
   flex-wrap: wrap;
@@ -220,6 +237,19 @@
   font-size: var(--text-md);
   color: var(--color-ink-2);
   line-height: var(--leading-snug);
+}
+
+/* Other named slots on air, as plain links in running text. */
+.slotMore {
+  margin-top: var(--space-5);
+  max-width: 60rem;
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+}
+
+.slotMoreLabel {
+  margin-right: var(--space-3);
+  font-weight: var(--weight-bold);
 }
 
 .slotGrid {
