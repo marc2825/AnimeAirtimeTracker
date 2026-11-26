@@ -4,6 +4,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import path from "node:path";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -16,6 +17,7 @@ import { rebuildSlots, reclassifyReruns } from "./derive";
 import { titlesNeedingSubtitles } from "./sync";
 import { FIXTURE_CHANNEL_IDS, FIXTURE_WINDOW, importFixtures } from "./fixtures";
 import { importBroadcasts, upsertTitles } from "./importer";
+import { reparseTitleCredits } from "./reparse";
 import type { OverridesFile } from "./overrides";
 import { normalizeProgram, normalizeTitle, type NormalizedBroadcast } from "./syoboi/normalize";
 import { parseProgLookup, parseTitleLookup } from "./syoboi/parse";
@@ -214,6 +216,34 @@ describe("importer (PostgreSQL)", () => {
     const slot = await prisma.slot.findUniqueOrThrow({ where: { slug: "テスト枠" }, include: { seasons: true } });
     expect(slot.seasons).toHaveLength(1);
     expect(slot.seasons[0]).toMatchObject({ seasonOrdinal: 20264, titleCount: 2, titleIds: [titles[1]!.id, titles[0]!.id] });
+  });
+
+  it("stores studios and publishers from the comment, and re-reads them from stored responses without touching fetch dates", async () => {
+    await importFixtures(prisma);
+    const basilisk = await prisma.title.findFirstOrThrow({ where: { externalId: "567" } });
+    expect(basilisk).toMatchObject({ studios: ["GONZO"], publishers: ["講談社"] });
+    expect(basilisk.creditEvidence).toContainEqual({ role: "studio", line: ":アニメーション制作:GONZO" });
+
+    // As if imported before credits were read; fetch dates must survive the re-read.
+    await prisma.title.updateMany({ data: { studios: [], publishers: [], creditEvidence: undefined } });
+    const before = await prisma.title.findFirstOrThrow({ where: { externalId: "567" }, select: { detailsFetchedAt: true, subtitlesFetchedAt: true } });
+    const xml = fixture("titles-sample.xml");
+    const store = async (hash: string, body: string, requestKey: string, startedAt: string) => {
+      const compressed = gzipSync(Buffer.from(body, "utf8"));
+      await prisma.rawPayload.create({ data: { hash, contentType: "text/xml", bytes: compressed.length, body: compressed } });
+      await prisma.fetchLog.create({ data: { requestKey, url: "https://cal.syoboi.jp/db.php", durationMs: 1, payloadHash: hash, startedAt: new Date(startedAt) } });
+    };
+    // An older detail response, the newest one, and a later "changed" listing (not a detail request): the newest detail wins.
+    await store("old", xml.replace(":アニメーション制作:GONZO", ":アニメーション制作:古いスタジオ"), "TitleLookup:TID=567..8060(11)", "2026-11-01T00:00:00Z");
+    await store("new", xml, "TitleLookup:TID=567..8060(11)", "2026-11-10T00:00:00Z");
+    await store("listing", xml.replace(":アニメーション制作:GONZO", ":アニメーション制作:一覧のスタジオ"), "TitleLookup:changed", "2026-11-20T00:00:00Z");
+
+    const first = await reparseTitleCredits(prisma, () => {});
+    expect(first).toMatchObject({ payloads: 2 });
+    expect(first.updated).toBeGreaterThan(0);
+    const after = await prisma.title.findFirstOrThrow({ where: { externalId: "567" } });
+    expect(after).toMatchObject({ studios: ["GONZO"], publishers: ["講談社"], detailsFetchedAt: before.detailsFetchedAt, subtitlesFetchedAt: before.subtitlesFetchedAt });
+    expect(await reparseTitleCredits(prisma, () => {})).toMatchObject({ updated: 0 });
   });
 
   it("stores episode subtitles from the title list and never deletes them", async () => {

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { extractOfficialUrl, extractSlotLabels, normalizeProgram, normalizeTitle, parseEpisodeSubtitles, toSeriesKey } from "./normalize";
+import { extractCredits, extractOfficialUrl, extractSlotLabels, normalizeProgram, normalizeTitle, parseEpisodeSubtitles, toSeriesKey } from "./normalize";
 import { MAX_ITEMS_PER_RESPONSE, MAX_TEXT_LENGTH, parseChGroupLookup, parseChLookup, parseProgLookup, parseTitleLookup, SyoboiResultError } from "./parse";
 
 const fixture = (name: string) => readFileSync(path.join(__dirname, "__fixtures__", name), "utf8");
@@ -96,6 +96,49 @@ describe("TitleLookup", () => {
     expect(toSeriesKey("にげじょうずのわかぎみ")).toBe("にげじょうずのわかぎみ");
     expect(toSeriesKey("ど う も、")).toBe("どうも");
     expect(toSeriesKey(null)).toBeNull();
+  });
+});
+
+describe("credit extraction (studios, publishers)", () => {
+  it("reads the studio and the magazine's publisher from a recorded comment, with the lines as evidence", () => {
+    const result = parseTitleLookup(fixture("titles-sample.xml"));
+    const basilisk = normalizeTitle(result.items.find((item) => item.TID === "567")!);
+    expect(basilisk.studios).toEqual(["GONZO"]);
+    expect(basilisk.publishers).toEqual(["講談社"]);
+    expect(basilisk.creditEvidence).toEqual([
+      { role: "publisher", line: ":掲載誌:ヤングマガジンアッパーズ(講談社)" },
+      { role: "studio", line: ":アニメーション制作:GONZO" }
+    ]);
+    // A title whose comment names neither stays empty: unknown, not guessed.
+    const minkyMomo = normalizeTitle(result.items.find((item) => item.TID === "2968")!);
+    expect(minkyMomo.studios).toEqual([]);
+    expect(minkyMomo.publishers).toEqual([]);
+  });
+
+  it("splits joint studios, drops notes in parentheses and keeps names that contain & or a comma", () => {
+    expect(extractCredits(":アニメーション制作:アクタス(第1話～第26話)、スタジオコメット(第27話～第52話)").studios).toEqual(["アクタス", "スタジオコメット"]);
+    expect(extractCredits(":アニメーション制作:トムス・エンタテインメント(3×Cube)").studios).toEqual(["トムス・エンタテインメント"]);
+    expect(extractCredits(":アニメーション制作:OLM×SUNRISE BEYOND").studios).toEqual(["OLM", "SUNRISE BEYOND"]);
+    expect(extractCredits(":アニメーション制作:AQUAPLUS／カオスプロジェクト").studios).toEqual(["AQUAPLUS", "カオスプロジェクト"]);
+    expect(extractCredits(":アニメーション制作:Synergy SP、G&G ENTERTAINMENT").studios).toEqual(["Synergy SP", "G&G ENTERTAINMENT"]);
+    expect(extractCredits(":アニメーション制作:MMT Technology Co.,Ltd").studios).toEqual(["MMT Technology Co.,Ltd"]);
+    // Production companies and broadcasters are not animation studios.
+    expect(extractCredits(":制作:テレビ東京\n:製作:テスト製作委員会").studios).toEqual([]);
+    // The same studio twice (different case) counts once.
+    expect(extractCredits(":アニメーション制作:J.C.STAFF\n:アニメーション制作:J.C.Staff").studios).toEqual(["J.C.STAFF"]);
+  });
+
+  it("takes publishers from magazine lines, and from 原作 lines only when the name reads as a publisher or imprint", () => {
+    expect(extractCredits(":掲載誌:週刊ヤングジャンプ(集英社 刊)").publishers).toEqual(["集英社"]);
+    expect(extractCredits(":掲載誌:月刊コミックアライブ(KADOKAWA)\n:原作:三浦勇雄(MF文庫J)").publishers).toEqual(["KADOKAWA", "MF文庫J"]);
+    expect(extractCredits(":原作:柊あおい(徳間書店「バロン－猫の男爵」)").publishers).toEqual(["徳間書店"]);
+    expect(extractCredits(":原作:P.I.C.S.、此元和津也『RoOT』(小学館/ビックコミックスペリオールダルパナ)").publishers).toEqual(["小学館"]);
+    // Authors, roles, games and episode ranges are not publishers.
+    expect(extractCredits(":原作:武論尊(原作)、原哲夫(作画)").publishers).toEqual([]);
+    expect(extractCredits(":原作:GROOVER(パソコンゲーム)").publishers).toEqual([]);
+    expect(extractCredits(":原作:倉田英之(舛成孝二)").publishers).toEqual([]);
+    expect(extractCredits(":掲載誌:なかよし(#1~#26)").publishers).toEqual([]);
+    expect(extractCredits(null)).toEqual({ studios: [], publishers: [], evidence: [] });
   });
 });
 

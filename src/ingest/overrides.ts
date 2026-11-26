@@ -68,6 +68,20 @@ export const slotRegistrySchema = z.object({
 
 export type SlotRegistry = z.infer<typeof slotRegistrySchema>;
 
+export const creditAliasesSchema = z.object({
+  $comment: z.string().optional(),
+  aliases: z.array(
+    z.object({
+      role: z.enum(["studio", "publisher"]),
+      canonical: z.string().min(1),
+      variants: z.array(z.string().min(1)).min(1),
+      ...provenance
+    })
+  )
+});
+
+export type CreditAliasesFile = z.infer<typeof creditAliasesSchema>;
+
 const EMPTY_OVERRIDES: OverridesFile = { broadcasts: [], titles: [], slotMemberships: [] };
 
 async function readJson(filePath: string): Promise<unknown | null> {
@@ -87,6 +101,12 @@ export async function loadOverrides(dataDir = path.resolve("data")): Promise<Ove
 export async function loadSlotRegistry(dataDir = path.resolve("data")): Promise<SlotRegistry> {
   const raw = await readJson(path.join(dataDir, "slots.json"));
   return raw === null ? { slots: [] } : slotRegistrySchema.parse(raw);
+}
+
+/** Spellings of the same studio or publisher for the credits analysis (data/credit-aliases.json). */
+export async function loadCreditAliases(dataDir = path.resolve("data")): Promise<CreditAliasesFile> {
+  const raw = await readJson(path.join(dataDir, "credit-aliases.json"));
+  return raw === null ? { aliases: [] } : creditAliasesSchema.parse(raw);
 }
 
 /** Map TID → field → override value, last entry wins. */

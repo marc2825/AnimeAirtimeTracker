@@ -16,7 +16,7 @@ on:
         required: true
         default: update
         type: choice
-        options: [update, recent, season, backfill, derive, channels, subtitles]
+        options: [update, recent, season, backfill, derive, channels, subtitles, reparse-titles]
       from:
         description: "backfill: first season (e.g. 2024-winter)"
         required: false
@@ -80,7 +80,7 @@ jobs:
           if [ "$EVENT" = "workflow_dispatch" ]; then CMD="$INPUT_COMMAND";
           elif [ "$SCHEDULE" = "41 19 * * *" ]; then CMD="recent";
           else CMD="update"; fi
-          case "$CMD" in update|recent|season|derive|channels|subtitles) npm run ingest -- "$CMD" ;;
+          case "$CMD" in update|recent|season|derive|channels|subtitles|reparse-titles) npm run ingest -- "$CMD" ;;
             backfill)
               for s in "$INPUT_FROM" "$INPUT_TO"; do
                 echo "$s" | grep -Eq '^[0-9]{4}-(winter|spring|summer|autumn)$' || { echo "invalid season: $s"; exit 1; }

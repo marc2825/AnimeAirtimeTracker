@@ -42,6 +42,10 @@ export interface NormalizedTitle {
   officialUrl: string | null;
   slotLabels: string[];
   seriesKey: string | null;
+  /** Animation studios and original-work publishers stated in the comment (`extractCredits`). */
+  studios: string[];
+  publishers: string[];
+  creditEvidence: CreditEvidence[];
   /** Subtitles by episode number from the title's SubTitles list (empty when the list is empty). */
   episodeSubtitles: { episodeNumber: number; subtitle: string }[];
   sourceUpdatedAt: Date | null;
@@ -173,6 +177,78 @@ export function normalizeSlotLabel(label: string): string {
   return label.normalize("NFKC").replace(/\s+/g, " ").trim();
 }
 
+export interface CreditEvidence {
+  role: "studio" | "publisher";
+  line: string;
+}
+
+/** Staff lines naming the animation studio. `制作:` and `製作:` are left out: they often name the broadcaster or the production committee. */
+const STUDIO_LINE_RE = /^:(?:アニメーション制作|アニメ制作)[:：](.+)$/;
+/**
+ * Staff lines whose parentheses name the original work's publisher or imprint. On magazine lines
+ * (`:掲載誌:週刊少年ジャンプ(集英社)`) the parentheses hold the publisher; on 原作 lines they also hold authors,
+ * game companies or roles (`:原作:武論尊(原作)`), so only publisher-like names are taken there.
+ */
+const PUBLISHER_LINE_RE = /^:(掲載誌|連載誌|連載|レーベル|出版社|発行|原作|原作小説|原作漫画)[:：](.+)$/;
+const MAGAZINE_KEYS = new Set(["掲載誌", "連載誌", "連載", "レーベル", "出版社", "発行"]);
+/** Parenthesised words that say what someone did or what the work is, not who published it. */
+const NOT_A_PUBLISHER_RE = /^(?:作|絵|文|著|訳|漫画|まんが|作画|原作|原案|原作協力|構成|監修|イラスト|シナリオ|脚本|小説|連載|キャラクター原案|[#＃\d].*|.*ゲーム)$/;
+/** On 原作 lines: names that read as a publisher or an imprint. */
+const PUBLISHER_LIKE_RE =
+  /(?:社|館|書店|書房|出版|文庫|ノベル|ブックス|BOOKS|Books|コミックス|新文芸|KADOKAWA|カドカワ|角川|メディアワークス|エンターブレイン|アルファポリス|スクウェア・エニックス|SQEX|文藝春秋|新書館|コアミックス|リブレ|ホビージャパン|HJ|オーバーラップ|アース・スター|TOブックス|comico)/;
+
+const stripParentheses = (value: string) => {
+  let previous: string;
+  let current = value;
+  do {
+    previous = current;
+    current = current.replace(/[(（][^()（）]*[)）]/g, "");
+  } while (current !== previous);
+  return current;
+};
+
+const addUnique = (list: string[], value: string) => {
+  const key = value.toLowerCase();
+  if (value && !list.some((existing) => existing.toLowerCase() === key)) list.push(value);
+};
+
+/**
+ * Animation studios and original-work publishers stated in a title comment, as written (NFKC, trimmed). Only the
+ * lines above are read; notes in parentheses after a studio (episodes, team names) are dropped, studios are split
+ * on 「、」「×」「/」 (not on "&" or ",", which occur inside company names). Publishers are the parenthesised name
+ * before any 「」『』, "/" or space (`(集英社 ジャンプコミックス)` → 集英社), without 「刊」. Imprints (電撃文庫) stay
+ * as written: telling an imprint from its publisher is not something the comment states.
+ */
+export function extractCredits(comment: string | null): { studios: string[]; publishers: string[]; evidence: CreditEvidence[] } {
+  const studios: string[] = [];
+  const publishers: string[] = [];
+  const evidence: CreditEvidence[] = [];
+  if (!comment) return { studios, publishers, evidence };
+  for (const raw of comment.split(/\r?\n/)) {
+    const line = raw.trim();
+    const studio = STUDIO_LINE_RE.exec(line);
+    if (studio) {
+      const before = studios.length;
+      for (const part of stripParentheses(studio[1]!).split(/[、×/／]/)) addUnique(studios, part.normalize("NFKC").trim());
+      if (studios.length > before) evidence.push({ role: "studio", line: line.slice(0, 160) });
+      continue;
+    }
+    const publisher = PUBLISHER_LINE_RE.exec(line);
+    if (publisher) {
+      const before = publishers.length;
+      const magazine = MAGAZINE_KEYS.has(publisher[1]!);
+      for (const match of publisher[2]!.matchAll(/[(（]([^()（）]+)[)）]/g)) {
+        for (const part of match[1]!.normalize("NFKC").split("、")) {
+          const name = part.split(/[「『/／]/)[0]!.trim().split(/\s+/)[0]!.replace(/刊$/, "").trim();
+          if (name && !NOT_A_PUBLISHER_RE.test(name) && (magazine || PUBLISHER_LIKE_RE.test(name))) addUnique(publishers, name);
+        }
+      }
+      if (publishers.length > before) evidence.push({ role: "publisher", line: line.slice(0, 160) });
+    }
+  }
+  return { studios, publishers, evidence };
+}
+
 const OFFICIAL_LINK_RE = /\[\[公式(?:サイト|HP|ホームページ)?\s+(https?:\/\/[^\s\]]+)\]\]/;
 
 export function extractOfficialUrl(comment: string | null): string | null {
@@ -197,6 +273,7 @@ export function toSeriesKey(yomi: string | null): string | null {
 export function normalizeTitle(raw: SyoboiTitle): NormalizedTitle {
   const comment = cleanText(raw.Comment);
   const labels = extractSlotLabels(comment).map((entry) => entry.label);
+  const credits = extractCredits(comment);
   const yomi = cleanText(raw.TitleYomi);
   const fields = {
     externalId: raw.TID,
@@ -212,7 +289,10 @@ export function normalizeTitle(raw: SyoboiTitle): NormalizedTitle {
     firstChannelText: cleanText(raw.FirstCh),
     officialUrl: extractOfficialUrl(comment),
     slotLabels: labels,
-    seriesKey: toSeriesKey(yomi)
+    seriesKey: toSeriesKey(yomi),
+    studios: credits.studios,
+    publishers: credits.publishers,
+    creditEvidence: credits.evidence
   };
   return {
     ...fields,

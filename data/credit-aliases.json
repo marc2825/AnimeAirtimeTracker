@@ -1,0 +1,156 @@
+{
+  "$comment": "Spellings of the same company or imprint in source comments (katakana / Latin script, brand forms). Only for the credits analysis; titles keep the names as written. Renamed or merged companies are not joined. Canonical = the spelling most titles use. See docs/data-pipeline.md#credits.",
+  "aliases": [
+    {
+      "role": "studio",
+      "canonical": "OLM",
+      "variants": [
+        "オー・エル・エム"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社オー・エル・エム（英字表記 OLM, Inc.）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "ラルケ",
+      "variants": [
+        "Lerche"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ラルケ（英字表記 Lerche）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "キネマシトラス",
+      "variants": [
+        "Kinema Citrus"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社キネマシトラス（英字表記 Kinema Citrus）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "スタジオディーン",
+      "variants": [
+        "Studio DEEN"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社スタジオディーン（英字表記 Studio DEEN）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "マッドハウス",
+      "variants": [
+        "MADHOUSE"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社マッドハウス（英字表記 MADHOUSE）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "トムス・エンタテインメント",
+      "variants": [
+        "TMS"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社トムス・エンタテインメント（略称・英字表記 TMS）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "ライデンフィルム",
+      "variants": [
+        "LIDENFILMS"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ライデンフィルム（英字表記 LIDENFILMS）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "SHAFT",
+      "variants": [
+        "シャフト"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社シャフト（英字表記 SHAFT）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "GONZO",
+      "variants": [
+        "ゴンゾ"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ゴンゾ（英字表記 GONZO）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "TRIGGER",
+      "variants": [
+        "トリガー"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社トリガー（英字表記 TRIGGER）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "ZEXCS",
+      "variants": [
+        "ゼクシズ"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ゼクシズ（英字表記 ZEXCS）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "GAINAX",
+      "variants": [
+        "ガイナックス"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ガイナックス（英字表記 GAINAX）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "studio",
+      "canonical": "studioぴえろ",
+      "variants": [
+        "ぴえろ",
+        "スタジオぴえろ"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "株式会社ぴえろ（ブランド表記 studioぴえろ）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "publisher",
+      "canonical": "富士見ファンタジア文庫",
+      "variants": [
+        "ファンタジア文庫"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "同じレーベル（正式名 富士見ファンタジア文庫）",
+      "addedAt": "2026-11-26"
+    },
+    {
+      "role": "publisher",
+      "canonical": "角川スニーカー文庫",
+      "variants": [
+        "スニーカー文庫"
+      ],
+      "reason": "表記ゆれ（同一の会社・レーベル）",
+      "evidence": "同じレーベル（正式名 角川スニーカー文庫）",
+      "addedAt": "2026-11-26"
+    }
+  ]
+}
