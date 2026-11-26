@@ -9,6 +9,7 @@
  *   npm run ingest -- subtitles                        # read episode subtitle lists of titles that lack them
  *   npm run ingest -- derive                           # recompute slots from stored data (no network)
  *   npm run ingest -- status                           # print recent import runs (no network)
+ *   npm run ingest -- reparse-titles                   # re-read stored title details for studios/publishers, then derive (no network)
  *
  * `update` and `recent` also run one `subtitles` step (SUBTITLE_BACKFILL_PER_RUN titles, default 500, 0 = off)
  * until every title has its subtitle list; newly seen and changed titles get theirs with their details.
@@ -23,6 +24,7 @@ import pg from "pg";
 import { currentSeason, formatSeason, parseSeasonId, seasonInstantRange, seasonsBetween, type Season } from "@/domain/season";
 import { animeDayRange, currentAnimeDate, addDays, formatJstDateTime } from "@/domain/time";
 import { deriveAll } from "@/ingest/derive";
+import { reparseTitleCredits } from "@/ingest/reparse";
 import { loadOverrides } from "@/ingest/overrides";
 import { splitRange, toRangeParam, type TimeWindow } from "@/ingest/plan";
 import { assertValidUserAgent } from "@/ingest/syoboi/client";
@@ -103,7 +105,7 @@ async function main() {
   const log = (message: string) => console.log(`[${formatJstDateTime(new Date())}] ${message}`);
 
   if (command === "help") {
-    console.log("Commands: channels | season | backfill | recent | update | derive | status. See scripts/ingest.ts header.");
+    console.log("Commands: channels | season | backfill | recent | update | derive | reparse-titles | status. See scripts/ingest.ts header.");
     return;
   }
 
@@ -140,6 +142,17 @@ async function main() {
         // Asked for by hand: rebuild even when the inputs look unchanged.
         const { stats } = await withImportRun(prisma, "derive", {}, async () => ({ stats: await deriveAll(prisma, { log, force: true }) }));
         log(`derive done: ${JSON.stringify(stats)}`);
+      });
+      return;
+    }
+    if (command === "reparse-titles") {
+      await withLock(async () => {
+        const { stats } = await withImportRun(prisma, "reparse-titles", {}, async () => {
+          const reparsed = await reparseTitleCredits(prisma, log);
+          // Credits are an input of the slot rebuild: derive notices the change through its fingerprint.
+          return { stats: { ...reparsed, derive: await deriveAll(prisma, { log }) } };
+        });
+        log(`reparse-titles done: ${JSON.stringify(stats)}`);
       });
       return;
     }

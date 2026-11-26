@@ -116,6 +116,9 @@ export async function upsertTitles(
           slotLabels: title.slotLabels,
           slotEvidence: (evidence.get(title.externalId) ?? []) as Prisma.InputJsonValue,
           seriesKey: "seriesKey" in override ? (override.seriesKey as string | null) : title.seriesKey,
+          studios: title.studios,
+          publishers: title.publishers,
+          creditEvidence: title.creditEvidence as unknown as Prisma.InputJsonValue,
           sourceUpdatedAt: title.sourceUpdatedAt,
           detailsFetchedAt: now,
           // Every title detail request asks for the SubTitles list (TITLE_FIELDS), so details imply subtitles.

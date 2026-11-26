@@ -5,16 +5,19 @@
  * every airing (that was ≈ 42 MB per run):
  * - rerun classification is one UPDATE inside the database (src/domain/flags.ts `classifyRerun`, same rule);
  * - slots are rebuilt from airing groups the database aggregates (≈ 40k rows instead of ≈ 230k airings), and the
- *   rebuild is skipped when a fingerprint of every input, computed in the database, has not changed.
+ *   rebuild is skipped when a fingerprint of every input, computed in the database, has not changed;
+ * - each rebuilt slot gets a credit profile (studios and publishers of its titles, src/domain/credits.ts) from the
+ *   titles that name any (≈ 4.5k short rows, read only when the rebuild runs).
  */
 import { createHash } from "node:crypto";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { computeCreditProfiles, type CreditAliases, type TitleCredits } from "@/domain/credits";
 import { RERUN_AGE_THRESHOLD_MONTHS } from "@/domain/flags";
 import { deriveSlots, SLOT_RULE_VERSION, type AiringGroup, type SlotInputTitle } from "@/domain/slots";
 import { isoDateToDbDate, toAnimeTime } from "@/domain/time";
 
-import { loadOverrides, loadSlotRegistry } from "./overrides";
+import { loadCreditAliases, loadOverrides, loadSlotRegistry, type CreditAliasesFile } from "./overrides";
 import { chunk } from "./plan";
 
 /** SyncCursor key holding the fingerprint of the inputs of the last slot rebuild. */
@@ -69,17 +72,20 @@ function slotTitleWhere(overrideTitleIds: string[]) {
 }
 
 /**
- * Fingerprint of everything a slot rebuild reads: airing groups, slot titles, tracked channels (hashed inside the
- * database, so only three digests are sent), the registry and overrides, the rule version and, in CI, the commit.
+ * Fingerprint of everything a slot rebuild reads: airing groups, slot titles, title credits, tracked channels (hashed
+ * inside the database, so only four digests are sent), the registry, overrides and credit aliases, the rule version
+ * and, in CI, the commit.
  */
 export async function slotInputFingerprint(prisma: PrismaClient, files: unknown): Promise<string> {
   const overrideIds = overrideTitleIds(files);
-  const [row] = await prisma.$queryRaw<{ groups: string | null; titles: string | null; channels: string | null }[]>`
+  const [row] = await prisma.$queryRaw<{ groups: string | null; titles: string | null; credits: string | null; channels: string | null }[]>`
     SELECT
       (SELECT md5(string_agg(concat_ws(',', g."titleId", g."channelId", g."seasonOrdinal", g.weekday, g."startMinute", g."durationMinutes", g.count, g."firstStartAt", g."lastStartAt"), ';'
          ORDER BY g."titleId", g."channelId", g."seasonOrdinal", g.weekday, g."startMinute", g."durationMinutes")) FROM (${AIRING_GROUPS}) AS g) AS groups,
       (SELECT md5(string_agg(concat_ws(',', t.id, t."externalId", array_to_string(t."slotLabels", '|'), t."slotEvidence"::text), ';' ORDER BY t.id))
          FROM "Title" AS t WHERE cardinality(t."slotLabels") > 0 OR t."externalId" = ANY(${overrideIds}::text[])) AS titles,
+      (SELECT md5(string_agg(concat_ws(',', t.id, array_to_string(t.studios, '|'), array_to_string(t.publishers, '|')), ';' ORDER BY t.id))
+         FROM "Title" AS t WHERE cardinality(t.studios) > 0 OR cardinality(t.publishers) > 0) AS credits,
       (SELECT md5(string_agg(concat_ws(',', c.id, c.slug, c."shortName", c.name, c."sortOrder"), ';' ORDER BY c.id))
          FROM "Channel" AS c WHERE c."isTracked") AS channels`;
   return createHash("sha256")
@@ -96,8 +102,8 @@ export async function rebuildSlots(
   prisma: PrismaClient,
   options: { force?: boolean } = {}
 ): Promise<{ skipped: boolean; slots: number; memberships: number; byKind: Record<string, number> }> {
-  const [registry, overrides] = await Promise.all([loadSlotRegistry(), loadOverrides()]);
-  const files = { registry: registry.slots, overrides: { slotMemberships: overrides.slotMemberships } };
+  const [registry, overrides, creditAliases] = await Promise.all([loadSlotRegistry(), loadOverrides(), loadCreditAliases()]);
+  const files = { registry: registry.slots, overrides: { slotMemberships: overrides.slotMemberships }, creditAliases: creditAliases.aliases };
   const fingerprint = await slotInputFingerprint(prisma, files);
   if (!options.force) {
     const previous = await prisma.syncCursor.findUnique({ where: { key: SLOT_INPUTS_CURSOR }, select: { value: true } });
@@ -127,6 +133,13 @@ export async function rebuildSlots(
     membershipOverrides: overrides.slotMemberships
   });
 
+  const creditProfiles = computeCreditProfiles({
+    slots: slots.map((slot) => ({ slug: slot.slug, homeChannelId: slot.homeChannelId, members: slot.memberships })),
+    credits: await readTitleCredits(prisma),
+    aliases: aliasesByRole(creditAliases),
+    latestSeason: Math.max(0, ...slots.flatMap((slot) => slot.memberships.map((m) => m.seasonOrdinal ?? 0)))
+  });
+
   const computedAt = new Date();
   const byKind: Record<string, number> = {};
   for (const slot of slots) byKind[slot.kind] = (byKind[slot.kind] ?? 0) + 1;
@@ -146,6 +159,7 @@ export async function rebuildSlots(
       lastAnimeDate: last ? isoDateToDbDate(toAnimeTime(last).animeDate) : null,
       titleCount: new Set(slot.memberships.map((m) => m.titleId)).size,
       seasonCount: slot.seasons.length,
+      creditProfile: (creditProfiles.get(slot.slug) ?? Prisma.DbNull) as Prisma.InputJsonValue | typeof Prisma.DbNull,
       computedAt
     };
   });
@@ -171,6 +185,24 @@ export async function rebuildSlots(
 }
 
 const BULK_ROWS = 2000;
+
+/** Studios and publishers of every title that names any (src/ingest/syoboi/normalize.ts `extractCredits`). */
+export async function readTitleCredits(prisma: PrismaClient): Promise<Map<number, TitleCredits>> {
+  const rows = await prisma.title.findMany({
+    where: { OR: [{ studios: { isEmpty: false } }, { publishers: { isEmpty: false } }] },
+    select: { id: true, studios: true, publishers: true }
+  });
+  return new Map(rows.map((row) => [row.id, { studios: row.studios, publishers: row.publishers }]));
+}
+
+export function aliasesByRole(file: CreditAliasesFile): CreditAliases {
+  const aliases: CreditAliases = { studios: {}, publishers: {} };
+  for (const entry of file.aliases) {
+    const target = entry.role === "studio" ? aliases.studios : aliases.publishers;
+    target[entry.canonical] = [...(target[entry.canonical] ?? []), ...entry.variants];
+  }
+  return aliases;
+}
 
 /** `force` rebuilds slots even when their inputs look unchanged (the manual `derive` command). */
 export async function deriveAll(prisma: PrismaClient, options: { log: (message: string) => void; force?: boolean }) {

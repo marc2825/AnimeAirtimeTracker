@@ -23,6 +23,7 @@ Attribution shown on every page footer and on `/about`; each title links to its 
 | `recent` | daily | ~4 windows covering today−7 … today+14 (complete windows → absence detection) |
 | `subtitles` | after every `update` and `recent` (automatic) while titles lack their subtitle list; also manual | ⌈titles / 100⌉ `TitleLookup` for up to `SUBTITLE_BACKFILL_PER_RUN` (default 500 → 5 requests) titles without a list, most recently aired first; 0 once done |
 | `derive` | after every run (automatic) | 0 (DB only) |
+| `reparse-titles` | once, when the extraction from the title comment changes (manual, also in the `Ingest` workflow) | 0: re-reads stored `TitleLookup:TID=…` responses (≈ 130 bodies, ≈ 5 MB compressed), then runs derive |
 
 Request budget in steady state: ≈ 4 × (2–4) + 4 ≈ **20 requests/day**. Subtitle backfill (from 2026-11-22): `TitleLookup` now also asks for `SubTitles` (the per-episode list `*01*…`; an airing's own `SubTitle` is filled mostly for specials). Titles read before that are re-read gradually: 500 per scheduled run, 5 runs a day → ≈ 25 extra requests/day for about three days for ≈ 6,500 titles, then nothing extra (new and changed titles get the list with their details). Progress is on `/status`; pause by setting the repository variable `SUBTITLE_BACKFILL_PER_RUN` to `0` (unset = 500 per run). The initial backfill of 11 seasons on 2026-11-18 took 294 requests (before title batching per season was added; now ≈ 190). The production backfill from 2000 winter to 2023 autumn on 2026-11-21 took 1,402 requests in 12 workflow runs of 8 seasons (≈ 117 each, ≈ 13 min per run including derive); 2005 and earlier hold far fewer records (2002 and earlier: 3–4 channels). All requests: serial, `SYOBOI_MIN_INTERVAL_MS` (default 3000, floor 1000) + up to 25% jitter after each response, max 4 retries with exponential backoff from 10 s, Retry-After respected.
 
@@ -72,3 +73,21 @@ Rule version `slots-v3` (`src/domain/slots.ts`, explained publicly on `/about#sl
 - **SOURCE_LABEL**: comment lines matching `「X」枠で/にて/内で放送`; ≥2 member titles; home channel = most member titles with regular positions; the per-season position is the block (modal weekday, earliest start, span to latest end); rerun-context statements get `MEDIUM` confidence.
 - **INFERRED**: exact (channel, weekday, start) with regular positions of ≥3 titles across ≥3 seasons.
 - **OFFICIAL**: only via `data/slots.json` with an `evidenceUrl` on the broadcaster's own site (registry intentionally empty until verified).
+
+## Credits
+
+Studios and publishers named in the title comment (`extractCredits` in `src/ingest/syoboi/normalize.ts`), stored on `Title` as written (`studios`, `publishers`, `creditEvidence` with the lines used). They are facts from the source, not verified; a title whose comment names none has empty lists, shown as 「記載なし」.
+
+- **Studio**: `:アニメーション制作:` and `:アニメ制作:` lines only. `制作:` and `製作:` often name the broadcaster or the production committee. Notes in parentheses are dropped (`アクタス(第1話～第26話)`), joint studios split on 「、」「×」「/」, never on `&` or `,` (they occur inside names).
+- **Publisher**: the name in parentheses on `掲載誌`・`連載誌`・`連載`・`レーベル`・`出版社`・`発行` lines (`週刊少年ジャンプ(集英社)`), up to 「」『』, `/` or a space, without 「刊」. On `原作`・`原作小説`・`原作漫画` lines the parentheses also hold authors, games or roles, so only publisher-like names are taken (ending in 社・館・書店・文庫・ノベル・ブックス…, or a listed publisher). Imprints (電撃文庫) stay as written.
+- Coverage on a copy of production (2026-11-21, 6,490 titles): a studio for 4,289, a publisher or imprint for 2,314.
+- `npm run ingest -- reparse-titles` fills these fields for titles imported before (or after a change to) the extraction, from stored responses, then runs derive. It updates only these three columns where they differ, so fetch dates and the subtitle backfill state stay unchanged; the newest stored detail response of each title wins.
+
+Derive adds a credit profile to every slot (`Slot.creditProfile`, rule version `credits-v1`, `src/domain/credits.ts`). The profile is experimental and shown as such:
+
+- **Composition**: titles per studio and per publisher among the slot's member titles. Names are compared without case, spaces and punctuation. `data/credit-aliases.json` (reviewed, with evidence) joins spellings of the same company or imprint (OLM／オー・エル・エム); renamed or merged companies are not joined.
+- **Dominance** (an "implicit slot"): at least 4 member titles name someone for the role, and one name holds at least half of them and at least 3 titles.
+- **Similar slots**: cosine similarity of IDF-weighted title counts per studio and publisher, between slots with at least 4 titles naming any; slots that share a title are left out (the slot page lists those as related); top 3 from 0.3.
+- **Next-season candidates** for slots with a title in the latest season of the data or the one before: the slot's past titles weighted 0.7 per season of distance, top 3 with their share. Bands: `high` (top share ≥ 0.8), `mid` (≥ 0.6), `low` (below), all with ≥ 3 past titles, and `short` (fewer).
+- **Backtest**: every member title naming someone is predicted from the slot's earlier titles only, and compared with two baselines computed from earlier seasons only (the name most titles had so far on the slot's channel, and overall). Per slot the profile stores the counts; the analysis page sums them. On the 2026-11-21 copy: studio top-1 8.9 % (baselines 5.1 % and 5.0 %), publisher 18.3 % (11.5 %, 16.9 %); in the `high` band 23.7 % and 28.2 %. Weak overall: candidates are shown only with these figures.
+- Credits are an input of the slot rebuild fingerprint, so a reparse or a changed comment rebuilds slots on the next derive.

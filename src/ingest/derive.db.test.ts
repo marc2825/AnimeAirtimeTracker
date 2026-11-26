@@ -7,13 +7,15 @@ import { execFileSync } from "node:child_process";
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { computeCreditProfiles } from "@/domain/credits";
 import { classifyRerun } from "@/domain/flags";
 import { groupAirings } from "@/domain/slots";
 import { dbDateToIsoDate } from "@/domain/time";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { createPrismaClient } from "@/server/prisma";
 
-import { readAiringGroups, rebuildSlots, reclassifyReruns, SLOT_INPUTS_CURSOR } from "./derive";
+import { aliasesByRole, readAiringGroups, readTitleCredits, rebuildSlots, reclassifyReruns, SLOT_INPUTS_CURSOR } from "./derive";
+import { loadCreditAliases } from "./overrides";
 import { importFixtures } from "./fixtures";
 import { countTitlesNeedingSubtitles, titlesNeedingSubtitles } from "./sync";
 
@@ -128,6 +130,35 @@ describe("derive in the database (PostgreSQL)", () => {
     expect(await rebuildSlots(prisma, { force: true })).toMatchObject({ skipped: false });
     await prisma.$executeRawUnsafe(`TRUNCATE "SlotSeason","SlotMembership","Slot" CASCADE`);
     expect(await rebuildSlots(prisma)).toMatchObject({ skipped: false });
+  });
+
+  it("stores each slot's credit profile as computed from the stored rows, and rebuilds when credits change", async () => {
+    const titles = await prisma.title.findMany({ take: 3, orderBy: { id: "asc" } });
+    for (const [index, title] of titles.entries()) {
+      await prisma.title.update({
+        where: { id: title.id },
+        data: { slotLabels: ["テスト枠"], slotEvidence: [{ label: "テスト枠", evidence: "「テスト枠」枠で放送" }], studios: index < 2 ? ["スタジオA"] : ["スタジオB"], publishers: ["出版社C"] }
+      });
+    }
+    expect(await rebuildSlots(prisma)).toMatchObject({ skipped: false });
+
+    const slots = await prisma.slot.findMany({ include: { memberships: true } });
+    expect(slots.length).toBeGreaterThan(0);
+    const expected = computeCreditProfiles({
+      slots: slots.map((slot) => ({ slug: slot.slug, homeChannelId: slot.homeChannelId, members: slot.memberships })),
+      credits: await readTitleCredits(prisma),
+      aliases: aliasesByRole(await loadCreditAliases()),
+      latestSeason: Math.max(0, ...slots.flatMap((slot) => slot.memberships.map((m) => m.seasonOrdinal ?? 0)))
+    });
+    for (const slot of slots) expect(slot.creditProfile, slot.slug).toEqual(JSON.parse(JSON.stringify(expected.get(slot.slug))));
+    const labelled = slots.find((slot) => slot.name === "テスト枠")!;
+    expect(labelled.creditProfile).toMatchObject({ roles: { studio: { known: 3, top: [{ name: "スタジオA", titles: 2 }, { name: "スタジオB", titles: 1 }] } } });
+
+    // Credits are an input: a changed studio rebuilds, an unchanged state skips.
+    expect(await rebuildSlots(prisma)).toMatchObject({ skipped: true });
+    await prisma.title.update({ where: { id: titles[2]!.id }, data: { studios: ["スタジオA"] } });
+    expect(await rebuildSlots(prisma)).toMatchObject({ skipped: false });
+    expect(await rebuildSlots(prisma)).toMatchObject({ skipped: true });
   });
 
   it("counts titles still needing subtitles without reading their ids", async () => {

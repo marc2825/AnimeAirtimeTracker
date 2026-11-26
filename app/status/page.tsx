@@ -23,6 +23,7 @@ const COMMAND_LABELS: Record<string, string> = {
   subtitles: "サブタイトルの取得",
   channels: "放送局情報",
   derive: "放送枠の算出",
+  "reparse-titles": "保存済みデータの再解析",
   fixtures: "テスト用データ"
 };
 

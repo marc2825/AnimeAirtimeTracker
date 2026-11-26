@@ -117,6 +117,13 @@ model Title {
   slotLabels       String[]  @default([])
   /// [{ label, evidence }] — the comment line each label was taken from.
   slotEvidence     Json?
+  /// Animation studios as written in the source comment (`:アニメーション制作:` lines). Empty = not stated.
+  studios          String[]  @default([])
+  /// Publishers or imprints of the original work as written in the source comment (掲載誌・原作 lines, in
+  /// parentheses). Empty = not stated.
+  publishers       String[]  @default([])
+  /// [{ role: "studio" | "publisher", line }] — the comment lines the credits were taken from.
+  creditEvidence   Json?
   seriesKey        String?
   sourceUpdatedAt  DateTime? @db.Timestamptz(3)
   /// null = only the TID is known (details not fetched yet).
@@ -231,6 +238,9 @@ model Slot {
   titleCount    Int       @default(0)
   seasonCount   Int       @default(0)
   computedAt    DateTime  @db.Timestamptz(3)
+  /// Studios and publishers of the member titles, similar slots and the experimental next-season candidates
+  /// (src/domain/credits.ts `CreditProfile`). Derived; null until the next rebuild.
+  creditProfile Json?
 
   homeChannel Channel?         @relation(fields: [homeChannelId], references: [id])
   memberships SlotMembership[]
