@@ -28,3 +28,17 @@
 .table thead th {
   text-align: left;
 }
+
+/* Name and position columns read as text: left-aligned and allowed to wrap. */
+.table .text {
+  text-align: left;
+  white-space: normal;
+  min-width: 8rem;
+}
+
+.caption {
+  padding-block: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  text-align: left;
+}
