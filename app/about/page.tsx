@@ -59,6 +59,7 @@ export default function AboutPage() {
               <ExternalLink href="https://docs.cal.syoboi.jp/about/">利用について</ExternalLink>）。
             </p>
             <ul>
+              <li>本サイトが番組データを独自に入力することはありません。放送枠・統計・分析は、取得したデータから本サイトが算出しています。</li>
               <li>HTMLページのスクレイピングは行いません。</li>
               <li>
                 <ExternalLink href="https://docs.cal.syoboi.jp/rule/bot/">bot向けのルール</ExternalLink>
