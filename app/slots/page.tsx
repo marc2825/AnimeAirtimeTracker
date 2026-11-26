@@ -7,6 +7,7 @@ import { latestOrdinal, SeasonStrip, SlotCard, stripStartOrdinal } from "@/compo
 import { StripTooltip } from "@/components/slots/StripTooltip";
 import { ButtonLink, Disclosure, SegmentedLinks } from "@/components/ui/controls";
 import { EmptyState, MoreInfo, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS, WeekdayChip } from "@/components/ui/primitives";
+import { isTokyoChannel, tokyoFirstRank } from "@/domain/coverage";
 import { formatAnimeMinute } from "@/domain/time";
 import { buildHref, parseSlug, single, type RawSearchParams } from "@/lib/search-params";
 import { datasetCacheProfile } from "@/server/cache";
@@ -58,7 +59,10 @@ async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; 
   const current = { kind: kind === "SOURCE_LABEL" ? "source" : kind === "INFERRED" ? "inferred" : kind === "OFFICIAL" ? "official" : undefined, channel: channel ?? undefined };
   const slots = await listSlots();
   const filtered = slots.filter((slot) => (!kind || slot.kind === kind) && (!channel || slot.channel?.slug === channel));
-  const channels = [...new Map(slots.filter((s) => s.channel).map((s) => [s.channel!.slug, s.channel!])).values()];
+  // TOKYO MX first, then the other Tokyo stations, then the rest (src/domain/coverage.ts `tokyoFirstRank`).
+  const channels = [...new Map(slots.filter((s) => s.channel).map((s) => [s.channel!.slug, s.channel!])).values()].sort(
+    (a, b) => tokyoFirstRank(a.slug) - tokyoFirstRank(b.slug)
+  );
   const stripEnd = latestOrdinal(slots);
   // Names behind the strip ticks are a nicety: the list still renders if they cannot be read.
   const stripTitles: StripTitles = await getSlotStripTitles(stripStartOrdinal(stripEnd)).catch(() => ({}));
@@ -116,13 +120,13 @@ async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; 
           id="inferred"
           title="推定枠"
           description="同じ局・曜日・時刻に新作が続いた位置（3クール・3作品以上）"
-          details="枠の公式な存在を示すものではありません。局ごとに位置を時刻順に並べています。"
+          details="枠の公式な存在を示すものではありません。局ごとに位置を時刻順に並べています。局は TOKYO MX、在京キー局（日テレ・TBS・フジ・テレ朝・テレ東）の順で、東京の局は開いた状態で表示します。"
         >
           <div className={styles.channelGroups}>
-            {groupByChannel(inferred).map(([channelName, items], index) => (
+            {groupByChannel(inferred).map(({ slug, name: channelName, items }) => (
               <Disclosure
-                key={channelName}
-                defaultOpen={index < 2 || Boolean(channel)}
+                key={slug ?? channelName}
+                defaultOpen={(slug !== null && isTokyoChannel(slug)) || Boolean(channel)}
                 summary={
                   <span className={styles.groupSummary}>
                     <strong>{channelName}</strong>
@@ -175,14 +179,17 @@ async function SlotsList({ kind, channel }: { kind: SlotSummary["kind"] | null; 
   );
 }
 
-function groupByChannel(slots: SlotSummary[]): [string, SlotSummary[]][] {
-  const groups = new Map<string, SlotSummary[]>();
+/** Inferred slots by channel, Tokyo first (`tokyoFirstRank`); within a channel by weekday and time. */
+function groupByChannel(slots: SlotSummary[]): { slug: string | null; name: string; items: SlotSummary[] }[] {
+  const groups = new Map<string, { slug: string | null; name: string; items: SlotSummary[] }>();
   for (const slot of slots) {
-    const key = slot.channel?.name ?? "その他";
-    groups.set(key, [...(groups.get(key) ?? []), slot]);
+    const key = slot.channel?.slug ?? "";
+    const group = groups.get(key) ?? { slug: slot.channel?.slug ?? null, name: slot.channel?.name ?? "その他", items: [] };
+    group.items.push(slot);
+    groups.set(key, group);
   }
-  for (const list of groups.values()) {
-    list.sort((a, b) => (a.latest?.weekday ?? 9) - (b.latest?.weekday ?? 9) || (a.latest?.minute ?? 0) - (b.latest?.minute ?? 0));
+  for (const group of groups.values()) {
+    group.items.sort((a, b) => (a.latest?.weekday ?? 9) - (b.latest?.weekday ?? 9) || (a.latest?.minute ?? 0) - (b.latest?.minute ?? 0));
   }
-  return [...groups.entries()].sort((a, b) => b[1].length - a[1].length);
+  return [...groups.values()].sort((a, b) => tokyoFirstRank(a.slug) - tokyoFirstRank(b.slug) || b.items.length - a.items.length);
 }

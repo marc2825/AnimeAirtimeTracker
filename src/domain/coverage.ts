@@ -46,6 +46,25 @@ export const TRACKED_CHANNELS: readonly TrackedChannel[] = [
   { syoboiId: 20, slug: "at-x", name: "AT-X", shortName: "AT-X", medium: "CS", area: "NATIONWIDE", network: "SATELLITE", sortOrder: 50 }
 ];
 
+/** The station lists that lead with Tokyo start with this one. */
+export const LEAD_CHANNEL_SLUG = "mx";
+
+/** Tokyo stations: the Kanto terrestrial channels based in Tokyo (TOKYO MX and the five key stations). */
+export function isTokyoChannel(slug: string): boolean {
+  return TRACKED_CHANNELS.some((channel) => channel.slug === slug && channel.area === "KANTO");
+}
+
+/**
+ * Sort key for station lists that lead with Tokyo: TOKYO MX, then the other Tokyo stations, then every other channel,
+ * each part in the usual channel order (sortOrder). Unknown channels come last.
+ */
+export function tokyoFirstRank(slug: string | null | undefined): number {
+  const channel = TRACKED_CHANNELS.find((entry) => entry.slug === slug);
+  if (!channel) return 100_000;
+  if (channel.slug === LEAD_CHANNEL_SLUG) return 0;
+  return (isTokyoChannel(channel.slug) ? 1_000 : 10_000) + channel.sortOrder;
+}
+
 /**
  * Viewing regions used for filters and statistics. A region is a set of channels a viewer
  * in that place can receive, so NHK appears in both Kanto and Kansai.
