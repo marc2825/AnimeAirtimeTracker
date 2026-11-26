@@ -12,7 +12,7 @@ test("home renders the main entry points", async ({ page }) => {
   // The site name and what it lists are in the h1; the description is always shown, not folded away.
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("アニメ放送枠観測所 TVアニメの放送枠一覧と年表・編成統計");
   await expect(page).toHaveTitle("アニメ放送枠観測所 — TVアニメの放送枠一覧・年表と編成統計");
-  await expect(page.getByText(/放送編成の歴史・変遷・統計を、横断的に調べるためのデータベースです/)).toBeVisible();
+  await expect(page.getByText(/放送枠と編成の移り変わりを、年表・統計・番組表で調べるデータベースです/)).toBeVisible();
   await page.getByRole("link", { name: "今週の番組表" }).click();
   await expect(page).toHaveURL(/\/schedule/);
   await expect(page.getByRole("heading", { level: 1, name: "週間番組表" })).toBeVisible();
