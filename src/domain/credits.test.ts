@@ -73,6 +73,18 @@ describe("credit profiles", () => {
     expect(profiles.get("b")!.roles.studio.prediction).toBeNull();
   });
 
+  it("predicts nothing from history older than three years, and lists no negligible candidates", () => {
+    const old = computeCreditProfiles({
+      slots: [{ slug: "old", homeChannelId: 1, members: [member(1, 20091), member(2, 20092), member(3, 20093), member(4, 20264)] }],
+      credits: credits([[1, ["A"]], [2, ["A"]], [3, ["B"]]]),
+      aliases: noAliases,
+      latestSeason: 20264
+    }).get("old")!.roles.studio;
+    expect(old.prediction).toBeNull();
+    // The backtest still predicts within 2009 (each title from the ones a season or two before it): two predictions.
+    expect(old.backtest.n).toBe(2);
+  });
+
   it("bands predictions by the top share and the number of past titles", () => {
     expect(bandOf(0.9, 2)).toBe("short");
     expect(bandOf(0.8, 3)).toBe("high");

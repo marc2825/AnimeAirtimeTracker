@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { DOMINANT_RULE_TEXT, SlotCredits } from "@/components/slots/SlotCredits";
 import { SlotTimeline } from "@/components/slots/SlotTimeline";
 import { ButtonLink } from "@/components/ui/controls";
 import { Badge, EmptyState, ExternalLink, Notice, PageHeader, Section, SkeletonBlock, SLOT_KIND_LABELS, SlotKindBadge, StatGrid, StatTile, WeekdayChip } from "@/components/ui/primitives";
 import { INFERRED_MIN_SEASONS, INFERRED_MIN_TITLES, MIN_REGULAR_AIRINGS } from "@/domain/slots";
 import { formatAnimeMinute, formatAnimeSlot, type Weekday } from "@/domain/time";
 import { formatDateTime, formatSeasonOrdinal } from "@/lib/format";
+import { getCreditSummary } from "@/server/queries/credits";
 import { getSlotDetail, type SlotDetail } from "@/server/queries/slots";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { breadcrumbJsonLd, slotItemListJsonLd } from "@/lib/seo";
@@ -64,6 +66,8 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const slot = await getSlotDetail(decodeURIComponent(slug));
   if (!slot) notFound();
+  // Hit rates for the experimental candidates; without them the candidates are not shown.
+  const creditSummary = slot.credits ? await getCreditSummary().catch(() => null) : null;
 
   const changes = positionChanges(slot);
   const maxYear = Math.max(1, ...slot.byYear.map((row) => row.titles));
@@ -216,6 +220,17 @@ async function SlotContent({ params }: { params: Promise<{ slug: string }> }) {
           </table>
         </div>
       </Section>
+
+      {slot.credits ? (
+        <Section
+          id="credits"
+          title="制作会社・出版社"
+          description="所属作品の出典備考に記載された会社（作品数）"
+          details={`アニメーション制作は「アニメーション制作」の行、出版社・レーベルは掲載誌・原作の行の括弧内の記載です。記載のない作品は数えません。同じ会社の表記ゆれは対応表でまとめています。暗黙の枠の目安: ${DOMINANT_RULE_TEXT}。`}
+        >
+          <SlotCredits credits={slot.credits} summary={creditSummary} />
+        </Section>
+      ) : null}
 
       {slot.related.length > 0 ? (
         <Section id="related" title="関連する枠" description="所属作品が重なる枠（例: 出典記載枠と同じ位置の推定枠）">

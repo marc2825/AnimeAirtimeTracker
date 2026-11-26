@@ -9,7 +9,7 @@
  */
 import { seasonFromOrdinal, seasonOrdinal, shiftSeason } from "./season";
 
-export const CREDIT_RULE_VERSION = "credits-v1";
+export const CREDIT_RULE_VERSION = "credits-v2";
 export const CREDIT_ROLES = ["studio", "publisher"] as const;
 export type CreditRole = (typeof CREDIT_ROLES)[number];
 
@@ -24,12 +24,20 @@ export const SIMILAR_LIMIT = 3;
 /** Prediction: weight of a past title per season of distance. */
 export const PREDICTION_DECAY = 0.7;
 export const PREDICTION_CANDIDATES = 3;
+/** Candidates below this share are not listed. */
+export const PREDICTION_MIN_SHARE = 0.01;
+/**
+ * Only titles at most this many seasons before the target count as history for the band, and a prediction needs at
+ * least one: without it, normalised weights would make one title from long ago look certain.
+ */
+export const RECENT_SEASONS = 12;
 /** Names listed per role in a profile. */
 export const TOP_LIMIT = 5;
 
 /**
- * Confidence bands of a prediction: the share of the top candidate, and how many past titles it rests on.
- * `high` ≥ 0.8, `mid` ≥ 0.6 (both with at least BAND_MIN_HISTORY titles), `low` below 0.6, `short` too few titles.
+ * Confidence bands of a prediction: the share of the top candidate, and how many recent past titles (within
+ * RECENT_SEASONS) it rests on. `high` ≥ 0.8, `mid` ≥ 0.6 (both with at least BAND_MIN_HISTORY recent titles), `low`
+ * below 0.6, `short` too few recent titles.
  */
 export const BANDS = ["high", "mid", "low", "short"] as const;
 export type Band = (typeof BANDS)[number];
@@ -75,7 +83,10 @@ export interface RoleProfile {
   known: number;
   top: { name: string; titles: number; firstSeason: number | null; lastSeason: number | null }[];
   dominant: { name: string; titles: number; share: number } | null;
-  /** Next season's candidates; only for slots on air in the latest or the previous season of the data. */
+  /**
+   * Next season's candidates; only for slots on air in the latest or the previous season of the data, with at least
+   * one recent title naming someone. `history` = recent titles naming someone.
+   */
   prediction: { season: number; candidates: { name: string; share: number }[]; band: Band; history: number } | null;
   backtest: BacktestTally;
 }
@@ -163,14 +174,18 @@ interface Member {
   names: Record<CreditRole, string[]>;
 }
 
-/** Ranked candidates from past titles, weighted by PREDICTION_DECAY per season of distance from `target`. */
+/**
+ * Ranked candidates from past titles, weighted by PREDICTION_DECAY per season of distance from `target`; `history`
+ * counts the titles within RECENT_SEASONS.
+ */
 function rank(past: Member[], role: CreditRole, target: number): { candidates: { name: string; share: number }[]; history: number } {
   const scores = new Map<string, number>();
   let history = 0;
   for (const member of past) {
     if (member.season === null || member.names[role].length === 0) continue;
-    history += 1;
-    const weight = Math.pow(PREDICTION_DECAY, seasonIndex(target) - seasonIndex(member.season));
+    const distance = seasonIndex(target) - seasonIndex(member.season);
+    if (distance <= RECENT_SEASONS) history += 1;
+    const weight = Math.pow(PREDICTION_DECAY, distance);
     for (const name of member.names[role]) scores.set(name, (scores.get(name) ?? 0) + weight);
   }
   const total = [...scores.values()].reduce((sum, value) => sum + value, 0);
@@ -329,8 +344,9 @@ export function computeCreditProfiles(input: {
       for (const member of known) {
         if (member.season === null) continue;
         const earlier = known.filter((other) => other.season !== null && other.season < member.season!);
-        if (earlier.length === 0) continue;
+        // The same rule as the displayed prediction: no recent history, no prediction.
         const { candidates, history } = rank(earlier, role, member.season);
+        if (history === 0 || candidates.length === 0) continue;
         const names = new Set(member.names[role]);
         const hit = names.has(candidates[0]!.name);
         backtest.n += 1;
@@ -349,10 +365,13 @@ export function computeCreditProfiles(input: {
       let prediction: RoleProfile["prediction"] = null;
       if (latest >= onAirSince) {
         const { candidates, history } = rank(known, role, target);
-        if (candidates.length > 0) {
+        if (history > 0 && candidates.length > 0) {
           prediction = {
             season: target,
-            candidates: candidates.slice(0, PREDICTION_CANDIDATES).map((candidate) => ({ name: candidate.name, share: round(candidate.share) })),
+            candidates: candidates
+              .filter((candidate) => candidate.share >= PREDICTION_MIN_SHARE)
+              .slice(0, PREDICTION_CANDIDATES)
+              .map((candidate) => ({ name: candidate.name, share: round(candidate.share) })),
             band: bandOf(candidates[0]!.share, history),
             history
           };

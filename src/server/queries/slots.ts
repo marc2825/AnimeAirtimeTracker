@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import type { CreditProfile } from "@/domain/credits";
 import { computeTitlePositions } from "@/domain/slots";
 import { seasonFromOrdinal, seasonsBetween, seasonOrdinal, type Season } from "@/domain/season";
 import { dbDateToIsoDate, type IsoDate } from "@/domain/time";
@@ -6,6 +7,7 @@ import type { SlotPosition } from "@/lib/slot-search";
 
 import { datasetCacheProfile } from "../cache";
 import { db } from "../db";
+import { creditProfileOf } from "./credits";
 
 export type SlotKind = "OFFICIAL" | "SOURCE_LABEL" | "INFERRED";
 
@@ -159,6 +161,8 @@ export interface SlotDetail extends SlotSummary {
   }[];
   byYear: { year: number; titles: number }[];
   related: { slug: string; name: string; kind: SlotKind; shared: number }[];
+  /** Studios and publishers of the member titles (experimental); null until derived with the current rule. */
+  credits: { profile: CreditProfile; similar: { slug: string; name: string; kind: SlotKind; score: number }[] } | null;
 }
 
 export async function getSlotDetail(slug: string): Promise<SlotDetail | null> {
@@ -240,6 +244,11 @@ export async function getSlotDetail(slug: string): Promise<SlotDetail | null> {
     ? await db().slot.findMany({ where: { id: { in: relatedRows.map((r) => r.slotId) } }, select: { id: true, slug: true, name: true, kind: true } })
     : [];
   const sharedBySlot = new Map(relatedRows.map((r) => [r.slotId, r._count.titleId]));
+  const profile = creditProfileOf(slot.creditProfile);
+  const similarRows =
+    profile && profile.similar.length > 0
+      ? await db().slot.findMany({ where: { slug: { in: profile.similar.map((s) => s.slug) } }, select: { slug: true, name: true, kind: true } })
+      : [];
 
   return {
     slug: slot.slug,
@@ -273,6 +282,15 @@ export async function getSlotDetail(slug: string): Promise<SlotDetail | null> {
     related: relatedSlots
       .map((s) => ({ slug: s.slug, name: s.name, kind: s.kind, shared: sharedBySlot.get(s.id) ?? 0 }))
       .sort((a, b) => b.shared - a.shared || a.name.localeCompare(b.name, "ja"))
-      .slice(0, 8)
+      .slice(0, 8),
+    credits: profile
+      ? {
+          profile,
+          similar: profile.similar.flatMap((entry) => {
+            const row = similarRows.find((candidate) => candidate.slug === entry.slug);
+            return row ? [{ slug: row.slug, name: row.name, kind: row.kind, score: entry.score }] : [];
+          })
+        }
+      : null
   };
 }

@@ -233,6 +233,8 @@ async function TitleContent({ params }: { params: Promise<{ slug: string }> }) {
                 { label: "放送開始（出典）", value: formatYearMonth(title.firstYear, title.firstMonth) ?? "不明" },
                 { label: "放送終了（出典）", value: formatYearMonth(title.firstEndYear, title.firstEndMonth) ?? "未設定" },
                 { label: "初回放送局（出典）", value: title.firstChannelText ?? "不明" },
+                { label: "アニメーション制作（出典）", value: title.studios.length > 0 ? title.studios.join("、") : "記載なし" },
+                { label: "原作の出版社・レーベル（出典）", value: title.publishers.length > 0 ? title.publishers.join("、") : "記載なし" },
                 { label: "公式サイト", value: title.officialUrl ? <ExternalLink href={title.officialUrl}>リンク</ExternalLink> : "記載なし" },
                 { label: "出典ページ", value: <ExternalLink href={title.sourceUrl}>TID {title.slug}</ExternalLink> },
                 { label: "出典の最終更新", value: title.sourceUpdatedAt ? formatDateTime(title.sourceUpdatedAt) : "不明" },

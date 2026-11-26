@@ -54,6 +54,9 @@ export interface TitleDetail {
   firstEndMonth: number | null;
   firstChannelText: string | null;
   officialUrl: string | null;
+  /** Studios and publishers named in the source comment, as written (empty = not stated). */
+  studios: string[];
+  publishers: string[];
   sourceUrl: string;
   sourceUpdatedAt: Date | null;
   detailsFetchedAt: Date | null;
@@ -170,6 +173,8 @@ export async function getTitleDetail(slug: string): Promise<TitleDetail | null> 
     firstEndMonth: title.firstEndMonth,
     firstChannelText: title.firstChannelText,
     officialUrl: title.officialUrl,
+    studios: title.studios,
+    publishers: title.publishers,
     sourceUrl: syoboiTitleUrl(title.externalId),
     sourceUpdatedAt: title.sourceUpdatedAt,
     detailsFetchedAt: title.detailsFetchedAt,

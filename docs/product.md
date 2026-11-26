@@ -47,7 +47,7 @@ Out (by policy, not just for launch): general title introductions, reviews, watc
 | `/channels`, `/channels/[slug]` | Channel index and per-channel trend, weekday × hour, slots |
 | (figures) | 書き出し row under exportable charts: CSV / SVG / PNG with source, site, scope, URL and data time; a share link with every condition explicit |
 | `/compare/slots`, `/compare/channels` | Side-by-side comparisons: 2–4 slots (`?s=…`), or two regions/channels (`?a=…&b=…&season=…`) with overlap and same-episode timing (channels both sides receive are excluded) |
-| `/analysis`, `/analysis/[slug]` | Analyses from a typed registry (`src/analysis/`): shared frame with scope, unit, source, data time, definitions, limits, reproduce links |
+| `/analysis`, `/analysis/[slug]` | Analyses from a typed registry (`src/analysis/`): shared frame with scope, unit, source, data time, definitions, limits, reproduce links. `implicit-slots` is marked as an experiment (studios and publishers by slot, with a backtested prediction) |
 | `/stats` | Season statistics with scope selector (region, network, channel, time band, length), band trend, season comparison, table views |
 | `/about` | Sources, terms, coverage, time conventions, definitions, slot rules, limits, corrections |
 | `/terms`, `/privacy` | Terms and disclaimer (unofficial site, source and limits, code vs data licensing, requests); privacy policy (what the browser stores, hosting logs, contact data) |

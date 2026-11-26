@@ -524,6 +524,28 @@ test("analysis pages state their scope and are reachable from the index", async 
   expect((await request.get("/analysis/no-such-analysis")).status()).toBe(404);
 });
 
+test("the implicit-slot analysis is marked as an experiment and honest without slots", async ({ page }) => {
+  await page.goto("/analysis");
+  await page.getByRole("link", { name: "制作会社・出版社から見た暗黙の放送枠（実験）" }).click();
+  await expect(page).toHaveURL(/\/analysis\/implicit-slots$/);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("実験");
+  for (const term of ["対象", "単位"]) await expect(page.getByRole("term").filter({ hasText: new RegExp(`^${term}$`) })).toBeVisible();
+  // The fixtures hold no slots: the page says there is nothing to count yet instead of showing empty figures.
+  await expect(page.getByText("まだ集計できる放送枠がありません")).toBeVisible();
+});
+
+test("title pages state the studio and publisher from the source, or that none is stated", async ({ page }) => {
+  await page.goto("/titles/8053");
+  const facts = page.getByRole("complementary", { name: "作品データ" });
+  await expect(facts).toContainText("アニメーション制作（出典）");
+  await expect(facts).toContainText("サテライト");
+  await expect(facts).toContainText("集英社");
+  await page.goto("/titles/2968");
+  const none = page.getByRole("complementary", { name: "作品データ" });
+  await expect(none).toContainText("原作の出版社・レーベル（出典）");
+  await expect(none.getByText("記載なし").first()).toBeVisible();
+});
+
 test("a figure exports its data as CSV with source and conditions, and shares a link that pins them", async ({ page, browserName, context }) => {
   await page.goto("/stats?season=2026-autumn&region=all");
   const heatmap = page.locator("#heatmap");
